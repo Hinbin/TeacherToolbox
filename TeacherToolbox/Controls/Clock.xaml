@@ -16,10 +16,9 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="5*"/>
             <RowDefinition Height="5*"/>
-            <RowDefinition Height="*"/>
 
         </Grid.RowDefinitions>
-        <Viewbox Stretch="Uniform" Grid.Column="0" Grid.Row="0" Grid.RowSpan="2" Tapped="Clock_Tapped">
+        <Viewbox Stretch="Uniform" Grid.Column="0" Grid.Row="0" Grid.RowSpan="2">
             <Canvas x:Name="Container"
                 Background="Transparent"
                 Height="200"
@@ -30,24 +29,19 @@
                      Canvas.Left="0"
                      Canvas.Top="0" />
             </Canvas>
+
+        </Viewbox>
+
+        <Viewbox Grid.Column="1" Grid.Row="0">
+            <TextBox x:Name="centreTextBox" FontWeight="Bold" TextAlignment="Center"
+                     VerticalContentAlignment="Center" Header="Centre Number" Margin="5" Padding="5"/>
+        </Viewbox>
+        <Viewbox Grid.Column="1" Grid.Row="1" Tapped="Clock_Tapped">
+            <TextBlock x:Name="digitalTimeTextBlock" VerticalAlignment="Top"/>
             <FlyoutBase.AttachedFlyout>
                 <TimePickerFlyout x:Name="timePickerFlyout" ClockIdentifier="12HourClock" />
             </FlyoutBase.AttachedFlyout>
         </Viewbox>
-
-        <Viewbox Grid.Column="1" Grid.Row="0">
-            <TextBox x:Name="centreTextBox" FontWeight="Bold"
-                     TextWrapping="NoWrap" HorizontalAlignment="Stretch"
-                     VerticalContentAlignment="Center" Header="Centre Number" Margin="5" Padding="5"/>
-        </Viewbox>
-        <Viewbox Grid.Column="1" Grid.Row="1">
-            <TextBlock x:Name="digitalTimeTextBlock" VerticalAlignment="Top"/>
-        </Viewbox>
-
-
-        <TextBlock x:Name="clickClockLabel"  Grid.Column="0" Grid.Row="3" Text="Click clock to adjust the time" VerticalAlignment="Top" HorizontalAlignment="Center"
-                   Style="{StaticResource CaptionTextBlockStyle}"/>
-
     </Grid>
 
 </UserControl>

@@ -61,12 +61,21 @@ namespace TeacherToolbox.Controls
 
             private void TimePickerFlyout_TimePicked(TimePickerFlyout sender, TimePickedEventArgs args)
             {
+
                 // Get the difference between the current time and the new time ignoring seconds
                 offset = DateTime.Today.Add(args.NewTime).Subtract(DateTime.Now);
             
                 // Get the current number of seconds of the minute and add it to the offset
                 offset = offset.Add(TimeSpan.FromSeconds(now.Second));
+
+                // Round the offset to the nearest minute
                 
+            if (offset.Seconds > 30)
+            {
+                    offset = offset.Add(TimeSpan.FromMinutes(1));
+                }
+                offset = new TimeSpan(offset.Hours, offset.Minutes, 0);
+       
             }
 
             private void Clock_Loaded(object sender, RoutedEventArgs e)
@@ -138,16 +147,20 @@ namespace TeacherToolbox.Controls
 
         private void Timer_Tick(object sender, object e)
         {
+            DateTime checkTime = DateTime.Now;
+       
+            digitalTimeTextBlock.Text = now.ToString("h:mm tt");
+
             // Check to see if we have a new second
-            if (now.Second != DateTime.Now.Second)
-            { 
-                digitalTimeTextBlock.Text = now.ToString("h:mm tt");
+            if (now.Second != checkTime.Second)
+            {
+
                 // Add offset on to current time
                 now = DateTime.Now.Add(offset);
 
                 _batch = _compositor.CreateScopedBatch(CompositionBatchTypes.Animation);
                 var animation = _compositor.CreateScalarKeyFrameAnimation();
-                var seconds = (float)(int)now.TimeOfDay.TotalSeconds - 2;
+                var seconds = (float)(int)now.TimeOfDay.TotalSeconds - 1;
 
                 // This works:
                 animation.InsertKeyFrame(0.00f, seconds * 6);
@@ -157,6 +170,10 @@ namespace TeacherToolbox.Controls
                 _secondhand.StartAnimation(nameof(_secondhand.RotationAngleInDegrees), animation);
                 _batch.End();
                 _batch.Completed += Batch_Completed;
+
+
+
+
             }
         }
 
