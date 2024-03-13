@@ -7,12 +7,13 @@
     xmlns:controls="using:CommunityToolkit.WinUI.UI.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    
     mc:Ignorable="d">
 
     <Grid>
         <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="3*"/>
             <ColumnDefinition Width="2*"/>
-            <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
             <RowDefinition Height="5*"/>
@@ -39,9 +40,10 @@
 
         </Viewbox>
 
-        <Viewbox Grid.Column="1" Grid.Row="0">
-            <TextBox x:Name="centreTextBox" FontWeight="Bold" TextAlignment="Center"
-                     VerticalContentAlignment="Center" Header="Centre Number" Margin="5" Padding="5"/>
+        <Viewbox Grid.Column="1" Grid.Row="0" >
+            <TextBox x:Name="centreTextBox" FontWeight="Bold" TextAlignment="Center" TextWrapping="NoWrap" FontSize="50"
+                     VerticalContentAlignment="Stretch" HorizontalContentAlignment="Stretch" Header="Centre Number" Padding="2"
+                     Text="{x:Bind centreNumber, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
         </Viewbox>
         
         <Viewbox Grid.Column="1" Grid.Row="1" Tapped="Digital_Time_Tapped">
@@ -51,16 +53,8 @@
             </FlyoutBase.AttachedFlyout>
         </Viewbox>
         
-        <Viewbox Grid.Column="1" Grid.Row="2" HorizontalAlignment="Right">
-            <Grid HorizontalAlignment="Right">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <ToggleSwitch Grid.Column="1" Header="Exam Practice"/>
-                <ToggleSwitch Grid.Column="0" Header="Start/End Times"/>
-            </Grid>
-        </Viewbox>
     </Grid>
+    
+
 
 </UserControl>

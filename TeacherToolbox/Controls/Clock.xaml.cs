@@ -25,6 +25,9 @@ using Windows.ApplicationModel.VoiceCommands;
 using System.ComponentModel.Design;
 using CommunityToolkit.Common;
 using Windows.ApplicationModel.Contacts;
+using Windows.Storage;
+using System.Reflection.Metadata.Ecma335;
+
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -33,6 +36,44 @@ enum RadialLevel
 {
     Inner,
     Outer
+}
+
+public class TimeSlice
+{
+    public int startMinute { get; set; }
+    public int duration { get; set; }
+    public int radialLevel  { get; set; }
+    public string name  { get; set; }
+
+
+    public TimeSlice(int startMinute, int duration, int radialLevel, string name)
+    {
+        this.startMinute = startMinute;
+        this.duration = duration;
+        this.radialLevel = radialLevel;
+        this.name = name;
+    }
+
+    public TimeSlice()
+    {
+    }    
+
+    public bool isWithinTimeSlice(int minute, int radialLevel)
+    {
+        if ( this.radialLevel != radialLevel ) return false;
+
+        if (minute >= startMinute && minute < startMinute + duration)
+        {
+            return true;
+        } // check forward accross the hour boundary
+        else if (startMinute + duration > 60 && minute < startMinute && minute + 60 < startMinute + duration)
+        {
+            return true;
+        } 
+ 
+        return false;
+    }
+
 }
 
 namespace TeacherToolbox.Controls
@@ -55,12 +96,23 @@ namespace TeacherToolbox.Controls
         private TimeSpan offset = TimeSpan.Zero;
 
         // Private 2d array to hold the values for the gauges, 60 minutes and 2 radial levels
-        private int[,] gaugeArray;
-        private int selectedGauge = -1;
+        private string selectedGauge;
         private int gaugeCount = 0;
 
         // A C# list to hold the radial gauges
         private List<RadialGauge> radialGaugeList = new List<RadialGauge>();
+        private List<TimeSlice> timeSlices = new List<TimeSlice>();
+
+        public static readonly DependencyProperty centreNumberProperty = DependencyProperty.Register("centreNumber", typeof(string), typeof(Clock), new PropertyMetadata("12345"));
+
+
+        public string centreNumber
+        {
+            get { return (string)GetValue(centreNumberProperty); }
+            set { SetValue(centreNumberProperty, value); }
+        }
+
+        
 
         public Clock()
         {
@@ -71,16 +123,8 @@ namespace TeacherToolbox.Controls
             _timer.Interval = TimeSpan.FromMilliseconds(200);
             _timer.Tick += Timer_Tick;
             timePickerFlyout.TimePicked += TimePickerFlyout_TimePicked;
-
-            // Make a 2d gauge array to hold the values for the gauges, 60 minutes and 2 radial levels.  Set all values to -1
-            gaugeArray = new int[60, 2];
-            for (int i = 0; i < 60; i++)
-            {
-                gaugeArray[i, 0] = -1;
-                gaugeArray[i, 1] = -1;
-            }
-
-
+            //centreNumber = localSettings.Values["centreNumber"] as string;
+            centreNumber = "12345";
         }
 
         public bool ShowTicks { get; set; } = true;
@@ -226,6 +270,22 @@ namespace TeacherToolbox.Controls
             FlyoutBase.ShowAttachedFlyout((FrameworkElement)sender);
         }
 
+        private string checkIfGaugeAtPosition(int minute, int radialLevel)
+        {
+            // Call the isWithinTimeSlice function to see if a gauge is already there
+            // for all gauges in the array.  If a gauge is already there, select it, otherwise create a new gauge
+            for (int i = 0; i < timeSlices.Count; i++)
+            {
+                if (timeSlices[i].isWithinTimeSlice(minute, radialLevel))
+                {
+                    selectedGauge = timeSlices[i].name;
+                    return selectedGauge;            
+                }
+            }
+            selectedGauge = null;
+            return selectedGauge;
+        }
+
         private void Clock_Pointer_Pressed(object sender, PointerRoutedEventArgs e)
         {
             // Capture pointer
@@ -237,62 +297,31 @@ namespace TeacherToolbox.Controls
 
             // Get the minutes from the angle
             var timeSelected = GetMinutesFromCoordinate(point);
+            checkIfGaugeAtPosition(timeSelected[0], timeSelected[1]);
 
             // On a left mouse click or touch event
             if (e.GetCurrentPoint((UIElement)sender).Properties.IsLeftButtonPressed)
-            {
-                // If a gauge doesn't already exist at this position, create one
-                if (gaugeArray[timeSelected[0], timeSelected[1]] == -1)
-                {
-                    // Add a gauge to the canvas
-                    addGauge(timeSelected, canvas);
-
-
-                } // else if a gauge is already there, select it
-                else
-                {
-                    // Set the selectedGauge to the gaugeArray value
-                    selectedGauge = gaugeArray[timeSelected[0], timeSelected[1]];
-                }
+            {                
+                if (selectedGauge == null) addGauge(timeSelected, canvas);
             }
 
             // On a right mouse click or touch event
             if (e.GetCurrentPoint((UIElement)sender).Properties.IsRightButtonPressed)
             {
                 // If a gauge exists at this position, remove it
-                if (gaugeArray[timeSelected[0], timeSelected[1]] > -1)
-                {
-                    removeGauge(timeSelected, canvas);
-
-                }
+                if (selectedGauge != null) removeGauge(canvas);
             }
         }
 
-        private void removeGauge(int[] timeSelected, Canvas canvas)
-        {
-            int gaugeNumber = gaugeArray[timeSelected[0], timeSelected[1]];
-            // Loop through the gaugeArray to find all instances of the selected gauge and set the value to -1
-            for (int i = 0; i < 60; i++)
-            {
-                for (int j = 0; j < 2; j++)
-                {
-                    if (gaugeArray[i, j] == gaugeNumber)
-                    {
-                        gaugeArray[i, j] = -1;
-                    }
-                }
-            }
+        private void removeGauge(Canvas canvas)
+        {        
+            // Find the gauge with the selectedGauge name and remove it from the canvas
+            canvas.Children.Remove(radialGaugeList.Find(x => x.Name == selectedGauge));           
+            radialGaugeList.RemoveAll(x => x.Name == selectedGauge);
+            timeSlices.RemoveAll(x => x.name == selectedGauge);
+            selectedGauge = null;
 
-            // Find the gauge in the radialGaugeList and remove it
-            for (int i = 0; i < radialGaugeList.Count; i++)
-            {
-                if (radialGaugeList[i].Name == "Gauge" + gaugeNumber)
-                {
-                    canvas.Children.Remove(radialGaugeList[i]);
-                    radialGaugeList.RemoveAt(i);
-                    break;
-                }
-            }
+            if (timeSlices.Count == 0) gaugeCount = 0;  // Reset this to 0 to reset colours
         }
 
         private void addGauge(int[] timeSelected, Canvas canvas)
@@ -322,13 +351,12 @@ namespace TeacherToolbox.Controls
             }
             else
             {
-                newGauge.Width = 100;
-                newGauge.Height = 100;
+                newGauge.Width = 140;
+                newGauge.Height = 140;
                 // Set the position of the new gauge
-                newGauge.SetValue(Canvas.LeftProperty, 50);
-                newGauge.SetValue(Canvas.TopProperty, 50);
+                newGauge.SetValue(Canvas.LeftProperty,30);
+                newGauge.SetValue(Canvas.TopProperty, 30);
                 newGauge.SetValue(Canvas.ZIndexProperty, 2);
-                newGauge.ScalePadding = 20;
             }
 
             newGauge.IsInteractive = false;
@@ -346,34 +374,28 @@ namespace TeacherToolbox.Controls
             newGauge.ScaleBrush = new SolidColorBrush(Colors.Transparent);
 
             // Make the trail a randomised colour with 50% opacity
-            newGauge.TrailBrush = getRandomColourBrush();
+            newGauge.TrailBrush = getNextColourBrush();
             newGauge.TrailBrush.Opacity = 0.65;
             newGauge.Minimum = 0;
             newGauge.Maximum = 1;
             newGauge.Value = 1;
 
             newGauge.NeedleWidth = 0;
-            newGauge.NeedleBrush = new SolidColorBrush(Colors.Pink);
 
             // Add the new gauge to the canvas
             Container.Children.Add(newGauge);
 
             // Set the selectedGauge to the last gauge added
-            selectedGauge = gaugeCount;
+            selectedGauge = "Gauge" + gaugeCount;
             gaugeCount++;
 
             // Add the new gauge to the radialGaugeList
             radialGaugeList.Add(newGauge);
 
-            newGauge.Name = "Gauge" + selectedGauge;
+            newGauge.Name = selectedGauge;
 
-
-            // Set the gaugeArray value to the selectedGauge for all 5 minutes in the interval
-            for (int i = 0; i < 5; i++)
-            {
-                gaugeArray[fiveMinuteInterval * 5 + i, timeSelected[1]] = selectedGauge;
-            }
-
+            // Add the new gauge to the timeSlices list
+            timeSlices.Add(new TimeSlice(fiveMinuteInterval * 5, 5, radialLevel, selectedGauge));
         }
 
         private void Clock_Pointer_Released(object sender, PointerRoutedEventArgs e)
@@ -387,7 +409,7 @@ namespace TeacherToolbox.Controls
 
             // Get the minutes from the angle
             var minutes = GetMinutesFromCoordinate(point);
-            selectedGauge = -1;
+            selectedGauge = null;
 
         }
 
@@ -396,7 +418,7 @@ namespace TeacherToolbox.Controls
             // Release pointer
             var canvas = (Canvas)sender;
             canvas.ReleasePointerCapture(e.Pointer);
-            selectedGauge = -1;
+            selectedGauge = null;
         }
 
         private void Clock_Pointer_Moved(object sender, PointerRoutedEventArgs e)
@@ -411,77 +433,52 @@ namespace TeacherToolbox.Controls
                 var timeSelected = GetMinutesFromCoordinate(point);
 
                 // If a gauge has been selected, call the function to change the range of minutes it is set to
-                if (selectedGauge > -1)
+                if (selectedGauge != null)
                 {
-                    // Loop through the gaugeArray to find the start minute and end minute of the selected gauge for the current radialLevel
-                    int startMinute = -1;
-                    int endMinute = -1;
-                    for (int i = 0; i < 60; i++)
-                    {
-                        if (gaugeArray[i, timeSelected[1]] == selectedGauge)
-                        {
-                            if (startMinute == -1)
-                            {
-                                startMinute = i;
-                            }
-                            endMinute = i;
-                        }
-                    }
+                    // Check the time selected already contains a time slice, if so, return
+                    if (timeSlices.Find(x => x.isWithinTimeSlice(timeSelected[0], timeSelected[1])) != null) return;
 
-                    // if startMinute is 0 and end minute is 59 then as 
-
-
+                    // Find the timeSlice in the timeSlices list by reference
+                    TimeSlice timeSlice = timeSlices.Find(x => x.name == selectedGauge);
 
                     // Get the startMinute and endMinute in the 5 minute interval
-                    int startFiveMinuteInterval = startMinute / 5;
-                    int endFiveMinuteInterval = endMinute / 5;
-
-                    // Get the 5 minute interval the minute is in, rounded down to the nearest 5 minutes
+                    int startFiveMinuteInterval = timeSlice.startMinute / 5;
+                    int endFiveMinuteInterval = (timeSlice.startMinute + timeSlice.duration) / 5;
                     int newFiveMinuteInterval = timeSelected[0] / 5;
 
-                    // If going bakwards, swap the start and end intervals, but don't allow this if the newFiveMinuteInterval already has a gauge in it, or in any of the 5 minute intervals between the start and newFiveMinuteInterval
-                    if (newFiveMinuteInterval < startFiveMinuteInterval)
+                    if (newFiveMinuteInterval >= endFiveMinuteInterval)
                     {
-                        for (int i = newFiveMinuteInterval; i < startFiveMinuteInterval; i++)
+                        // If in the next slice, fill the slice
+                        if (newFiveMinuteInterval == endFiveMinuteInterval) {
+                            timeSlice.duration += 5;
+                        } // Check to see if the hour boundary has been crossed backwards 
+                        else if (newFiveMinuteInterval == startFiveMinuteInterval + 11)
                         {
-                            if (gaugeArray[i * 5, timeSelected[1]] != -1)
-                            {
-                                return;
-                            }
-                        }
-                        startFiveMinuteInterval = newFiveMinuteInterval;
-                        newFiveMinuteInterval = endFiveMinuteInterval;
+                            timeSlice.startMinute  = (timeSlice.startMinute + 55) % 60;
+                            timeSlice.duration += 5;
+                        }                        
                     }
-
-
-                    // Make all 5 minute intervals between the start of the selected gauge and 5 minute interval the pointer is in the same as the selected gauge
-                    // but do not overwrite any other gauges
-                    for (int i = startFiveMinuteInterval; i <= newFiveMinuteInterval; i++)
+                    else if (newFiveMinuteInterval < startFiveMinuteInterval)
                     {
-                        if (gaugeArray[i * 5, timeSelected[1]] == -1)
+                        // If in the previous slice, fill the slice
+                        if (newFiveMinuteInterval == startFiveMinuteInterval - 1)
                         {
-                            for (int j = 0; j < 5; j++)
-                            {
-                                gaugeArray[i * 5 + j, timeSelected[1]] = selectedGauge;
-                            }
-                            endFiveMinuteInterval = newFiveMinuteInterval;
-                        } else if (gaugeArray[i * 5, timeSelected[1]] != selectedGauge)
+                            timeSlice.startMinute = newFiveMinuteInterval * 5;
+                            timeSlice.duration += 5;
+                        }  // Check to see if the hour boundary has been crossed forwards 
+                        else if (newFiveMinuteInterval == endFiveMinuteInterval - 12)
                         {
-                            break;
+                            timeSlice.duration += 5;
                         }
                     }
+
+                    startFiveMinuteInterval = timeSlice.startMinute / 5;
+                    endFiveMinuteInterval = (timeSlice.startMinute + timeSlice.duration) / 5;
+
                     // Find the gauge in the radialGaugeList and update the minAngle and maxAngle
-                    for (int j = 0; j < radialGaugeList.Count; j++)
-                    {
-                        if (radialGaugeList[j].Name == "Gauge" + selectedGauge)
-                        {
-                            radialGaugeList[j].MinAngle = startFiveMinuteInterval * 30;
-                            radialGaugeList[j].MaxAngle = (endFiveMinuteInterval + 1) * 30;
-                            
-                            break;
-                        }
-                    }
-
+                    RadialGauge radialGauge = radialGaugeList.Find(x => x.Name == selectedGauge);
+                    radialGauge.MinAngle = startFiveMinuteInterval * 30;
+                    radialGauge.MaxAngle = (endFiveMinuteInterval) * 30;
                 }
             }
         }
@@ -494,7 +491,7 @@ namespace TeacherToolbox.Controls
             // Release pointer
             var canvas = (Canvas)sender;
             canvas.ReleasePointerCapture(e.Pointer);
-            selectedGauge = -1;
+            selectedGauge = null;
         }
 
 
@@ -515,36 +512,32 @@ namespace TeacherToolbox.Controls
             // Currently the angle 0 is 9 o'clock so we need to convert it to 12 o'clock and use mod 60 to get the minutes
             minutes = (minutes + 45) % 60;
 
-            // Check if the position was for the inner circle of the clock - half the size of the clock
-            if (point.X > 60 && point.X < 140 && point.Y > 60 && point.Y < 140)
+            // The inner circle has a diameter of 140 and the outer circle a diameter of 200 - check to see if the mouse click is within the inner circle
+            if (Math.Sqrt(Math.Pow(point.X - 100, 2) + Math.Pow(point.Y - 100, 2)) < 55)
             {
                 radialLevel = (int)RadialLevel.Outer;
-            }
-            else
+            } else
             {
                 radialLevel = (int)RadialLevel.Inner;
             }
-
-            //write line to debug window
-            //System.Diagnostics.Debug.WriteLine("Minutes: " + minutes + " Radial Level: " + radialLevel + " X: " + point.X + "Y: " + point.Y);
 
             return new int[] { minutes, radialLevel };
 
         }
 
-        private SolidColorBrush getRandomColourBrush()
+        private SolidColorBrush getNextColourBrush()
         {
-            // Create a random number generator
-            Random random = new Random();
+            string[] hexCodeArray = { "#0072B2", "#CC79A7", "#F0E442", "#009E73", "#785EF0", "#D55E00", "#56B4E9" , "#000000", "#DC267F", "#117733"};
 
-            // Create a random colour
-            byte[] colour = new byte[3];
-            random.NextBytes(colour);
 
-            // Create a new SolidColorBrush with the random colour
-            return new SolidColorBrush(Windows.UI.Color.FromArgb(255, colour[0], colour[1], colour[2]));
+                string hexCode = hexCodeArray[timeSlices.Count % hexCodeArray.Length];
+
+                // Convert hex code to solid colour brush
+                
+                return new SolidColorBrush(ColorHelper.FromArgb(255, Convert.ToByte(hexCode.Substring(1, 2), 16),
+                    Convert.ToByte(hexCode.Substring(3, 2), 16),
+                    Convert.ToByte(hexCode.Substring(5, 2), 16)));
+   
         }
-
-
     }
 }

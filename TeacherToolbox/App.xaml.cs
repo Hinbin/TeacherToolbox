@@ -8,6 +8,7 @@ using Microsoft.UI.Xaml.Navigation;
 using Microsoft.UI.Xaml.Shapes;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
@@ -15,6 +16,7 @@ using Windows.ApplicationModel;
 using Windows.ApplicationModel.Activation;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
+using Config.Net;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -46,5 +48,22 @@ namespace TeacherToolbox
         }
 
         private Window m_window;
+    }
+
+    public interface IAppSettings : INotifyPropertyChanged
+    {
+        // your settings properties here, see Config.Net Github README
+    }
+
+    public static class SettingsProvider
+    {
+        public static IAppSettings Initialize()
+        {
+            var jsonPath = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "my_app_folder", "appsettings.json");
+
+            return new ConfigurationBuilder<IAppSettings>()
+               .UseJsonFile(jsonPath)
+               .Build();
+        }
     }
 }
