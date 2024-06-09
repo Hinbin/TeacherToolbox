@@ -5,7 +5,7 @@
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <WindowsPackageType>None</WindowsPackageType>
     <PublishReadyToRun>true</PublishReadyToRun>
-    <TargetFramework>net6.0-windows10.0.19041.0</TargetFramework>   
+    <TargetFramework>net7.0-windows10.0.19041.0</TargetFramework>   
     <RootNamespace>TeacherToolbox</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Platforms>x86</Platforms>
@@ -14,9 +14,18 @@
     <UseWinUI>true</UseWinUI>
     <EnableMsixTooling>true</EnableMsixTooling>
   </PropertyGroup>
+  <ItemGroup>
+    <None Remove="Controls\RandomNameGenerator.xaml" />
+    <None Remove="Controls\Timer.xaml" />
+    <None Remove="Controls\TimerWindow.xaml" />
+    <None Remove="RandomNameGenerator.xaml" />
+  </ItemGroup>
 
   <ItemGroup>
-    <Content Include="Assets\5051.png" />
+    <Content Include="Assets\**\*.*" />
+    <Content Include="Assets\5051.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="Assets\SplashScreen.scale-200.png" />
     <Content Include="Assets\LockScreenLogo.scale-200.png" />
     <Content Include="Assets\Square150x150Logo.scale-200.png" />
@@ -27,10 +36,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="AsyncFixer" Version="1.6.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
     <PackageReference Include="CommunityToolkit.WinUI.UI.Controls" Version="7.1.2" />
-    <PackageReference Include="Config.Net" Version="5.1.5" />
-    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.4.240211001" />
-    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.22621.2428" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.5.240428000" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1" />
     <Manifest Include="$(ApplicationManifest)" />
   </ItemGroup>
 
@@ -41,6 +54,26 @@
   -->
   <ItemGroup Condition="'$(DisableMsixProjectCapabilityAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
     <ProjectCapability Include="Msix" />
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="Controls\TimerWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="Controls\RandomNameGenerator.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="Controls\Timer.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="RandomNameGenerator.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
   <ItemGroup>
     <Page Update="Controls\Clock.xaml">

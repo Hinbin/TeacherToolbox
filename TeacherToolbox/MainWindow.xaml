@@ -7,11 +7,40 @@
     xmlns:controls="using:TeacherToolbox.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    mc:Ignorable="d"
-    >
-    
-    <controls:Clock BackgroundImage="ms-appx:///Assets/5051.png"
-                    ShowTicks="False"
-                    Margin="20"/>
+    Title="Teacher Toolbox"
+    Activated="MainWindow_Activated"
+    mc:Ignorable="d">
+
+    <Grid>
+
+        <NavigationView x:Name="NavView" PaneDisplayMode="LeftCompact"
+                     Loaded="NavView_Loaded"
+                     ItemInvoked="NavView_ItemInvoked"
+                     BackRequested="NavView_BackRequested"
+                     AlwaysShowHeader="False"
+                     IsSettingsVisible="False"
+                     IsBackButtonVisible="Collapsed"  
+                     KeyDown="NavView_KeyDown"
+                     >
+            <NavigationView.MenuItems>
+                <NavigationViewItem Tag="TeacherToolbox.Controls.RandomNameGenerator" Content="Random Name Generator">
+                    <NavigationViewItem.Icon>
+                        <FontIcon FontFamily="Segoe MDL2 Assets" Glyph="&#xE9CE;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Tag="TeacherToolbox.Controls.Clock" Content="Exam Clock" Icon="Clock"/>
+                <NavigationViewItem Tag="TeacherToolbox.Controls.Timer" Content="Timer">
+                    <NavigationViewItem.Icon>
+                        <FontIcon FontFamily="Segoe MDL2 Assets" Glyph="&#xF182;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+            </NavigationView.MenuItems>
+
+
+            <Frame x:Name="ContentFrame" IsTabStop="True"
+            NavigationFailed="ContentFrame_NavigationFailed"/>
+
+        </NavigationView>
+    </Grid>
 
 </Window>
