@@ -13,7 +13,7 @@ namespace TeacherToolbox.Model
     public class StudentClassSelector : ObservableObject
     {
 
-        public List<StudentClass> studentClasses = new ();
+        public List<StudentClass>[] studentClasses;
         public StudentClass currentClass;
 
         public StudentClassSelector()
@@ -27,9 +27,9 @@ namespace TeacherToolbox.Model
             return studentClassSelector;
         }
 
-        public void RemoveClass(StudentClass studentClass)
+        public void RemoveClass(StudentClass studentClass, int day)
         {
-            studentClasses.Remove(studentClass);
+            studentClasses[day].Remove(studentClass);
             SaveClasses();
         }
 
@@ -45,8 +45,7 @@ namespace TeacherToolbox.Model
                 if (File.Exists(filePath))
                 {
                     string json = await File.ReadAllTextAsync(filePath);
-                    studentClasses = JsonSerializer.Deserialize<List<StudentClass>>(json);
-
+                    studentClasses = JsonSerializer.Deserialize<List<StudentClass>[]>(json);
                 }
             }
             catch (Exception e)
@@ -54,31 +53,50 @@ namespace TeacherToolbox.Model
                 Console.WriteLine("Error loading classes: " + e.Message);
             }
 
-            // Check for duplicate class names and remove them
-            var duplicates = studentClasses.GroupBy(x => x.ClassName).Where(g => g.Count() > 1).Select(y => y.Key).ToList();
-            foreach (var duplicate in duplicates)
+            // Check to see if the studentClasses object is null, if it is, create a new one
+            if (studentClasses == null)
             {
-                studentClasses.RemoveAll(x => x.ClassName == duplicate);
-            }
-
-            // Check each file path to see if the file still exists, if it doesn't, remove them
-            List<StudentClass> classesToRemove = new ();
-
-            foreach (StudentClass studentClass in studentClasses)
-            {
-                if (!File.Exists(studentClass.ClassPath))
+                studentClasses = new List<StudentClass>[7];
+                for (int i = 0; i < 7; i++)
                 {
-                    classesToRemove.Add(studentClass);
+                    studentClasses[i] = new List<StudentClass>();
                 }
             }
 
-            foreach (StudentClass studentClass in classesToRemove)
+            // Check for duplicate class names and remove them for each day
+            foreach (List<StudentClass> day in studentClasses)
             {
-                studentClasses.Remove(studentClass);
+                var duplicates = day.GroupBy(x => x.ClassName).Where(g => g.Count() > 1).Select(y => y.Key).ToList();
+                foreach (var duplicate in duplicates)
+                {
+                    // Remove the last duplicate
+                    day.Remove(day.Last(x => x.ClassName == duplicate));                    
+                }
             }
 
-            // For each StudentClass remaining, reload the class
-            await Task.WhenAll(studentClasses.Select(studentClass => studentClass.LoadStudents()));
+            // Check each file path to see if the file still exists, if it doesn't, remove them
+            List<StudentClass> classesToRemove = new();
+
+            foreach (List<StudentClass> day in studentClasses)
+            {
+                foreach (StudentClass studentClass in day)
+                {
+                    if (!File.Exists(studentClass.ClassPath))
+                    {
+                        classesToRemove.Add(studentClass);
+                    }
+                }
+
+
+                foreach (StudentClass studentClass in classesToRemove)
+                {
+                    day.Remove(studentClass);
+                }
+
+                // For each StudentClass remaining, reload the class
+                await Task.WhenAll(day.Select(studentClass => studentClass.LoadStudents()));
+            }
+
         }
 
         public void SaveClasses()
@@ -95,9 +113,9 @@ namespace TeacherToolbox.Model
 
         }
 
-        public void AddClass(StudentClass studentClass)
+        public void AddClass(StudentClass studentClass, int day)
         {
-            studentClasses.Add(studentClass);
+            studentClasses[day].Add(studentClass);
             SaveClasses();
         }
 

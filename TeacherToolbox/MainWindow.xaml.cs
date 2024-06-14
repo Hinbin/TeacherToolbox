@@ -1,12 +1,20 @@
+using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media.Animation;
+using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Navigation;
 using System;
 using System.Linq;
 using TeacherToolbox.Controls;
+using Windows.ApplicationModel;
+using System.IO;
+using Windows.Storage;
+using System.IO.Pipes;
+using System.Diagnostics;
+using WinUIEx;
 
 
 // To learn more about WinUI, the WinUI project structure,
@@ -21,6 +29,8 @@ namespace TeacherToolbox
     public sealed partial class MainWindow : Window
     {
         private readonly OverlappedPresenter _presenter;
+        private NamedPipeServerStream pipeServer;
+        private WindowDragHelper dragHelper;
 
         private void ContentFrame_NavigationFailed(object sender, NavigationFailedEventArgs e)
         {
@@ -31,24 +41,88 @@ namespace TeacherToolbox
         {
             this.InitializeComponent();
             _presenter = this.AppWindow.Presenter as OverlappedPresenter;
-            // Set the window size to 500x180
             Windows.Graphics.SizeInt32 size = new(_Width: 600, _Height: 200);
             this.AppWindow.ResizeClient(size);
+
+            this.ExtendsContentIntoTitleBar = true;
+
+            NavView.IsPaneOpen = false;
+
+            pipeServer = new NamedPipeServerStream("ShotcutWatcher", PipeDirection.In);
+            ListenForKeyPresses();
+
+            this.SetIsAlwaysOnTop(true);
+
+            dragHelper = new WindowDragHelper(this);
+
+            try
+            {
+                // Start the KeyInterceptor application
+                Process.Start("ShortcutWatcher.exe");
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+            }
+
+            this.Closed += MainWindow_Closed;
         }
 
-
-        private void MainWindow_Activated(object sender, Microsoft.UI.Xaml.WindowActivatedEventArgs args)
+        private void MainWindow_Closed(object sender, WindowEventArgs e)
         {
-            if (_presenter is null)
+            foreach (var process in Process.GetProcessesByName("ShortcutWatcher"))
             {
-                return;
+                process.Kill();
             }
+        }
 
-            if (args.WindowActivationState != WindowActivationState.Deactivated)
+        private async void ListenForKeyPresses()
+        {
+            await pipeServer.WaitForConnectionAsync();
+
+            using (StreamReader reader = new StreamReader(pipeServer))
             {
-                _presenter.IsAlwaysOnTop = true;
-            }
+                string key;
+                while ((key = await reader.ReadLineAsync()) != null)
+                {
+                    // If ALT + number key is pressed, create a timerWindow with the specified time
+                    if (key.StartsWith("D"))
+                    {
+                        string time = key.Substring(1);
+                        if (int.TryParse(time, out int timeInt))
+                        {
+                            TimerWindow timerWindow;
 
+                            // If the number is 0, start a 30 second timer.  Otherwise do it for that number of minutes
+                            if (timeInt == 0)
+                            {
+                                timerWindow = new TimerWindow(30);
+                            } else
+                            {
+                                timerWindow = new TimerWindow(timeInt * 60);
+                            }
+
+                            timerWindow.Activate();
+
+                        }
+                    }else if (key == "F9")
+                    {
+                        // Navigate to the RandomNameGenerator page if needed
+                        
+                        if (ContentFrame.SourcePageType != typeof(RandomNameGenerator))
+                        {
+                            NavView.SelectedItem = NavView.MenuItems[1];
+                            NavView_Navigate(typeof(RandomNameGenerator), new EntranceNavigationTransitionInfo());
+                        }
+
+                        // Call the GenerateName function of the RandomNameGenerator page
+                        if (ContentFrame.Content is RandomNameGenerator randomNameGenerator)
+                        {
+                            randomNameGenerator.GenerateName();
+                        }
+                    }
+                }
+            }
         }
 
         private void NavView_Loaded(object sender, RoutedEventArgs e)
@@ -126,18 +200,19 @@ namespace TeacherToolbox
             }
         }
 
-        private void NavView_KeyDown(object sender, KeyRoutedEventArgs e)
+        private void Grid_PointerReleased(object sender, PointerRoutedEventArgs e)
         {
-            if (e.Key == Windows.System.VirtualKey.F9)
-            {
-                // Go to the random name generator page and generate a random name
-                NavView.SelectedItem = NavView.MenuItems[0];
-                NavView_Navigate(typeof(RandomNameGenerator), new EntranceNavigationTransitionInfo());
-                
-                RandomNameGenerator randomNameGenerator = (RandomNameGenerator)ContentFrame.Content;
-                randomNameGenerator.GenerateName();
+            dragHelper.PointerReleased(sender, e);
+        }
 
-            }
+        private void Grid_PointerPressed(object sender, PointerRoutedEventArgs e)
+        {
+            dragHelper.PointerPressed(sender, e);
+        }
+
+        private void Grid_PointerMoved(object sender, PointerRoutedEventArgs e)
+        {
+            dragHelper.PointerMoved(sender, e);
         }
 
     }

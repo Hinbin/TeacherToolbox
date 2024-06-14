@@ -13,6 +13,8 @@ using System.Collections.Generic;
 using System.Numerics;
 using Windows.Foundation;
 using System.IO;
+using WinUIEx;
+using Microsoft.UI.Xaml.Shapes;
 
 namespace TeacherToolbox.Controls;
 
@@ -108,9 +110,10 @@ public sealed partial class Clock : Page
         timePickerFlyout.TimePicked += TimePickerFlyout_TimePicked;
         //centreNumber = localSettings.Values["centreNumber"] as string;
         CentreNumber = "38245";
-        string imagePath = Path.Combine(AppContext.BaseDirectory, "Assets", "5051.png");
+        string imagePath = System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "5051.png");
         BackgroundImage = new BitmapImage(new Uri(imagePath));
     }
+    
 
     public bool ShowTicks { get; set; } = false;
 
@@ -298,6 +301,9 @@ public sealed partial class Clock : Page
             // If a gauge exists at this position, remove it
             if (selectedGauge != null) RemoveGauge(canvas);
         }
+
+        // Mark the event as handled so it does not bubble up to the parent
+        e.Handled = true;
     }
 
     private void RemoveGauge(Canvas canvas)
@@ -393,19 +399,22 @@ public sealed partial class Clock : Page
         canvas.ReleasePointerCapture(e.Pointer);
 
         selectedGauge = null;
-
     }
 
     private void Clock_Pointer_Exited(object sender, PointerRoutedEventArgs e)
     {
-        // Release pointer
-        var canvas = (Canvas)sender;
-        canvas.ReleasePointerCapture(e.Pointer);
-        selectedGauge = null;
+        // Only release pointer capture if the mouse button is not down
+        if (!e.GetCurrentPoint((UIElement)sender).Properties.IsLeftButtonPressed)
+        {
+            var canvas = (Canvas)sender;
+            canvas.ReleasePointerCapture(e.Pointer);
+            selectedGauge = null;
+        }
     }
 
     private void Clock_Pointer_Moved(object sender, PointerRoutedEventArgs e)
     {
+        e.Handled = true;
         // Check if the pointer is captured
         if (e.Pointer.IsInContact)
         {

@@ -1,20 +1,18 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <PublishSingleFile>true</PublishSingleFile>
-    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <WindowsPackageType>None</WindowsPackageType>
-    <PublishReadyToRun>true</PublishReadyToRun>
-    <TargetFramework>net7.0-windows10.0.19041.0</TargetFramework>   
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <TargetFramework>net6.0-windows10.0.18362.0</TargetFramework>
     <RootNamespace>TeacherToolbox</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Platforms>x86</Platforms>
-    <RuntimeIdentifiers>win10-x86</RuntimeIdentifiers>
-    <PublishProfile>win10-$(Platform).pubxml</PublishProfile>
     <UseWinUI>true</UseWinUI>
     <EnableMsixTooling>true</EnableMsixTooling>
+    <ApplicationIcon>outwoodlogo.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
+    <None Remove="Assets\outwoodlogo.ico" />
     <None Remove="Controls\RandomNameGenerator.xaml" />
     <None Remove="Controls\Timer.xaml" />
     <None Remove="Controls\TimerWindow.xaml" />
@@ -33,6 +31,7 @@
     <Content Include="Assets\Square44x44Logo.targetsize-24_altform-unplated.png" />
     <Content Include="Assets\StoreLogo.png" />
     <Content Include="Assets\Wide310x150Logo.scale-200.png" />
+    <Content Include="outwoodlogo.ico" />
   </ItemGroup>
 
   <ItemGroup>
@@ -44,6 +43,7 @@
     <PackageReference Include="CommunityToolkit.WinUI.UI.Controls" Version="7.1.2" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.5.240428000" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1" />
+    <PackageReference Include="WinUIEx" Version="2.3.4" />
     <Manifest Include="$(ApplicationManifest)" />
   </ItemGroup>
 
@@ -79,6 +79,27 @@
     <Page Update="Controls\Clock.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <RuntimeHostConfigurationOption Include="System.Runtime.InteropServices.BuiltInComInteropSupport" Value="true" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Update="Properties\Resources.Designer.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Update="Assets\ring.wav">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Update="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
   </ItemGroup>
 
   <!-- 

@@ -1,14 +1,91 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Window
-    x:Class="TeacherToolbox.Controls.TimerWindow"
-    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:local="using:TeacherToolbox.Controls"
-    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    mc:Ignorable="d">
+<winex:WindowEx
+      x:Class="TeacherToolbox.Controls.TimerWindow"
+      xmlns:winex="using:WinUIEx"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:controls="using:CommunityToolkit.WinUI.UI.Controls"
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+      xmlns:local="using:TeacherToolbox.Controls"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+      Height="300"
+      Width="300"
+      mc:Ignorable="d">
 
-    <Grid Background="Transparent">
+    <Viewbox>
+        <Grid Padding="2" PointerPressed="Grid_PointerPressed" PointerReleased="Grid_PointerReleased" PointerMoved="Grid_PointerMoved">
+            <Grid Height="100" Width="100">
+                <Viewbox>
+                    <controls:RadialGauge x:Name="timerGauge" 
+                                          MinAngle="0" 
+                                          MaxAngle="360" 
+                                          NeedleLength="70" 
+                                          NeedleWidth="0" 
+                                          NeedleBrush="Transparent"
+                                    
+                                          TickLength="20"
+                                          TickWidth="2"
+                                          TickSpacing="5"
+                                          TrailBrush="#5b3493"
+                                          ScaleBrush="Transparent"
+                                                                 
+                                          ScaleTickBrush="Transparent"
+                                          StepSize="1"
+                                          ScaleWidth="20"
+                                          ScalePadding="0"                                  
+                                                                   
+                                          ValueStringFormat="'"                                  
+                                  
+                                          />
+                </Viewbox>
+                <Grid Height="75" Width="75">
+                    <Viewbox>
+                        <Border Padding="2,2,2,5" CornerRadius="50">
+                            <TextBlock x:Name="timerText" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </Viewbox>
+                </Grid>
+                <Grid x:Name="timeSelector" Visibility="Collapsed">
+                    <Viewbox>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions
+                                >
+                            <ComboBox x:Name="hours" Grid.Row="0" Grid.Column="0" Header="Hours" HorizontalContentAlignment="Center">
+                                <ComboBox.HeaderTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding}" HorizontalAlignment="Center"/>
+                                    </DataTemplate>
+                                </ComboBox.HeaderTemplate>
+                            </ComboBox>
+                            <ComboBox x:Name="minutes" Grid.Row="0" Grid.Column="1" Header="Minutes" HorizontalContentAlignment="Center">
+                                <ComboBox.HeaderTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding}" HorizontalAlignment="Center"/>
+                                    </DataTemplate>
+                                </ComboBox.HeaderTemplate>
+                            </ComboBox>
+                            <ComboBox x:Name="seconds" Grid.Row="0" Grid.Column="2" Header="Seconds" HorizontalContentAlignment="Center">
+                                <ComboBox.HeaderTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding}" HorizontalAlignment="Center"/>
+                                    </DataTemplate>
+                                </ComboBox.HeaderTemplate>
+                            </ComboBox>
+                            <Button x:Name="startButton" Grid.Row="1" Content="Start" Click="StartButton_Click" Grid.ColumnSpan="3" HorizontalAlignment="Stretch" Padding="2" Margin= "2"/>
+                        </Grid>
+                    </Viewbox>
+                </Grid>
+            </Grid>
+        </Grid>
 
-    </Grid>
-</Window>
+
+    </Viewbox>
+</winex:WindowEx>
