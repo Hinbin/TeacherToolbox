@@ -11,15 +11,17 @@ public class WindowDragHelper
     private bool bMoving = false;
     private Microsoft.UI.Windowing.AppWindow _apw;
     private bool isClicked = false;
+    private bool onlyVertical = false;
 
     [DllImport("User32.dll", CharSet = CharSet.Auto, SetLastError = true)]
     public static extern bool GetCursorPos(out Windows.Graphics.PointInt32 lpPoint);
 
-    public WindowDragHelper(Window window)
+    public WindowDragHelper(Window window, bool onlyAllowVertical = false)
     {
         IntPtr hWnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
         Microsoft.UI.WindowId myWndId = Microsoft.UI.Win32Interop.GetWindowIdFromWindow(hWnd);
         _apw = Microsoft.UI.Windowing.AppWindow.GetFromWindowId(myWndId);
+        onlyVertical = onlyAllowVertical;
     }
 
     public void OnNavigate()
@@ -81,7 +83,15 @@ public class WindowDragHelper
             GetCursorPos(out pt);
 
             if (bMoving)
-                _apw.Move(new Windows.Graphics.PointInt32(nXWindow + (pt.X - nX), nYWindow + (pt.Y - nY)));
+                // If vertical only, only move they Y axis
+                if (onlyVertical)
+                {
+                    _apw.Move(new Windows.Graphics.PointInt32(nXWindow, nYWindow + (pt.Y - nY)));
+                }
+                else
+                {
+                    _apw.Move(new Windows.Graphics.PointInt32(nXWindow + (pt.X - nX), nYWindow + (pt.Y - nY)));
+                }
             e.Handled = true;
         }
     }

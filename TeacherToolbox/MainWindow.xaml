@@ -31,6 +31,11 @@
                         <FontIcon FontFamily="Segoe MDL2 Assets" Glyph="&#xF182;"/>
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
+                <NavigationViewItem Tag="TeacherToolbox.Controls.ScreenRulerPage" Content="Screen Ruler">
+                    <NavigationViewItem.Icon>
+                        <FontIcon FontFamily="Segoe MDL2 Assets" Glyph="&#xE75B;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
                 <NavigationViewItem Tag="TeacherToolbox.Controls.Clock" Content="Exam Clock" Icon="Clock"/>
             </NavigationView.MenuItems>
 
