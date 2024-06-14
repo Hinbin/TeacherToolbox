@@ -1,4 +1,5 @@
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml;
 using System;
 
 // To learn more about WinUI, the WinUI project structure,
@@ -14,9 +15,11 @@ namespace TeacherToolbox.Controls
         public Timer()
         {
             this.InitializeComponent();
+            // Focus one of the buttons so that the user can use the keyboard to navigate
+            thirtySecondButton.Focus(FocusState.Programmatic);
         }
 
-        private void OpenTimer_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+        private void OpenTimer_Click(object sender, RoutedEventArgs e)
         {
             // Work out the number of seconds from the button content
             string buttonContent = (sender as Button).Content.ToString();
@@ -44,6 +47,6 @@ namespace TeacherToolbox.Controls
                 System.Diagnostics.Debug.WriteLine(ex.Message);
             }
 
-        }
+        }    
     }
 }

@@ -41,8 +41,7 @@
 
         <Viewbox Grid.Column="1" Grid.Row="0">
             <TextBox x:Name="centreTextBox" FontWeight="Bold" TextAlignment="Center" TextWrapping="NoWrap"                     
-                     Header="Centre Number" Padding="4" 
-                     Text="{x:Bind CentreNumber, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                     Header="Centre Number" Padding="4" TextChanged="centreTextBox_TextChanged"/>
         </Viewbox>
 
         <Viewbox Grid.Column="1" Grid.Row="1" Tapped="Digital_Time_Tapped">

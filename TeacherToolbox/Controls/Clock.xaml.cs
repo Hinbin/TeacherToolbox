@@ -15,6 +15,8 @@ using Windows.Foundation;
 using System.IO;
 using WinUIEx;
 using Microsoft.UI.Xaml.Shapes;
+using TeacherToolbox.Model;
+using Windows.Globalization;
 
 namespace TeacherToolbox.Controls;
 
@@ -90,14 +92,7 @@ public sealed partial class Clock : Page
 
     public ImageSource BackgroundImage { get; set; }
 
-    public static readonly DependencyProperty centreNumberProperty = DependencyProperty.Register("centreNumber", typeof(string), typeof(Clock), new PropertyMetadata("12345"));
-
-
-    public string CentreNumber
-    {
-        get { return (string)GetValue(centreNumberProperty); }
-        set { SetValue(centreNumberProperty, value); }
-    }
+    public CentreNumber centreNumber;
 
     public Clock()
     {
@@ -108,12 +103,11 @@ public sealed partial class Clock : Page
         _timer.Interval = TimeSpan.FromMilliseconds(200);
         _timer.Tick += Timer_Tick;
         timePickerFlyout.TimePicked += TimePickerFlyout_TimePicked;
-        //centreNumber = localSettings.Values["centreNumber"] as string;
-        CentreNumber = "38245";
+
+        //Load clock settings
         string imagePath = System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "5051.png");
         BackgroundImage = new BitmapImage(new Uri(imagePath));
-    }
-    
+    }    
 
     public bool ShowTicks { get; set; } = false;
 
@@ -139,7 +133,7 @@ public sealed partial class Clock : Page
 
     }
 
-    private void Clock_Loaded(object sender, RoutedEventArgs e)
+    private async void Clock_Loaded(object sender, RoutedEventArgs e)
     {
         now = DateTime.Now;
 
@@ -206,6 +200,9 @@ public sealed partial class Clock : Page
         }
 
         _timer.Start();
+
+        centreNumber = await CentreNumber.CreateAsync();
+        centreTextBox.Text = centreNumber.CentreText;
     }
 
     private void Timer_Tick(object sender, object e)
@@ -541,5 +538,10 @@ public sealed partial class Clock : Page
         return new SolidColorBrush(ColorHelper.FromArgb(a, r, g, b));
 
 
+    }
+
+    private void centreTextBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        centreNumber.CentreText = centreTextBox.Text;
     }
 }

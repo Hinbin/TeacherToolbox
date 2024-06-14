@@ -107,8 +107,12 @@ namespace TeacherToolbox
                         }
                     }else if (key == "F9")
                     {
-                        // Navigate to the RandomNameGenerator page if needed
+
+                        // Grab focus and unminiize the window
+                        this.Activate();
                         
+                        // Navigate to the RandomNameGenerator page if needed
+
                         if (ContentFrame.SourcePageType != typeof(RandomNameGenerator))
                         {
                             NavView.SelectedItem = NavView.MenuItems[1];
@@ -166,6 +170,7 @@ namespace TeacherToolbox
                 NavView.Header =
                     ((NavigationViewItem)NavView.SelectedItem)?.Content?.ToString();
 
+                dragHelper.OnNavigate();
             }
         }
 

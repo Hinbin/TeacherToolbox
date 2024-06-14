@@ -2,6 +2,8 @@
 using Microsoft.UI.Xaml;
 using System.Runtime.InteropServices;
 using System;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 
 public class WindowDragHelper
 {
@@ -20,6 +22,12 @@ public class WindowDragHelper
         _apw = Microsoft.UI.Windowing.AppWindow.GetFromWindowId(myWndId);
     }
 
+    public void OnNavigate()
+    {
+        isClicked = false;
+        bMoving = false;
+    }
+
     public void PointerReleased(object sender, PointerRoutedEventArgs e)
     {
         ((UIElement)sender).ReleasePointerCaptures();
@@ -30,8 +38,16 @@ public class WindowDragHelper
     {
         isClicked = true;
         var properties = e.GetCurrentPoint((UIElement)sender).Properties;
+
         if (properties.IsLeftButtonPressed)
         {
+            // Check if the event source or any of its parents is a Button
+            if (IsOrIsChildOfButton(e.OriginalSource as DependencyObject))
+            {
+                // If true, do not initiate drag
+                return;
+            }
+
             ((UIElement)sender).CapturePointer(e.Pointer);
             nXWindow = _apw.Position.X;
             nYWindow = _apw.Position.Y;
@@ -42,6 +58,17 @@ public class WindowDragHelper
             bMoving = true;
         }
     }
+
+    // Helper method to check if the source is a Button or is contained within a Button
+    private bool IsOrIsChildOfButton(DependencyObject source)
+    {
+        while (source != null && !(source is Button))
+        {
+            source = VisualTreeHelper.GetParent(source);
+        }
+        return source is Button;
+    }
+
 
     public void PointerMoved(object sender, PointerRoutedEventArgs e)
     {
