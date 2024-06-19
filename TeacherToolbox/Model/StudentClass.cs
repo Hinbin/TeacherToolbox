@@ -61,19 +61,11 @@ namespace TeacherToolbox.Model
             string[] names = text.Split(new[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
             foreach (string name in names)
             {
-                // Check to see if there is a as the last character in a line - if so, assign it as the weight
-                if (name.EndsWith("*"))
+                Student student = new Student(name);
+                // if the student name is not blank, add it to the list
+                if (!string.IsNullOrWhiteSpace(student.Name))
                 {
-                    if (int.TryParse(name.AsSpan(0, name.Length - 1), out int weight))
-                    {
-                        Students.Add(new Student(name[..^1], weight));
-                    }
-                }
-                else
-                {
-
-                    Students.Add(new Student(name, 0));
-
+                    Students.Add(student);
                 }
             }
         }
@@ -93,8 +85,8 @@ namespace TeacherToolbox.Model
                 availableStudents = Students.ToArray();
             }
 
-            // Check to see if any of the students have weights > 0, if so, call the weighted random selection method
-            if (Students.Any(s => s.Weighting > 0))
+            // Check to see if any of the students have weights > 1, if so, call the weighted random selection method
+            if (Students.Any(s => s.Weighting > 1))
             {
                 return GetWeightedRandomStudent(availableStudents);
             }

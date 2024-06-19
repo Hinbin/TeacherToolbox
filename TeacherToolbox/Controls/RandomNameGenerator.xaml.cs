@@ -19,7 +19,6 @@ namespace TeacherToolbox.Controls
     /// </summary>
     public sealed partial class RandomNameGenerator : Page
     {
-        // Choose a random name from the list, giving more weight to students who haven't been picked
         StudentClass currentClass;
         StudentClassSelector studentClassSelector;
         List<StudentClass> studentClasses;
