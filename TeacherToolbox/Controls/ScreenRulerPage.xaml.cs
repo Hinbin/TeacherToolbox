@@ -16,6 +16,9 @@ using Windows.Foundation.Collections;
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
 
+//TODO: Togggle close/open button based on state
+//TODO: Add colour picker
+
 namespace TeacherToolbox.Controls
 {
     /// <summary>
@@ -38,6 +41,15 @@ namespace TeacherToolbox.Controls
         public void Close_Ruler_Window_Click(object sender, RoutedEventArgs e)
         {
             screenRulerWindow.Close();
+            CloseRulerWindowButton.Visibility = Visibility.Collapsed;
+            OpenRulerWindowButton.Visibility = Visibility.Visible;
+        }
+
+        public void Open_Ruler_Window_Click(object sender, RoutedEventArgs e)
+        {
+            screenRulerWindow = new ScreenRulerWindow();
+            OpenRulerWindowButton.Visibility = Visibility.Collapsed;
+            CloseRulerWindowButton.Visibility = Visibility.Visible;
         }
     }
 }

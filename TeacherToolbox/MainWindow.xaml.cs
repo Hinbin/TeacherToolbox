@@ -15,6 +15,7 @@ using Windows.Storage;
 using System.IO.Pipes;
 using System.Diagnostics;
 using WinUIEx;
+using Windows.Graphics;
 
 
 // To learn more about WinUI, the WinUI project structure,
@@ -97,9 +98,11 @@ namespace TeacherToolbox
                             if (timeInt == 0)
                             {
                                 timerWindow = new TimerWindow(30);
+                                await timerWindow.InitializeAsync();
                             } else
                             {
                                 timerWindow = new TimerWindow(timeInt * 60);
+                                await timerWindow.InitializeAsync();
                             }
 
                             timerWindow.Activate();

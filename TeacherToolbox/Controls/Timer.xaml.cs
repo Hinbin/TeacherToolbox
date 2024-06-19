@@ -19,7 +19,7 @@ namespace TeacherToolbox.Controls
             thirtySecondButton.Focus(FocusState.Programmatic);
         }
 
-        private void OpenTimer_Click(object sender, RoutedEventArgs e)
+        private async void OpenTimer_Click(object sender, RoutedEventArgs e)
         {
             // Work out the number of seconds from the button content
             string buttonContent = (sender as Button).Content.ToString();
@@ -27,6 +27,7 @@ namespace TeacherToolbox.Controls
             if (buttonContent.Contains("Custom") )
             {
                 TimerWindow timerWindow = new(0);
+                await timerWindow.InitializeAsync();
                 timerWindow.Activate();
                 return;
             }
@@ -39,6 +40,7 @@ namespace TeacherToolbox.Controls
 
                 //Open the timer window, send the name of the button that was clicked
                 TimerWindow timerWindow = new(seconds);
+                await timerWindow.InitializeAsync();
                 timerWindow.Activate();
             }
             catch (FormatException ex)

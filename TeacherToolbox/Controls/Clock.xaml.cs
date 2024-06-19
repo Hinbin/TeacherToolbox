@@ -92,7 +92,7 @@ public sealed partial class Clock : Page
 
     public ImageSource BackgroundImage { get; set; }
 
-    public CentreNumber centreNumber;
+    public LocalSettings localSettings;
 
     public Clock()
     {
@@ -107,6 +107,8 @@ public sealed partial class Clock : Page
         //Load clock settings
         string imagePath = System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "5051.png");
         BackgroundImage = new BitmapImage(new Uri(imagePath));
+
+        // TODO: Disable always on top
     }    
 
     public bool ShowTicks { get; set; } = false;
@@ -201,8 +203,8 @@ public sealed partial class Clock : Page
 
         _timer.Start();
 
-        centreNumber = await CentreNumber.CreateAsync();
-        centreTextBox.Text = centreNumber.CentreText;
+        localSettings = await LocalSettings.CreateAsync();
+        centreTextBox.Text = localSettings.CentreText;
     }
 
     private void Timer_Tick(object sender, object e)
@@ -542,6 +544,6 @@ public sealed partial class Clock : Page
 
     private void centreTextBox_TextChanged(object sender, TextChangedEventArgs e)
     {
-        centreNumber.CentreText = centreTextBox.Text;
+        localSettings.CentreText = centreTextBox.Text;
     }
 }

@@ -8,9 +8,17 @@ using WinRT;
 using System.Runtime.InteropServices;
 using Windows.Media.Playback;
 using Windows.Media.Core;
+using Windows.Graphics;
+using TeacherToolbox.Model;
+using Windows.ApplicationModel.VoiceCommands;
+using System.Threading.Tasks;
+using Microsoft.UI.Windowing;
+using System.Linq;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
+
+//TODO: Double click = maximize/minimize
 
 namespace TeacherToolbox.Controls
 {
@@ -25,15 +33,17 @@ namespace TeacherToolbox.Controls
         Microsoft.UI.Composition.SystemBackdrops.SystemBackdropConfiguration m_configurationSource;
 
         private WindowDragHelper dragHelper;
+        public LocalSettings localSettings;
 
         // To allow for a draggable window
-        private Microsoft.UI.Windowing.AppWindow _apw;
         IntPtr hWnd = IntPtr.Zero;
 
         MediaPlayer player;
 
         int secondsLeft;
         DispatcherTimer timer;
+
+        private PointInt32 lastPosition;
 
         public TimerWindow(int seconds)
         {
@@ -42,9 +52,9 @@ namespace TeacherToolbox.Controls
             this.ExtendsContentIntoTitleBar = true;
             this.IsMaximizable = false;
             this.IsMinimizable = false;
-
+           
             // Set the background
-            TrySetAcrylicBackdrop(true);
+            TrySetAcrylicBackdrop(true);          
 
             // Make this always on top and centered on screen
             this.IsAlwaysOnTop = true;
@@ -62,7 +72,32 @@ namespace TeacherToolbox.Controls
                 SetupCustomTimerSelection();
             }
         }
-        
+
+        public async Task InitializeAsync()
+        {
+            localSettings = await LocalSettings.CreateAsync();
+            PointInt32 lastPosition = new PointInt32(localSettings.LastWindowPosition.X, localSettings.LastWindowPosition.Y);
+            DisplayArea lastDisplayArea = localSettings.LastWindowPosition.DisplayArea;
+
+            var allDisplayAreas = DisplayArea.FindAll();
+            if (lastDisplayArea != null && !allDisplayAreas.Contains(lastDisplayArea))
+            {
+                lastDisplayArea = null;
+            }
+            // Check to see if the displayID from the displayArea is avilable
+            DisplayArea currentDisplay = DisplayArea.FindAll().FirstOrDefault(d => d.DisplayId == lastDisplayArea.DisplayId);
+
+            // If the displayArea is not null, move the window to the last position, otherwise centre on the screen
+
+            if (lastDisplayArea != null)
+            {
+                this.Move(lastPosition.X, lastPosition.Y);
+            }
+            else
+            {
+                this.CenterOnScreen();
+            }
+        }
 
         private void SetupCustomTimerSelection()
         {
@@ -275,7 +310,10 @@ namespace TeacherToolbox.Controls
 
         private void Grid_PointerReleased(object sender, PointerRoutedEventArgs e)
         {
-            dragHelper.PointerReleased(sender, e);
+            dragHelper.PointerReleased(sender, e);         
+
+            DisplayArea displayArea = DisplayArea.GetFromWindowId(this.AppWindow.Id, DisplayAreaFallback.Primary);
+            localSettings.LastWindowPosition = new WindowPosition (lastPosition.X, lastPosition.Y, displayArea );
         }
 
         private void Grid_PointerPressed(object sender, PointerRoutedEventArgs e)
@@ -287,6 +325,12 @@ namespace TeacherToolbox.Controls
         {
             dragHelper.PointerMoved(sender, e);
         }
+
+        protected override void OnPositionChanged(PointInt32 newPosition)
+        {
+            lastPosition = newPosition;
+        }
+
 
         private void StartButton_Click(object sender, RoutedEventArgs e)
         {
