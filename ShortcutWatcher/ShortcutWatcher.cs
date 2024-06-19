@@ -59,13 +59,16 @@ class ShortcutWatcher
             {
                 keysBeingPressed.Add(key);
 
-                // Check if Alt is pressed
-                if (keysBeingPressed.Contains(Keys.Menu) || keysBeingPressed.Contains(Keys.LMenu) || keysBeingPressed.Contains(Keys.RMenu))
+                // Check if Windows key is pressed
+                if (keysBeingPressed.Contains(Keys.LWin) || keysBeingPressed.Contains(Keys.RWin))
                 {
                     // Check if the key is a number key
                     if ((key >= Keys.D0 && key <= Keys.D9) || (key >= Keys.NumPad0 && key <= Keys.NumPad9))
                     {
                         SendKeyPress(key);
+
+                        // Prevent the key from being passed on to the system
+                        return (IntPtr)1;
                     }
                 }
                 else if (key == Keys.F9)

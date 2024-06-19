@@ -43,8 +43,8 @@ namespace TeacherToolbox.Model
                 Weighting = 1;
             }
 
-            // Use regex to remove any punctuationapart from -
-            sanitizedName = Regex.Replace(sanitizedName, @"[^\w\s-]", "");
+            // Use regex to remove any punctuationapart from - and '
+            sanitizedName = Regex.Replace(sanitizedName, @"[^\w\s'-]", "");
 
             // Remove any single character words
             sanitizedName = Regex.Replace(sanitizedName, @"\b\w\b", "");
