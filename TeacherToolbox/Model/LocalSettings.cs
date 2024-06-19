@@ -17,21 +17,20 @@ namespace TeacherToolbox.Model
 {
 
     public struct WindowPosition
-{
-    public int X { get; set; }
-    public int Y { get; set; }
-    public DisplayArea DisplayArea { get; set; }
-
-    public WindowPosition(int x, int y, DisplayArea displayArea)
     {
-        X = x;
-        Y = y;
-        DisplayArea = displayArea;
+        public int X { get; set; }
+        public int Y { get; set; }
+        public ulong DisplayID { get; set; } 
+
+        public WindowPosition(int x, int y, ulong displayId)
+        {
+            X = x;
+            Y = y;
+            DisplayID = displayId;
+        }
     }
-}
 
-
-    public class LocalSettings : ObservableObject
+public class LocalSettings : ObservableObject
     {
         private string centreText;
         private WindowPosition lastWindowPosition;
@@ -40,7 +39,7 @@ namespace TeacherToolbox.Model
         public LocalSettings()
         {
             centreText = "Centre";
-            lastWindowPosition = new WindowPosition(0, 0, null);
+            lastWindowPosition = new WindowPosition(0, 0, 0);
         }
 
         public static async Task<LocalSettings> CreateAsync()
@@ -72,8 +71,6 @@ namespace TeacherToolbox.Model
 
     public void SaveSettings()
         {
-
-
             // Save settings to centreNumber.json
             // Save the classes to the JSON file StudentClasses.json in the Environment.SpecialFolder.LocalApplicationData path
             string json = JsonSerializer.Serialize<LocalSettings>(this);            
@@ -85,8 +82,6 @@ namespace TeacherToolbox.Model
 
         public async Task LoadSettings()
         {
-            // Load settings from centreNumber.json
-            // Load the classes from the JSON file StudentClasses.json in the Environment.SpecialFolder.LocalApplicationData path
             try
             {
                 if (File.Exists(filePath))
@@ -96,15 +91,15 @@ namespace TeacherToolbox.Model
                     if (localSettings != null)
                     {
                         this.CentreText = localSettings.CentreText;
+                        // Assume GetDisplayAreaFromID is a method that retrieves a DisplayArea object based on a DisplayID
                         this.LastWindowPosition = localSettings.LastWindowPosition;
                     }
                 }
             }
             catch (Exception e)
             {
-                Console.WriteLine("Error loading classes: " + e.Message);
+                Console.WriteLine("Error loading settings: " + e.Message);
             }
-
         }
 
     }

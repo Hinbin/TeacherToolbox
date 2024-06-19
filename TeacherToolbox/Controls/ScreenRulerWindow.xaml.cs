@@ -11,9 +11,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
+using TeacherToolbox.Helpers;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
 using WinUIEx;
+using Windows.Graphics;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -27,27 +29,28 @@ namespace TeacherToolbox.Controls
     {
         private WindowDragHelper dragHelper;
         private static BlurredBackdrop blurredBackdrop = new BlurredBackdrop();
+        private DisplayManager diplayManager;
 
-        public ScreenRulerWindow()
+        public ScreenRulerWindow(ulong displayId = 0)
         {
             this.InitializeComponent();
 
-            // Get the AppWindow for the current window
             var appWindow = this.AppWindow;
+            DisplayManager displayManager = new DisplayManager();
+            DisplayArea displayArea = displayManager.GetDisplayArea(displayId == 0 ? displayManager.PrimaryDisplayId : displayId);
 
-            // Get the primary display area
-            var primaryDisplayArea = DisplayArea.GetFromWindowId(appWindow.Id, DisplayAreaFallback.Primary);
+            // Directly use the work area width of the display area
+            int windowWidth = displayArea.WorkArea.Width;
+            int windowHeight = 100; // Set the height as needed
 
-            // Get the work area size of the primary display area
-            var workArea = primaryDisplayArea.WorkArea;
+            // Calculate the window's X and Y position to center it within the display's work area
+            int windowX = displayArea.WorkArea.X;
+            int windowY = displayArea.WorkArea.Y + (displayArea.WorkArea.Height - windowHeight) / 2;
 
-            // Set the window size to match the work area width of the primary display
-            appWindow.Resize(new Windows.Graphics.SizeInt32((int)workArea.Width, appWindow.Size.Height));
+            // Resize and move the window to fit within the intended display's work area
+            appWindow.MoveAndResize(new RectInt32(windowX, windowY, windowWidth, windowHeight));
 
-            // Show the window, always on top
             this.IsAlwaysOnTop = true;
-            this.CenterOnScreen();
-            this.Height = 100;
             this.IsTitleBarVisible = false;
             this.IsResizable = false;
             this.SystemBackdrop = blurredBackdrop;
@@ -55,7 +58,6 @@ namespace TeacherToolbox.Controls
             dragHelper = new WindowDragHelper(this, true);
 
             this.Show();
-
         }
 
         private void Grid_PointerReleased(object sender, PointerRoutedEventArgs e)

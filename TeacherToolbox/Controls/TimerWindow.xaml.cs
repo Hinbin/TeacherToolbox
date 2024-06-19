@@ -14,6 +14,8 @@ using Windows.ApplicationModel.VoiceCommands;
 using System.Threading.Tasks;
 using Microsoft.UI.Windowing;
 using System.Linq;
+using TeacherToolbox.Helpers;
+using Microsoft.UI;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -42,6 +44,7 @@ namespace TeacherToolbox.Controls
 
         int secondsLeft;
         DispatcherTimer timer;
+        DisplayManager displayManager;
 
         private PointInt32 lastPosition;
 
@@ -71,30 +74,25 @@ namespace TeacherToolbox.Controls
             {
                 SetupCustomTimerSelection();
             }
+
+            displayManager = new DisplayManager();
         }
 
         public async Task InitializeAsync()
         {
             localSettings = await LocalSettings.CreateAsync();
             PointInt32 lastPosition = new PointInt32(localSettings.LastWindowPosition.X, localSettings.LastWindowPosition.Y);
-            DisplayArea lastDisplayArea = localSettings.LastWindowPosition.DisplayArea;
-
-            var allDisplayAreas = DisplayArea.FindAll();
-            if (lastDisplayArea != null && !allDisplayAreas.Contains(lastDisplayArea))
-            {
-                lastDisplayArea = null;
-            }
-            // Check to see if the displayID from the displayArea is avilable
-            DisplayArea currentDisplay = DisplayArea.FindAll().FirstOrDefault(d => d.DisplayId == lastDisplayArea.DisplayId);
-
-            // If the displayArea is not null, move the window to the last position, otherwise centre on the screen
-
-            if (lastDisplayArea != null)
+            ulong lastDisplayIdValue = localSettings.LastWindowPosition.DisplayID;
+            // Check to see if the last display are is present - if so , move the window to that position
+            var allDisplayAreas = displayManager.DisplayAreas;
+            // Check through all the displayIDs of the display areas to see if the last display area is present                
+            if ( allDisplayAreas.Any(da => da.DisplayId.Value == lastDisplayIdValue) )
             {
                 this.Move(lastPosition.X, lastPosition.Y);
             }
             else
             {
+                // If not, center the window on the screen
                 this.CenterOnScreen();
             }
         }
@@ -288,6 +286,8 @@ namespace TeacherToolbox.Controls
             {
                 timer.Stop();
             }
+
+            displayManager.Dispose();
             }
 
         private void Window_ThemeChanged(FrameworkElement sender, object args)
@@ -312,8 +312,8 @@ namespace TeacherToolbox.Controls
         {
             dragHelper.PointerReleased(sender, e);         
 
-            DisplayArea displayArea = DisplayArea.GetFromWindowId(this.AppWindow.Id, DisplayAreaFallback.Primary);
-            localSettings.LastWindowPosition = new WindowPosition (lastPosition.X, lastPosition.Y, displayArea );
+            DisplayId displayId = DisplayArea.GetFromWindowId(this.AppWindow.Id, DisplayAreaFallback.Primary).DisplayId;
+            localSettings.LastWindowPosition = new WindowPosition (lastPosition.X, lastPosition.Y, displayId.Value);
         }
 
         private void Grid_PointerPressed(object sender, PointerRoutedEventArgs e)

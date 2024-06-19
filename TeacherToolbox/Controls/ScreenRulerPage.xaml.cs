@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
+using TeacherToolbox.Helpers;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
 
@@ -28,21 +29,30 @@ namespace TeacherToolbox.Controls
     {
 
         ScreenRulerWindow screenRulerWindow;
+        DisplayManager displayManager;
+        private int currentDisplayIndex = 0; // Variable to store the current display
 
         public ScreenRulerPage()
         {
             this.InitializeComponent();
+
             // Create a new instance of the ruler
 
             screenRulerWindow = new ScreenRulerWindow();
+            screenRulerWindow.Closed += ScreenRulerWindow_Closed;   
             
+            displayManager = new DisplayManager();
+            if (displayManager.DisplayAreas.Count > 1)
+            {
+                ChangeDisplayButton.Visibility = Visibility.Visible;
+            }
         }
 
         public void Close_Ruler_Window_Click(object sender, RoutedEventArgs e)
         {
             screenRulerWindow.Close();
-            CloseRulerWindowButton.Visibility = Visibility.Collapsed;
             OpenRulerWindowButton.Visibility = Visibility.Visible;
+            CloseRulerWindowButton.Visibility = Visibility.Collapsed;
         }
 
         public void Open_Ruler_Window_Click(object sender, RoutedEventArgs e)
@@ -50,6 +60,33 @@ namespace TeacherToolbox.Controls
             screenRulerWindow = new ScreenRulerWindow();
             OpenRulerWindowButton.Visibility = Visibility.Collapsed;
             CloseRulerWindowButton.Visibility = Visibility.Visible;
+        }
+
+        private void ScreenRulerWindow_Closed(object sender, WindowEventArgs e)
+        {
+            OpenRulerWindowButton.Visibility = Visibility.Visible;
+            CloseRulerWindowButton.Visibility = Visibility.Collapsed;
+        }
+
+        private void ChangeDisplayButton_Click(object sender, RoutedEventArgs e)
+        {
+            // Close the current window
+            screenRulerWindow.Close();
+            OpenRulerWindowButton.Visibility = Visibility.Collapsed;
+            CloseRulerWindowButton.Visibility = Visibility.Visible;
+
+
+            // Create a new window on the next display in the display manager
+            // Get the next display index
+            currentDisplayIndex++;
+            if (currentDisplayIndex >= displayManager.DisplayAreas.Count)
+            {
+                currentDisplayIndex = 0; // Wrap around to the first display if the index exceeds the number of displays
+            }
+
+            // Create a new window on the next display
+            screenRulerWindow = new ScreenRulerWindow(displayManager.DisplayAreas[currentDisplayIndex].DisplayId.Value);
+
         }
     }
 }
