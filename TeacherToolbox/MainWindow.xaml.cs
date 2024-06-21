@@ -9,13 +9,12 @@ using Microsoft.UI.Xaml.Navigation;
 using System;
 using System.Linq;
 using TeacherToolbox.Controls;
-using Windows.ApplicationModel;
 using System.IO;
-using Windows.Storage;
 using System.IO.Pipes;
 using System.Diagnostics;
 using WinUIEx;
-using Windows.Graphics;
+using Microsoft.UI.Input;
+
 
 
 // To learn more about WinUI, the WinUI project structure,
@@ -27,7 +26,7 @@ namespace TeacherToolbox
     /// <summary>
     /// An empty window that can be used on its own or navigated to within a Frame.
     /// </summary>
-    public sealed partial class MainWindow : Window
+    public sealed partial class MainWindow
     {
         private readonly OverlappedPresenter _presenter;
         private NamedPipeServerStream pipeServer;
@@ -41,11 +40,13 @@ namespace TeacherToolbox
         public MainWindow()
         {
             this.InitializeComponent();
+
             _presenter = this.AppWindow.Presenter as OverlappedPresenter;
             Windows.Graphics.SizeInt32 size = new(_Width: 600, _Height: 200);
             this.AppWindow.ResizeClient(size);
-
+                       
             this.ExtendsContentIntoTitleBar = true;
+            SetRegionsForCustomTitleBar(); // To allow the nav button to be selectable, but the rest of the title bar to function as normal
 
             NavView.IsPaneOpen = false;
 
@@ -75,6 +76,7 @@ namespace TeacherToolbox
             {
                 process.Kill();
             }
+
         }
 
         private async void ListenForKeyPresses()
@@ -143,6 +145,7 @@ namespace TeacherToolbox
             // Because we use ItemInvoked to navigate, we need to call Navigate
             // here to load the home page.
             NavView_Navigate(typeof(RandomNameGenerator), new EntranceNavigationTransitionInfo());
+            NavView.Header = null;
         }
 
         private void NavView_Navigate( Type navPageType, NavigationTransitionInfo transitionInfo)
@@ -154,7 +157,6 @@ namespace TeacherToolbox
             // Only navigate if the selected page isn't currently loaded.
             if (navPageType is not null && !Type.Equals(preNavPageType, navPageType))
             {
-
                 ContentFrame.Navigate(navPageType, null, transitionInfo);
             }
         }
@@ -170,10 +172,16 @@ namespace TeacherToolbox
                             .OfType<NavigationViewItem>()
                             .First(i => i.Tag.Equals(ContentFrame.SourcePageType.FullName.ToString()));
 
-                NavView.Header =
-                    ((NavigationViewItem)NavView.SelectedItem)?.Content?.ToString();
+                dragHelper.OnNavigate();                
+            }
 
-                dragHelper.OnNavigate();
+            // Only enable always on top for the RNG page
+            if (ContentFrame.SourcePageType == typeof(RandomNameGenerator))
+            {
+                this.SetIsAlwaysOnTop(true);
+            } else
+            {
+                this.SetIsAlwaysOnTop(false);
             }
         }
 
@@ -223,5 +231,44 @@ namespace TeacherToolbox
             dragHelper.PointerMoved(sender, e);
         }
 
+        private void NavView_Tapped(object sender, TappedRoutedEventArgs e)
+        {
+            // If the random name generator is currently open, generate a new name
+            // Call the GenerateName function of the RandomNameGenerator page
+            if (ContentFrame.Content is RandomNameGenerator randomNameGenerator)
+            {
+                // Return if a button was the source of the tap
+                if (e.OriginalSource is Button)
+                {
+                    return;
+                }
+
+                // If the sender is a text block with the word start, return
+                if (e.OriginalSource is TextBlock textBlock)
+                {
+                    if (textBlock.Text == "Add Class")
+                    {
+                        return;
+                    }
+                }
+
+
+                randomNameGenerator.GenerateName();
+            }
+        }
+
+        private void SetRegionsForCustomTitleBar()
+        {
+            InputNonClientPointerSource nonClientInputSrc =
+            InputNonClientPointerSource.GetForWindowId(this.AppWindow.Id);
+            // Make everything apart from the navigation burger button region non-client
+            nonClientInputSrc.SetRegionRects(NonClientRegionKind.Caption,
+                new Windows.Graphics.RectInt32[]
+                {
+                    new Windows.Graphics.RectInt32(48, 0, 552, 48)
+                });
+        }
+
     }
+
 }

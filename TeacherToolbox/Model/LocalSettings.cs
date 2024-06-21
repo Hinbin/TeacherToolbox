@@ -20,12 +20,16 @@ namespace TeacherToolbox.Model
     {
         public int X { get; set; }
         public int Y { get; set; }
+        public double Width { get; set; }
+        public double Height { get; set; }
         public ulong DisplayID { get; set; } 
 
-        public WindowPosition(int x, int y, ulong displayId)
+        public WindowPosition(int x, int y, double width, double height, ulong displayId)
         {
             X = x;
             Y = y;
+            Width = width;
+            Height = height;
             DisplayID = displayId;
         }
     }
@@ -39,7 +43,7 @@ public class LocalSettings : ObservableObject
         public LocalSettings()
         {
             centreText = "Centre";
-            lastWindowPosition = new WindowPosition(0, 0, 0);
+            lastWindowPosition = new WindowPosition(0, 0, 0, 0, 0);
         }
 
         public static async Task<LocalSettings> CreateAsync()

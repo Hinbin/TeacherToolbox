@@ -11,8 +11,8 @@
                 <!-- Other merged dictionaries here -->
             </ResourceDictionary.MergedDictionaries>
             <!-- Other app resources here -->
-            
+            <SolidColorBrush x:Key="darkPurpleBrush" Color="#5b3493"/>
         </ResourceDictionary>
-        
+
     </Application.Resources>
 </Application>

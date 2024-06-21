@@ -16,6 +16,9 @@ using Microsoft.UI.Windowing;
 using System.Linq;
 using TeacherToolbox.Helpers;
 using Microsoft.UI;
+using static System.Net.WebRequestMethods;
+using Microsoft.UI.Xaml.Controls;
+using System.Runtime.CompilerServices;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -36,6 +39,7 @@ namespace TeacherToolbox.Controls
 
         private WindowDragHelper dragHelper;
         public LocalSettings localSettings;
+        private DispatcherTimer resizeEndTimer;
 
         // To allow for a draggable window
         IntPtr hWnd = IntPtr.Zero;
@@ -55,9 +59,10 @@ namespace TeacherToolbox.Controls
             this.ExtendsContentIntoTitleBar = true;
             this.IsMaximizable = false;
             this.IsMinimizable = false;
-           
+            this.SizeChanged += TimerWindow_SizeChanged;
+
             // Set the background
-            TrySetAcrylicBackdrop(true);          
+            TrySetAcrylicBackdrop(true);
 
             // Make this always on top and centered on screen
             this.IsAlwaysOnTop = true;
@@ -76,6 +81,11 @@ namespace TeacherToolbox.Controls
             }
 
             displayManager = new DisplayManager();
+
+            // ResizeEndTimer is used to save the window position after resizing
+            resizeEndTimer = new DispatcherTimer();
+            resizeEndTimer.Interval = TimeSpan.FromMilliseconds(500); // Adjust the delay as needed
+            resizeEndTimer.Tick += ResizeEndTimer_Tick;
         }
 
         public async Task InitializeAsync()
@@ -86,7 +96,7 @@ namespace TeacherToolbox.Controls
             // Check to see if the last display are is present - if so , move the window to that position
             var allDisplayAreas = displayManager.DisplayAreas;
             // Check through all the displayIDs of the display areas to see if the last display area is present                
-            if ( allDisplayAreas.Any(da => da.DisplayId.Value == lastDisplayIdValue) )
+            if (allDisplayAreas.Any(da => da.DisplayId.Value == lastDisplayIdValue))
             {
                 this.Move(lastPosition.X, lastPosition.Y);
             }
@@ -95,6 +105,17 @@ namespace TeacherToolbox.Controls
                 // If not, center the window on the screen
                 this.CenterOnScreen();
             }
+
+            if (localSettings.LastWindowPosition.Width > 10 && localSettings.LastWindowPosition.Height > 10)
+            {
+                this.Height = localSettings.LastWindowPosition.Height;
+                this.Width = localSettings.LastWindowPosition.Width;
+            } 
+            else {
+                this.Height = 300;
+                this.Width = 300;
+            }
+
         }
 
         private void SetupCustomTimerSelection()
@@ -164,11 +185,11 @@ namespace TeacherToolbox.Controls
             {
                 timerGauge.TickSpacing = 5;
             } // If less than two minutes, a tick interval every 30 seconds
-            else if(timerGauge.Value <= 120)
+            else if (timerGauge.Value <= 120)
             {
                 timerGauge.TickSpacing = 30;
             } // If less than 10 minutes, a tick interval every minute
-            else if(timerGauge.Value <= 600)
+            else if (timerGauge.Value <= 600)
             {
                 timerGauge.TickSpacing = 60;
             } // Otherwise every 10% 
@@ -185,7 +206,8 @@ namespace TeacherToolbox.Controls
             // Make the timerGauge text the absolute value of secondsLeft
             SetTimerText();
 
-            if (secondsLeft >= 0) {
+            if (secondsLeft >= 0)
+            {
                 timerGauge.Value = secondsLeft;
             }
 
@@ -215,7 +237,8 @@ namespace TeacherToolbox.Controls
                 int seconds = secondsToShow % 60;
                 // Seconds and minutes should have a leading zero if less than 10
                 timerText.Text = $"{hours}:{minutes.ToString("D2")}:{seconds.ToString("D2")}";
-            }else if (secondsToShow > 59)
+            }
+            else if (secondsToShow > 59)
             {
                 // Break the text into minutes and seconds
                 int minutes = secondsToShow / 60;
@@ -288,7 +311,7 @@ namespace TeacherToolbox.Controls
             }
 
             displayManager.Dispose();
-            }
+        }
 
         private void Window_ThemeChanged(FrameworkElement sender, object args)
         {
@@ -310,10 +333,29 @@ namespace TeacherToolbox.Controls
 
         private void Grid_PointerReleased(object sender, PointerRoutedEventArgs e)
         {
-            dragHelper.PointerReleased(sender, e);         
+            dragHelper.PointerReleased(sender, e);
 
+            localSettings.LastWindowPosition = GetCurrentWindowInformation();
+        }
+
+        private void TimerWindow_SizeChanged(object sender, WindowSizeChangedEventArgs e)
+        {
+            resizeEndTimer.Stop();
+            resizeEndTimer.Start();
+        }
+
+        private void ResizeEndTimer_Tick(object sender, object e)
+        {
+            resizeEndTimer.Stop();
+            // Perform actions here after resizing has stopped
+            localSettings.LastWindowPosition = GetCurrentWindowInformation();
+        }
+
+
+        private WindowPosition GetCurrentWindowInformation()
+        {
             DisplayId displayId = DisplayArea.GetFromWindowId(this.AppWindow.Id, DisplayAreaFallback.Primary).DisplayId;
-            localSettings.LastWindowPosition = new WindowPosition (lastPosition.X, lastPosition.Y, displayId.Value);
+            return new WindowPosition(lastPosition.X, lastPosition.Y, this.Width, this.Height, displayId.Value);
         }
 
         private void Grid_PointerPressed(object sender, PointerRoutedEventArgs e)
@@ -334,7 +376,7 @@ namespace TeacherToolbox.Controls
 
         private void StartButton_Click(object sender, RoutedEventArgs e)
         {
- 
+
             // Get the number of seconds from the comboboxes - blank values should be treated as 0
             int hoursSelected = hours.SelectedItem == null ? 0 : (int)hours.SelectedItem;
             int minutesSelected = minutes.SelectedItem == null ? 0 : (int)minutes.SelectedItem;
@@ -346,9 +388,55 @@ namespace TeacherToolbox.Controls
             StartTimer(totalSeconds);
             timerGauge.Visibility = Visibility.Visible;
             timerText.Visibility = Visibility.Visible;
-            timeSelector.Visibility = Visibility.Collapsed;            
+            timeSelector.Visibility = Visibility.Collapsed;
+
+
         }
 
+        private void Grid_Tapped(object sender, TappedRoutedEventArgs e)
+        {
+            if (timer == null) return;
+
+            // If the sender is a text block with the word start, return
+            if (e.OriginalSource is TextBlock textBlock)
+            {
+                if (textBlock.Text == "Start")
+                {
+                    return;
+                }
+            }
+
+            // Use the VisualTreeHelper to get the element that was tapped
+            DependencyObject tappedElement = VisualTreeHelper.GetParent((DependencyObject)e.OriginalSource);
+
+            // Check to see if the tapped Element is the start button
+            if (tappedElement != null)
+            {
+                if (tappedElement is Button startButton) return;
+            }
+
+            // Pause the timer if running.  If timer is paused, unpause it
+            if (timer.IsEnabled)
+            {
+                timer.Stop();
+                // Change the font to bold to indicate the timer is paused
+                timerText.FontWeight = Microsoft.UI.Text.FontWeights.Thin;
+                timerGauge.TrailBrush = new SolidColorBrush(Microsoft.UI.Colors.DarkGray);
+
+            }
+            else
+            {
+                timer.Start();
+                // Change the font back to normal
+                timerText.FontWeight = Microsoft.UI.Text.FontWeights.Normal;
+                // Change the colour of the trailbrush back to #5b3493
+                if (Application.Current.Resources.TryGetValue("darkPurpleBrush", out object darkPurpleBrush))
+                {
+                    timerGauge.TrailBrush = darkPurpleBrush as SolidColorBrush;
+                }
+            }
+
+        }
     }
 
 

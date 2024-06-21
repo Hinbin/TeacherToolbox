@@ -8,12 +8,10 @@
       xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
       xmlns:local="using:TeacherToolbox.Controls"
       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-      Height="300"
-      Width="300"
       mc:Ignorable="d">
 
     <Viewbox>
-        <Grid Padding="2" PointerPressed="Grid_PointerPressed" PointerReleased="Grid_PointerReleased" PointerMoved="Grid_PointerMoved">
+        <Grid Tapped="Grid_Tapped" Padding="2" PointerPressed="Grid_PointerPressed" PointerReleased="Grid_PointerReleased" PointerMoved="Grid_PointerMoved">
             <Grid Height="100" Width="100">
                 <Viewbox>
                     <controls:RadialGauge x:Name="timerGauge" 
@@ -26,7 +24,7 @@
                                           TickLength="20"
                                           TickWidth="2"
                                           TickSpacing="5"
-                                          TrailBrush="#5b3493"
+                                          TrailBrush="{StaticResource darkPurpleBrush}"
                                           ScaleBrush="Transparent"
                                                                  
                                           ScaleTickBrush="Transparent"
@@ -58,28 +56,28 @@
                                 <RowDefinition Height="*"/>
                             </Grid.RowDefinitions
                                 >
-                            <ComboBox x:Name="hours" Grid.Row="0" Grid.Column="0" Header="Hours" HorizontalContentAlignment="Center">
+                            <ComboBox x:Name="hours" Grid.Row="0" Grid.Column="0" Header="Hours" HorizontalContentAlignment="Center" SelectedIndex="0">
                                 <ComboBox.HeaderTemplate>
                                     <DataTemplate>
                                         <TextBlock Text="{Binding}" HorizontalAlignment="Center"/>
                                     </DataTemplate>
                                 </ComboBox.HeaderTemplate>
                             </ComboBox>
-                            <ComboBox x:Name="minutes" Grid.Row="0" Grid.Column="1" Header="Minutes" HorizontalContentAlignment="Center">
+                            <ComboBox x:Name="minutes" Grid.Row="0" Grid.Column="1" Header="Minutes" HorizontalContentAlignment="Center" SelectedIndex="0">
                                 <ComboBox.HeaderTemplate>
                                     <DataTemplate>
                                         <TextBlock Text="{Binding}" HorizontalAlignment="Center"/>
                                     </DataTemplate>
                                 </ComboBox.HeaderTemplate>
                             </ComboBox>
-                            <ComboBox x:Name="seconds" Grid.Row="0" Grid.Column="2" Header="Seconds" HorizontalContentAlignment="Center">
+                            <ComboBox x:Name="seconds" Grid.Row="0" Grid.Column="2" Header="Seconds" HorizontalContentAlignment="Center" SelectedIndex="0">
                                 <ComboBox.HeaderTemplate>
                                     <DataTemplate>
                                         <TextBlock Text="{Binding}" HorizontalAlignment="Center"/>
                                     </DataTemplate>
                                 </ComboBox.HeaderTemplate>
                             </ComboBox>
-                            <Button x:Name="startButton" Grid.Row="1" Content="Start" Click="StartButton_Click" Grid.ColumnSpan="3" HorizontalAlignment="Stretch" Padding="2" Margin= "2"/>
+                            <Button x:Name="startButton" Grid.Row="1" Content="Start" Click="StartButton_Click"  Grid.ColumnSpan="3" HorizontalAlignment="Stretch" Padding="2" Margin= "2"/>
                         </Grid>
                     </Viewbox>
                 </Grid>

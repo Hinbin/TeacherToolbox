@@ -13,21 +13,24 @@
         <Viewbox >
             <Grid>
                 <Grid.RowDefinitions>
-                <RowDefinition/>
-                <RowDefinition/>
+                    <RowDefinition/>
+                    <RowDefinition/>
                 </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition/>
                     <ColumnDefinition/>
                     <ColumnDefinition/>
+                    <ColumnDefinition/>
                 </Grid.ColumnDefinitions>
 
-                <Button Content="30 seconds" x:Name="thirtySecondButton" Click="OpenTimer_Click" Grid.Row="0" Grid.Column="0" Margin="5" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                <Button Content="1 minute" Click="OpenTimer_Click" Grid.Row="0" Grid.Column="1" Margin="5" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                <Button Content="2 minutes" Click="OpenTimer_Click" Grid.Row="0" Grid.Column="2" Margin="5" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                <Button Content="5 minutes" Click="OpenTimer_Click" Grid.Row="1" Grid.Column="0" Margin="5" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                <Button Content="10 minutes" Click="OpenTimer_Click" Grid.Row="1" Grid.Column="1" Margin="5" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                <Button Content="Custom Time" Click="OpenTimer_Click" Grid.Row="1" Grid.Column="2" Margin="5" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                <Button Content="30 secs" Width="100" x:Name="thirtySecondButton" Click="OpenTimer_Click" Grid.Row="0" Grid.Column="0" Margin="5" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                <Button Content="1 mins" Width="100" Click="OpenTimer_Click" Grid.Row="0" Grid.Column="1" Margin="5" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                <Button Content="2 mins" Width="100" Click="OpenTimer_Click" Grid.Row="0" Grid.Column="2" Margin="5" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                <Button Content="3 mins" Width="100" Click="OpenTimer_Click" Grid.Row="0" Grid.Column="3" Margin="5" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                <Button Content="4 mins" Width="100" Click="OpenTimer_Click" Grid.Row="1" Grid.Column="0" Margin="5" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                <Button Content="5 mins" Width="100" Click="OpenTimer_Click" Grid.Row="1" Grid.Column="1" Margin="5" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                <Button Content="10 mins" Width="100" Click="OpenTimer_Click" Grid.Row="1" Grid.Column="2" Margin="5" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                <Button Content="Custom" Width="100" Click="OpenTimer_Click" Grid.Row="1" Grid.Column="3" Margin="5" HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Grid>
         </Viewbox>
     </Grid>

@@ -12,16 +12,18 @@
 
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="3*"/>
+            <RowDefinition Height="1*"/>
         </Grid.RowDefinitions>
-        <Viewbox Grid.Row="0" Tapped="NameDisplay_Tapped">
-            <TextBlock x:Name="NameDisplay" HorizontalAlignment="Center" VerticalAlignment="Center" />
+        <Viewbox  Grid.Row="0" Tapped="NameDisplay_Tapped">
+            <TextBlock x:Name="NameDisplay" Margin="2" HorizontalAlignment="Center" VerticalAlignment="Center"/>
         </Viewbox>
-        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto">
-            <StackPanel x:Name="ClassList"  Orientation="Horizontal" Padding="5" Margin="5" Spacing="5" >
-                <Button x:Name="AddClassButton" Content="Add Class" Click="Add_Class_Clicked" />
-            </StackPanel>
-        </ScrollViewer>
+        <Viewbox Grid.Row="1">
+            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalAlignment="Bottom">
+                <StackPanel x:Name="ClassList"  Orientation="Horizontal" VerticalAlignment="Bottom" Spacing="5" Margin="5">
+                    <Button x:Name="AddClassButton" Content="Add Class" Click="Add_Class_Clicked" />
+                </StackPanel>
+            </ScrollViewer>
+        </Viewbox>
     </Grid>
 </Page>

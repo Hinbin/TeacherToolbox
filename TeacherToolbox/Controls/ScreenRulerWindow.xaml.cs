@@ -16,6 +16,7 @@ using Windows.Foundation;
 using Windows.Foundation.Collections;
 using WinUIEx;
 using Windows.Graphics;
+using Windows.Graphics.Printing3D;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -30,8 +31,9 @@ namespace TeacherToolbox.Controls
         private WindowDragHelper dragHelper;
         private static BlurredBackdrop blurredBackdrop = new BlurredBackdrop();
         private DisplayManager diplayManager;
+        private ScreenRulerPage screenRulerPage;
 
-        public ScreenRulerWindow(ulong displayId = 0)
+        public ScreenRulerWindow(ScreenRulerPage fromPage,ulong displayId = 0)
         {
             this.InitializeComponent();
 
@@ -57,6 +59,8 @@ namespace TeacherToolbox.Controls
 
             dragHelper = new WindowDragHelper(this, true);
 
+            screenRulerPage = fromPage;
+
             this.Show();
         }
 
@@ -77,6 +81,12 @@ namespace TeacherToolbox.Controls
 
         private void CloseButton_Click(object sender, RoutedEventArgs e)
         {
+            // Check to see if fromPage is still open
+            if (screenRulerPage != null)
+            {
+                screenRulerPage.Close_Ruler_Window_Click(sender, e);
+            }
+
             this.Close();
         }
 

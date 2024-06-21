@@ -20,8 +20,8 @@
                 </Grid.RowDefinitions>
 
                 <!-- Set a standard width for each button and remove individual paddings and margins if desired -->
-                <Button x:Name="CloseRulerWindowButton" Click="Close_Ruler_Window_Click" Content="Close Screen Ruler" Grid.Row="0" Width="150" Margin="0,0,0,10" HorizontalAlignment="Center"/>
-                <Button x:Name="OpenRulerWindowButton" Click="Open_Ruler_Window_Click" Content="Open Screen Ruler" Grid.Row="1" Width="150" Margin="0,0,0,10" HorizontalAlignment="Center" Visibility="Collapsed"/>
+                <Button x:Name="CloseRulerWindowButton" Click="Close_Ruler_Window_Click" Content="Close Screen Ruler" Grid.Row="0" Width="150" HorizontalAlignment="Center"/>
+                <Button x:Name="OpenRulerWindowButton" Click="Open_Ruler_Window_Click" Content="Open Screen Ruler" Grid.Row="1" Width="150" HorizontalAlignment="Center" Visibility="Collapsed"/>
                 <Button x:Name="ChangeDisplayButton" Click="ChangeDisplayButton_Click" Content="Change Display" Grid.Row="2" Width="150" HorizontalAlignment="Center" Visibility="Collapsed"/>
             </Grid>
         </Viewbox>

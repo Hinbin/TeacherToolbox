@@ -12,14 +12,19 @@
 
     <Grid PointerMoved="Grid_PointerMoved" PointerPressed="Grid_PointerPressed" PointerReleased="Grid_PointerReleased">
 
-        <NavigationView x:Name="NavView" PaneDisplayMode="LeftCompact"
-                     Loaded="NavView_Loaded"
-                     ItemInvoked="NavView_ItemInvoked"
-                     BackRequested="NavView_BackRequested"
-                     AlwaysShowHeader="False"
-                     IsSettingsVisible="False"
-                     IsBackButtonVisible="Visible"  
-                     >
+        <NavigationView x:Name="NavView" Loaded="NavView_Loaded"
+                        ItemInvoked="NavView_ItemInvoked"
+                        BackRequested="NavView_BackRequested"
+                        AlwaysShowHeader="False"
+                        IsSettingsVisible="False"
+                        PaneDisplayMode="LeftMinimal"
+                        IsBackButtonVisible="Collapsed"
+                         HorizontalAlignment="Stretch"
+                         VerticalAlignment="Stretch"
+                        Header="{x:Null}"
+                        HeaderTemplate="{x:Null}"
+                        PaneHeader="{x:Null}"
+                         Tapped="NavView_Tapped">
             <NavigationView.MenuItems>
                 <NavigationViewItem Tag="TeacherToolbox.Controls.RandomNameGenerator" Content="Random Name Generator">
                     <NavigationViewItem.Icon>
@@ -39,11 +44,8 @@
                 <NavigationViewItem Tag="TeacherToolbox.Controls.Clock" Content="Exam Clock" Icon="Clock"/>
             </NavigationView.MenuItems>
 
-
             <Frame x:Name="ContentFrame" IsTabStop="True"
             NavigationFailed="ContentFrame_NavigationFailed"/>
-
         </NavigationView>
     </Grid>
-
 </Window>

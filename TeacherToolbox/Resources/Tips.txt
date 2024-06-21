@@ -1,6 +1,12 @@
-﻿Clicking on a timer pauses it.  Double clicking maximizes it.
+﻿Clicking on a timer pauses it.
 Pressing F9 will generate a new random name and show the window if it has been minimized.
 Pressing the windows key and a number will start a timer for that number of minutes.  Windows + 0 will start a timer for 30 seconds.
 The Random Name Generator remembers what classes you have for each day of the week.
 In the exam clock, you can paint on segments to the clock to assist students with timing each question.
 In the exam clock, you can adjust the current time by clicking on the digital time.
+
+
+//TODO
+Splash screen, including tip of the day
+Add a what's new notification
+Look at life belt functionality

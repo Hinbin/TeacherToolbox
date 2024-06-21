@@ -32,6 +32,18 @@ class ShortcutWatcher
         writer.Close();
         pipeClient.Close();
         UnhookWindowsHookEx(_hookID);
+
+        // Call failsfe check periodically
+        var timer = new System.Windows.Forms.Timer();
+        timer.Interval = 5000;
+        timer.Tick += (sender, e) => FailSafeCheck();
+        timer.Start();
+
+        Application.ApplicationExit += (sender, e) =>
+        {
+            // Clean up code here
+            keysBeingPressed.Clear();
+        };
     }
 
     private static IntPtr SetHook(LowLevelKeyboardProc proc)
@@ -90,6 +102,18 @@ class ShortcutWatcher
         writer.WriteLine(key);
         writer.Flush();
     }
+
+    private static void FailSafeCheck()
+    {
+        // This method should be called periodically, e.g., using a Timer
+        if (!keysBeingPressed.Contains(Keys.LWin) && !keysBeingPressed.Contains(Keys.RWin))
+        {
+            // If neither Windows key is currently being pressed, clear any stuck state
+            keysBeingPressed.Remove(Keys.LWin);
+            keysBeingPressed.Remove(Keys.RWin);
+        }
+    }
+
 
     [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
     private static extern IntPtr SetWindowsHookEx(int idHook,

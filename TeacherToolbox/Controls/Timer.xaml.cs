@@ -36,7 +36,7 @@ namespace TeacherToolbox.Controls
             try
             {
                 // Parse "30 seconds" to 30, "1 minute" to 60, "2 minutes" to 120, etc.    
-                int seconds = int.Parse(buttonContent.Split(' ')[0]) * (buttonContent.Contains("minute") ? 60 : 1);
+                int seconds = int.Parse(buttonContent.Split(' ')[0]) * (buttonContent.Contains("min") ? 60 : 1);
 
                 //Open the timer window, send the name of the button that was clicked
                 TimerWindow timerWindow = new(seconds);

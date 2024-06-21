@@ -182,7 +182,14 @@ namespace TeacherToolbox.Controls
 
         private void NameDisplay_Tapped(object sender, TappedRoutedEventArgs e)
         {
+            // Check to see if the Add Class or Remove Class button have been clicked, if so return
+            if (e.OriginalSource is Button)
+            {
+                return;
+            }
+
             GenerateName();
+            e.Handled = true;
         }
 
         private async void Add_Class_Clicked(object sender, RoutedEventArgs e)
@@ -248,7 +255,7 @@ namespace TeacherToolbox.Controls
             // Check to see if we just need a new name from the current class
             if (currentClass != null && currentClass.ClassName == className)
             {
-                GenerateName();
+                // The name will be generated from the tapped method
                 return;
             }
 
