@@ -246,7 +246,7 @@ namespace TeacherToolbox
                 // If the sender is a text block with the word start, return
                 if (e.OriginalSource is TextBlock textBlock)
                 {
-                    if (textBlock.Text == "Add Class")
+                    if (textBlock.Text == "Add Class" || textBlock.Text == "Remove Class" || textBlock.Text == "More")
                     {
                         return;
                     }
