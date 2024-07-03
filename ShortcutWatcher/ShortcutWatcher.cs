@@ -17,6 +17,7 @@ class ShortcutWatcher
     private static StreamWriter writer;
     private static HashSet<Keys> keysBeingPressed = new HashSet<Keys>();
 
+    private static DateTime lastWindowsKeyPress = DateTime.MinValue; // Timestamp of the last Windows key press
 
     public static void Main()
     {
@@ -71,6 +72,12 @@ class ShortcutWatcher
             {
                 keysBeingPressed.Add(key);
 
+                // Update the timestamp when a Windows key is pressed
+                if (key == Keys.LWin || key == Keys.RWin)
+                {
+                    lastWindowsKeyPress = DateTime.Now;
+                }
+
                 // Check if Windows key is pressed
                 if (keysBeingPressed.Contains(Keys.LWin) || keysBeingPressed.Contains(Keys.RWin))
                 {
@@ -88,7 +95,7 @@ class ShortcutWatcher
                     SendKeyPress(key);
                 }
             }
-            else if (wParam == (IntPtr)WM_KEYUP  || wParam == (IntPtr)WM_SYSKEYUP)
+            else if (wParam == (IntPtr)WM_KEYUP || wParam == (IntPtr)WM_SYSKEYUP)
             {
                 keysBeingPressed.Remove(key);
             }
@@ -105,10 +112,9 @@ class ShortcutWatcher
 
     private static void FailSafeCheck()
     {
-        // This method should be called periodically, e.g., using a Timer
-        if (!keysBeingPressed.Contains(Keys.LWin) && !keysBeingPressed.Contains(Keys.RWin))
+        // Check if more than 5 seconds have passed since the last Windows key press
+        if ((DateTime.Now - lastWindowsKeyPress).TotalSeconds > 5)
         {
-            // If neither Windows key is currently being pressed, clear any stuck state
             keysBeingPressed.Remove(Keys.LWin);
             keysBeingPressed.Remove(Keys.RWin);
         }
