@@ -29,7 +29,7 @@ class ShortcutWatcher
         _hookID = SetHook(_proc);
         pipeClient = new NamedPipeClientStream(".", "ShotcutWatcher", PipeDirection.Out);
         pipeClient.Connect();
-        writer = new StreamWriter(pipeClient)
+        writer = new StreamWriter(pipeClient);
 
         // Subscribe to session switch events
         SystemEvents.SessionSwitch += new SessionSwitchEventHandler(SystemEvents_SessionSwitch);
