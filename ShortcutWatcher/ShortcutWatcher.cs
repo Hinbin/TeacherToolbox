@@ -29,16 +29,18 @@ class ShortcutWatcher
         pipeClient = new NamedPipeClientStream(".", "ShotcutWatcher", PipeDirection.Out);
         pipeClient.Connect();
         writer = new StreamWriter(pipeClient);
+
+        // Call failsfe check periodically
+        var timer = new System.Windows.Forms.Timer();
+        timer.Interval = 2000;
+        timer.Tick += (sender, e) => FailSafeCheck();
+        timer.Start();
+
         Application.Run();
         writer.Close();
         pipeClient.Close();
         UnhookWindowsHookEx(_hookID);
 
-        // Call failsfe check periodically
-        var timer = new System.Windows.Forms.Timer();
-        timer.Interval = 5000;
-        timer.Tick += (sender, e) => FailSafeCheck();
-        timer.Start();
 
         Application.ApplicationExit += (sender, e) =>
         {
