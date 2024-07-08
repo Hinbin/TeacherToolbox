@@ -1,3 +1,4 @@
+using Microsoft.Win32;
 using System;
 using System.Diagnostics;
 using System.IO.Pipes;
@@ -28,11 +29,14 @@ class ShortcutWatcher
         _hookID = SetHook(_proc);
         pipeClient = new NamedPipeClientStream(".", "ShotcutWatcher", PipeDirection.Out);
         pipeClient.Connect();
-        writer = new StreamWriter(pipeClient);
+        writer = new StreamWriter(pipeClient)
+
+        // Subscribe to session switch events
+        SystemEvents.SessionSwitch += new SessionSwitchEventHandler(SystemEvents_SessionSwitch);
 
         // Call failsfe check periodically
         var timer = new System.Windows.Forms.Timer();
-        timer.Interval = 2000;
+        timer.Interval = 5000;
         timer.Tick += (sender, e) => FailSafeCheck();
         timer.Start();
 
@@ -41,12 +45,28 @@ class ShortcutWatcher
         pipeClient.Close();
         UnhookWindowsHookEx(_hookID);
 
+        // Unsubscribe from session switch events when the application exits
+        SystemEvents.SessionSwitch -= new SessionSwitchEventHandler(SystemEvents_SessionSwitch);
 
         Application.ApplicationExit += (sender, e) =>
         {
             // Clean up code here
             keysBeingPressed.Clear();
         };
+    }
+
+    private static void SystemEvents_SessionSwitch(object sender, SessionSwitchEventArgs e)
+    {
+        if (e.Reason == SessionSwitchReason.SessionLock)
+        {
+            // The session is being locked, clear any pressed keys
+            keysBeingPressed.Clear();
+        }
+        else if (e.Reason == SessionSwitchReason.SessionUnlock)
+        {
+            // Also clear when the session is unlocked
+            keysBeingPressed.Clear();
+        }
     }
 
     private static IntPtr SetHook(LowLevelKeyboardProc proc)
