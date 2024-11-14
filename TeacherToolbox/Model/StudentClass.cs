@@ -141,45 +141,60 @@ namespace TeacherToolbox.Model
 
         private Student GetStandardRandomStudent(Student[] availableStudents)
         {
-            Random random = new ();
+            if (availableStudents.Length == 0) return null;
 
-            // Calculate the weight for each available name
-            int[] weights = new int[availableStudents.Length];
-            for (int i = 0; i < availableStudents.Length; i++)
+            Random random = new();
+
+            // Remove the last selected student from consideration
+            var eligibleStudents = availableStudents.Where(s => s != lastStudentSelected).ToArray();
+
+            // If all students have been picked except the last one, reset
+            if (eligibleStudents.Length == 0)
             {
-                // Assign higher weight to students who haven't been picked.  The more times they have been picked, the lower the weight.
-                weights[i] = Students.Count - previouslySelected.Count(s => s == availableStudents[i]);
+                previouslySelected.Clear();
+                lastStudentSelected = null;
+                eligibleStudents = availableStudents;
             }
 
-            // Calculate the total weight
+            // Calculate weights
+            int[] weights = new int[eligibleStudents.Length];
+            int maxNotPickedCount = 0;
+            for (int i = 0; i < eligibleStudents.Length; i++)
+            {
+                int notPickedCount = previouslySelected.Count(s => s != eligibleStudents[i]);
+                maxNotPickedCount = Math.Max(maxNotPickedCount, notPickedCount);
+            }
+
+            for (int i = 0; i < eligibleStudents.Length; i++)
+            {
+                int notPickedCount = previouslySelected.Count(s => s != eligibleStudents[i]);
+                // Linear weighting with a boost
+                weights[i] = notPickedCount + 1;
+                // Add extra weight for students who haven't been picked in the longest time
+                if (notPickedCount == maxNotPickedCount)
+                {
+                    weights[i] *= 2;
+                }
+            }
+
+            // Select a student using the weights
             int totalWeight = weights.Sum();
-
-            // Generate a random number within the total weight range
             int randomNumber = random.Next(1, totalWeight + 1);
-
-            // Select the name based on the random number and weights
             int cumulativeWeight = 0;
-            Student selectedStudent;
-            for (int i = 0; i < availableStudents.Length; i++)
+
+            for (int i = 0; i < eligibleStudents.Length; i++)
             {
                 cumulativeWeight += weights[i];
                 if (randomNumber <= cumulativeWeight)
                 {
-                    selectedStudent = availableStudents[i];
-                    // Add the selected student to the previously selected list
+                    Student selectedStudent = eligibleStudents[i];
                     previouslySelected.Add(selectedStudent);
-
-                    // If all students have been picked, reset the previously selected list
-                    if (previouslySelected.Count == Students.Count)
-                    {
-                        previouslySelected.Clear();
-                    }
-
                     lastStudentSelected = selectedStudent;
                     return selectedStudent;
                 }
             }
 
+            // This should never happen, but it's here for completeness
             return null;
         }
 

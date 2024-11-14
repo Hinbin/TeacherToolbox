@@ -29,31 +29,30 @@ namespace TeacherToolbox.Model
         {
             // Return if null or blank
             if (string.IsNullOrWhiteSpace(value)) return value;
-
             string sanitizedName = value;
 
-            // Check to see if there is a number or sequence of numbers at the end of the name.  If so, use it as the weighting
+            // Check to see if there is a number or sequence of numbers at the end of the name. If so, use it as the weighting
             Match match = Regex.Match(value, @"\d+$");
             if (match.Success)
             {
                 Weighting = int.Parse(match.Value);
                 sanitizedName = value.Substring(0, match.Index);
-            } else
-                {
+            }
+            else
+            {
                 Weighting = 1;
             }
 
-            // Use regex to remove any punctuationapart from - and '
-            sanitizedName = Regex.Replace(sanitizedName, @"[^\w\s'-]", "");
+            // Use regex to remove any punctuation apart from - and ', but keep apostrophes that are between letters
+            sanitizedName = Regex.Replace(sanitizedName, @"(?<![a-zA-Z])'|'(?![a-zA-Z])|[^\w\s'-]", "");
 
-            // Remove any single character words
-            sanitizedName = Regex.Replace(sanitizedName, @"\b\w\b", "");
-            
+            // Remove any single character words, except those followed by an apostrophe
+            sanitizedName = Regex.Replace(sanitizedName, @"\b(?![a-zA-Z]'\b)\w\b", "");
+
+
             // Trim any whitespace
             sanitizedName = sanitizedName.Trim();
-
             return sanitizedName;
-
         }
     }
 }
