@@ -94,6 +94,8 @@ public sealed partial class Clock : Page
 
     public LocalSettings localSettings;
 
+    private SleepPreventer _sleepPreventer = new SleepPreventer();
+
     public Clock()
     {
         this.InitializeComponent();
@@ -107,6 +109,9 @@ public sealed partial class Clock : Page
         //Load clock settings
         string imagePath = System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "5051.png");
         BackgroundImage = new BitmapImage(new Uri(imagePath));
+
+        using var sleepPreventer = new SleepPreventer();
+        sleepPreventer.PreventSleep();
 
         // TODO: Disable always on top
     }    
