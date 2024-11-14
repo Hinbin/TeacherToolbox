@@ -86,7 +86,6 @@ namespace TeacherToolbox.Controls
             ClassList.Children.Clear();
             // Get the list of student classes for the current day
 
-
             // Add up to 5 student class buttons
             for (int i = 0; i < Math.Min(studentClasses.Count, 5); i++)
             {
@@ -143,6 +142,13 @@ namespace TeacherToolbox.Controls
                     addClassItem.Click += Add_Class_Clicked;
                     menuFlyOut.Items.Add(addClassItem);
 
+                    MenuFlyoutItem howToUseItem = new()
+                    {
+                        Text = "Help"
+                    };
+                    howToUseItem.Click += How_To_Use_Clicked;
+                    menuFlyOut.Items.Add(howToUseItem);
+
                 }
                 ClassList.Children.Add(moreButton);
 
@@ -167,6 +173,13 @@ namespace TeacherToolbox.Controls
                     removeClassButton.Click += Remove_Class_Clicked;
                     ClassList.Children.Add(removeClassButton);
                 }
+
+                Button howToUseButton = new()
+                {
+                    Content = "Get Started"
+                };
+                howToUseButton.Click += How_To_Use_Clicked;
+                ClassList.Children.Add(howToUseButton);
             }
         }
 
@@ -297,6 +310,12 @@ namespace TeacherToolbox.Controls
             button.Flyout = menuFlyout;
             button.Flyout.ShowAt(button);
 
+        }
+
+        private void How_To_Use_Clicked(object sender, RoutedEventArgs e)
+        {
+            RNGHowToUseWindow howToUseWindow= new();
+            howToUseWindow.Activate();
         }
 
         private void SelectNewClass(StudentClass studentClass)
