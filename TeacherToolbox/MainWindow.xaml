@@ -1,51 +1,66 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8" ?>
 <Window
     x:Class="TeacherToolbox.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:local="using:TeacherToolbox"
     xmlns:controls="using:TeacherToolbox.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="using:TeacherToolbox"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    x:Name="TeacherToolBox"
     Title="Teacher Toolbox"
     mc:Ignorable="d">
 
-    <Grid PointerMoved="Grid_PointerMoved" PointerPressed="Grid_PointerPressed" PointerReleased="Grid_PointerReleased">
+    <Grid
+        Name="TeacherToolBoxGrid"
+        PointerMoved="Grid_PointerMoved"
+        PointerPressed="Grid_PointerPressed"
+        PointerReleased="Grid_PointerReleased">
 
-        <NavigationView x:Name="NavView" Loaded="NavView_Loaded"
-                        ItemInvoked="NavView_ItemInvoked"
-                        BackRequested="NavView_BackRequested"
-                        AlwaysShowHeader="False"
-                        IsSettingsVisible="False"
-                        PaneDisplayMode="LeftMinimal"
-                        IsBackButtonVisible="Collapsed"
-                         HorizontalAlignment="Stretch"
-                         VerticalAlignment="Stretch"
-                        Header="{x:Null}"
-                        HeaderTemplate="{x:Null}"
-                        PaneHeader="{x:Null}"
-                         Tapped="NavView_Tapped">
+        <NavigationView
+            x:Name="NavView"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Stretch"
+            AlwaysShowHeader="False"
+            AutomationProperties.AutomationId="NavigationPane"
+            BackRequested="NavView_BackRequested"
+            Header="{x:Null}"
+            HeaderTemplate="{x:Null}"
+            IsBackButtonVisible="Collapsed"
+            IsSettingsVisible="False"
+            ItemInvoked="NavView_ItemInvoked"
+            Loaded="NavView_Loaded"
+            PaneDisplayMode="LeftMinimal"
+            PaneHeader="{x:Null}"
+            Tapped="NavView_Tapped">
+
             <NavigationView.MenuItems>
-                <NavigationViewItem Tag="TeacherToolbox.Controls.RandomNameGenerator" Content="Random Name Generator">
+                <NavigationViewItem Content="Random Name Generator" Tag="TeacherToolbox.Controls.RandomNameGenerator">
                     <NavigationViewItem.Icon>
-                        <FontIcon FontFamily="Segoe MDL2 Assets" Glyph="&#xE9CE;"/>
+                        <FontIcon FontFamily="Segoe MDL2 Assets" Glyph="&#xE9CE;" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem Tag="TeacherToolbox.Controls.Timer" Content="Timer">
+                <NavigationViewItem Content="Timer" Tag="TeacherToolbox.Controls.Timer">
                     <NavigationViewItem.Icon>
-                        <FontIcon FontFamily="Segoe MDL2 Assets" Glyph="&#xF182;"/>
+                        <FontIcon FontFamily="Segoe MDL2 Assets" Glyph="&#xF182;" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem Tag="TeacherToolbox.Controls.ScreenRulerPage" Content="Screen Ruler">
+                <NavigationViewItem Content="Screen Ruler" Tag="TeacherToolbox.Controls.ScreenRulerPage">
                     <NavigationViewItem.Icon>
-                        <FontIcon FontFamily="Segoe MDL2 Assets" Glyph="&#xE75B;"/>
+                        <FontIcon FontFamily="Segoe MDL2 Assets" Glyph="&#xE75B;" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem Tag="TeacherToolbox.Controls.Clock" Content="Exam Clock" Icon="Clock"/>
+                <NavigationViewItem
+                    Content="Exam Clock"
+                    Icon="Clock"
+                    Tag="TeacherToolbox.Controls.Clock" />
             </NavigationView.MenuItems>
 
-            <Frame x:Name="ContentFrame" IsTabStop="True"
-            NavigationFailed="ContentFrame_NavigationFailed"/>
+            <Frame
+                x:Name="ContentFrame"
+                AutomationProperties.AutomationId="MainContentFrame"
+                IsTabStop="True"
+                NavigationFailed="ContentFrame_NavigationFailed" />
         </NavigationView>
     </Grid>
 </Window>

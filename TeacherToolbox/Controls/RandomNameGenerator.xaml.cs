@@ -8,6 +8,8 @@ using Windows.Storage.Pickers;
 using Microsoft.UI.Xaml.Media;
 using TeacherToolbox.Model;
 using Windows.UI.Core;
+using Microsoft.UI.Xaml.Automation;
+using Microsoft.UI.Xaml.Automation.Peers;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -17,7 +19,7 @@ namespace TeacherToolbox.Controls
     /// <summary>
     /// An empty page that can be used on its own or navigated to within a Frame.
     /// </summary>
-    public sealed partial class RandomNameGenerator : Page
+    public sealed partial class RandomNameGenerator : AutomatedPage
     {
         StudentClass currentClass;
         StudentClassSelector studentClassSelector;
@@ -29,6 +31,8 @@ namespace TeacherToolbox.Controls
         public RandomNameGenerator()
         {
             this.InitializeComponent();
+
+
             this.Loaded += RandomNameGenerator_Loaded;
             // Set dayOfWeek as a number, Monday = 0, Tuesday = 1, etc.
             dayOfWeek = (int)DateTime.Now.DayOfWeek;
@@ -38,6 +42,8 @@ namespace TeacherToolbox.Controls
 
             // Retrieve the window handle (HWND) of the current WinUI 3 window.
             hWnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
+            
+
 
         }
 

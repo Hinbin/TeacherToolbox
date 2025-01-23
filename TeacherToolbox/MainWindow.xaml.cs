@@ -14,6 +14,8 @@ using System.IO.Pipes;
 using System.Diagnostics;
 using WinUIEx;
 using Microsoft.UI.Input;
+using Microsoft.UI.Xaml.Automation.Peers;
+using Microsoft.UI.Xaml.Automation;
 
 
 
@@ -31,6 +33,7 @@ namespace TeacherToolbox
         private readonly OverlappedPresenter _presenter;
         private NamedPipeServerStream pipeServer;
         private WindowDragHelper dragHelper;
+        private readonly SleepPreventer _sleepPreventer;  // readonly to prevent accidental nulling
 
         private void ContentFrame_NavigationFailed(object sender, NavigationFailedEventArgs e)
         {
@@ -40,6 +43,7 @@ namespace TeacherToolbox
         public MainWindow()
         {
             this.InitializeComponent();
+            _sleepPreventer = new SleepPreventer(); // Create it once
 
             _presenter = this.AppWindow.Presenter as OverlappedPresenter;
             Windows.Graphics.SizeInt32 size = new(_Width: 600, _Height: 200);
@@ -72,9 +76,13 @@ namespace TeacherToolbox
 
         private void MainWindow_Closed(object sender, WindowEventArgs e)
         {
-            foreach (var process in Process.GetProcessesByName("ShortcutWatcher"))
+            try
             {
-                process.Kill();
+                _sleepPreventer?.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error disposing SleepPreventer: {ex}");
             }
 
         }
@@ -148,38 +156,52 @@ namespace TeacherToolbox
             NavView.Header = null;
         }
 
-        private void NavView_Navigate( Type navPageType, NavigationTransitionInfo transitionInfo)
+        private void NavView_Navigate(Type navPageType, NavigationTransitionInfo transitionInfo)
         {
-            // Get the page type before navigation so you can prevent duplicate
-            // entries in the backstack.
             Type preNavPageType = ContentFrame.CurrentSourcePageType;
 
-            // Only navigate if the selected page isn't currently loaded.
             if (navPageType is not null && !Type.Equals(preNavPageType, navPageType))
             {
-                ContentFrame.Navigate(navPageType, null, transitionInfo);
+                // Don't handle Clock navigation here as it's handled in NavView_ItemInvoked
+                if (navPageType != typeof(Clock))
+                {
+                    ContentFrame.Navigate(navPageType, null, transitionInfo);
+                }
             }
         }
 
         private void On_Navigated(object sender, NavigationEventArgs e)
         {
+            Debug.WriteLine($"On_Navigated called for {e.SourcePageType.Name} with parameter: {e.Parameter}");
             NavView.IsBackEnabled = ContentFrame.CanGoBack;
+
+            if (ContentFrame.Content is AutomatedPage page)
+            {
+                // Ensure automation properties are set after navigation
+                string className = page.GetType().Name;
+                AutomationProperties.SetAutomationId(page, className);
+                var peer = FrameworkElementAutomationPeer.FromElement(page);
+                if (peer == null)
+                {
+                    peer = new FrameworkElementAutomationPeer(page);
+                }
+            }
 
             if (ContentFrame.SourcePageType != null)
             {
-                // Select the nav view item that corresponds to the page being navigated to.
                 NavView.SelectedItem = NavView.MenuItems
                             .OfType<NavigationViewItem>()
                             .First(i => i.Tag.Equals(ContentFrame.SourcePageType.FullName.ToString()));
 
-                dragHelper.OnNavigate();                
+                dragHelper.OnNavigate();
             }
 
             // Only enable always on top for the RNG page
             if (ContentFrame.SourcePageType == typeof(RandomNameGenerator))
             {
                 this.SetIsAlwaysOnTop(true);
-            } else
+            }
+            else
             {
                 this.SetIsAlwaysOnTop(false);
             }
@@ -206,13 +228,20 @@ namespace TeacherToolbox
             return true;
         }
 
-        private void NavView_ItemInvoked(NavigationView sender,
-                                 NavigationViewItemInvokedEventArgs args)
+        private void NavView_ItemInvoked(NavigationView sender, NavigationViewItemInvokedEventArgs args)
         {
             if (args.InvokedItemContainer != null)
             {
                 Type navPageType = Type.GetType(args.InvokedItemContainer.Tag.ToString());
-                NavView_Navigate(navPageType, args.RecommendedNavigationTransitionInfo);
+
+                if (navPageType == typeof(Clock))
+                {
+                    ContentFrame.Navigate(navPageType, _sleepPreventer, args.RecommendedNavigationTransitionInfo);
+                }
+                else
+                {
+                    NavView_Navigate(navPageType, args.RecommendedNavigationTransitionInfo);
+                }
             }
         }
 

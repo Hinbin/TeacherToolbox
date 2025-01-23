@@ -10,6 +10,12 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TeacherToolbox", "TeacherTo
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ShortcutWatcher", "ShortcutWatcher\ShortcutWatcher.csproj", "{780D0AFA-EB58-485F-A3D6-CE0984885719}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TTB Tests", "TTBIntegrationTesting\TTB Tests.csproj", "{C678745D-AD52-4AC2-B677-B357D3DE6F7E}"
+	ProjectSection(ProjectDependencies) = postProject
+		{780D0AFA-EB58-485F-A3D6-CE0984885719} = {780D0AFA-EB58-485F-A3D6-CE0984885719}
+		{7D9E66E6-FB25-4258-A783-87F3A83C9680} = {7D9E66E6-FB25-4258-A783-87F3A83C9680}
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x86 = Debug|x86
@@ -22,10 +28,14 @@ Global
 		{7D9E66E6-FB25-4258-A783-87F3A83C9680}.Release|x86.ActiveCfg = Release|x86
 		{7D9E66E6-FB25-4258-A783-87F3A83C9680}.Release|x86.Build.0 = Release|x86
 		{7D9E66E6-FB25-4258-A783-87F3A83C9680}.Release|x86.Deploy.0 = Release|x86
-		{780D0AFA-EB58-485F-A3D6-CE0984885719}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{780D0AFA-EB58-485F-A3D6-CE0984885719}.Debug|x86.Build.0 = Debug|Any CPU
-		{780D0AFA-EB58-485F-A3D6-CE0984885719}.Release|x86.ActiveCfg = Release|Any CPU
-		{780D0AFA-EB58-485F-A3D6-CE0984885719}.Release|x86.Build.0 = Release|Any CPU
+		{780D0AFA-EB58-485F-A3D6-CE0984885719}.Debug|x86.ActiveCfg = Debug|x86
+		{780D0AFA-EB58-485F-A3D6-CE0984885719}.Debug|x86.Build.0 = Debug|x86
+		{780D0AFA-EB58-485F-A3D6-CE0984885719}.Release|x86.ActiveCfg = Release|x86
+		{780D0AFA-EB58-485F-A3D6-CE0984885719}.Release|x86.Build.0 = Release|x86
+		{C678745D-AD52-4AC2-B677-B357D3DE6F7E}.Debug|x86.ActiveCfg = Debug|x86
+		{C678745D-AD52-4AC2-B677-B357D3DE6F7E}.Debug|x86.Build.0 = Debug|x86
+		{C678745D-AD52-4AC2-B677-B357D3DE6F7E}.Release|x86.ActiveCfg = Release|x86
+		{C678745D-AD52-4AC2-B677-B357D3DE6F7E}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

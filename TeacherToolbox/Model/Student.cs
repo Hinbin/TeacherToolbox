@@ -25,10 +25,12 @@ namespace TeacherToolbox.Model
             Name = name;
         }
 
+
         public string SanitizeStudentName(string value)
         {
             // Return if null or blank
             if (string.IsNullOrWhiteSpace(value)) return value;
+
             string sanitizedName = value;
 
             // Check to see if there is a number or sequence of numbers at the end of the name. If so, use it as the weighting
@@ -46,13 +48,17 @@ namespace TeacherToolbox.Model
             // Use regex to remove any punctuation apart from - and ', but keep apostrophes that are between letters
             sanitizedName = Regex.Replace(sanitizedName, @"(?<![a-zA-Z])'|'(?![a-zA-Z])|[^\w\s'-]", "");
 
-            // Remove any single character words, except those followed by an apostrophe
-            sanitizedName = Regex.Replace(sanitizedName, @"\b(?![a-zA-Z]'\b)\w\b", "");
+            // Remove trailing single letters (including repeated patterns like "I I I" or "J K L")
+            sanitizedName = Regex.Replace(sanitizedName, @"(?:\s+[A-Z])+$", "");
 
+            // Modified regex to preserve single letters followed by space and another word, but only at the start
+            sanitizedName = Regex.Replace(sanitizedName, @"\b(?!([A-Z](?=\s+[A-Za-z]{2,}))|[a-zA-Z]'\b)\w\b", "");
 
-            // Trim any whitespace
-            sanitizedName = sanitizedName.Trim();
+            // Trim any whitespace and remove multiple spaces
+            sanitizedName = Regex.Replace(sanitizedName.Trim(), @"\s+", " ");
+
             return sanitizedName;
         }
+
     }
 }

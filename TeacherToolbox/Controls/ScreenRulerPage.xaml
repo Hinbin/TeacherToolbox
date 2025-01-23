@@ -1,29 +1,50 @@
-<Page
+<local:AutomatedPage
     x:Class="TeacherToolbox.Controls.ScreenRulerPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:local="using:TeacherToolbox.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="using:TeacherToolbox.Controls"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    mc:Ignorable="d"
-    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+    AutomationProperties.AutomationId="ScreenRulerPage"
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
+    mc:Ignorable="d">
 
     <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
         <Viewbox>
             <Grid Width="200">
-                <!-- Set the Grid width inside the Viewbox -->
-                <!-- Define rows for each button -->
+                <!--  Set the Grid width inside the Viewbox  -->
+                <!--  Define rows for each button  -->
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <!-- Set a standard width for each button and remove individual paddings and margins if desired -->
-                <Button x:Name="CloseRulerWindowButton" Click="Close_Ruler_Window_Click" Content="Close Screen Ruler" Grid.Row="0" Width="150" HorizontalAlignment="Center"/>
-                <Button x:Name="OpenRulerWindowButton" Click="Open_Ruler_Window_Click" Content="Open Screen Ruler" Grid.Row="1" Width="150" HorizontalAlignment="Center" Visibility="Collapsed"/>
-                <Button x:Name="ChangeDisplayButton" Click="ChangeDisplayButton_Click" Content="Change Display" Grid.Row="2" Width="150" HorizontalAlignment="Center" Visibility="Collapsed"/>
+                <!--  Set a standard width for each button and remove individual paddings and margins if desired  -->
+                <Button
+                    x:Name="CloseRulerWindowButton"
+                    Grid.Row="0"
+                    Width="150"
+                    HorizontalAlignment="Center"
+                    Click="Close_Ruler_Window_Click"
+                    Content="Close Screen Ruler" />
+                <Button
+                    x:Name="OpenRulerWindowButton"
+                    Grid.Row="1"
+                    Width="150"
+                    HorizontalAlignment="Center"
+                    Click="Open_Ruler_Window_Click"
+                    Content="Open Screen Ruler"
+                    Visibility="Collapsed" />
+                <Button
+                    x:Name="ChangeDisplayButton"
+                    Grid.Row="2"
+                    Width="150"
+                    HorizontalAlignment="Center"
+                    Click="ChangeDisplayButton_Click"
+                    Content="Change Display"
+                    Visibility="Collapsed" />
             </Grid>
         </Viewbox>
     </Grid>
-</Page>
+</local:AutomatedPage>

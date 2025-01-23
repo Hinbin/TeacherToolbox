@@ -17,6 +17,8 @@ using WinUIEx;
 using Microsoft.UI.Xaml.Shapes;
 using TeacherToolbox.Model;
 using Windows.Globalization;
+using Microsoft.UI.Xaml.Navigation;
+using System.Diagnostics;
 
 namespace TeacherToolbox.Controls;
 
@@ -66,7 +68,7 @@ public class TimeSlice
     }
 
 }
-public sealed partial class Clock : Page
+public sealed partial class Clock : AutomatedPage
 {
     private Compositor _compositor;
     private ContainerVisual _root;
@@ -94,7 +96,9 @@ public sealed partial class Clock : Page
 
     public LocalSettings localSettings;
 
-    private SleepPreventer _sleepPreventer = new SleepPreventer();
+    private SleepPreventer _sleepPreventer;
+    private bool _isPreventingSleep = false;
+
 
     public Clock()
     {
@@ -110,16 +114,29 @@ public sealed partial class Clock : Page
         string imagePath = System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "5051.png");
         BackgroundImage = new BitmapImage(new Uri(imagePath));
 
-        using var sleepPreventer = new SleepPreventer();
-        sleepPreventer.PreventSleep();
-
-        // TODO: Disable always on top
     }    
 
     public bool ShowTicks { get; set; } = false;
 
     public Brush FaceColor { get; set; } = new SolidColorBrush(Colors.Transparent);
 
+    // Override navigated to 
+    protected override void OnNavigatedTo(NavigationEventArgs e)
+    {
+        base.OnNavigatedTo(e);
+        Debug.WriteLine("Clock page OnNavigatedTo");
+        if (e.Parameter is SleepPreventer sleepPreventer)
+        {
+            _sleepPreventer = sleepPreventer;
+            Debug.WriteLine("Got SleepPreventer from navigation parameter");
+            _sleepPreventer.PreventSleep();
+            _isPreventingSleep = true;
+        }
+        else
+        {
+            Debug.WriteLine("No SleepPreventer in navigation parameter!");
+        }
+    }
 
     private void TimePickerFlyout_TimePicked(TimePickerFlyout sender, TimePickedEventArgs args)
     {
@@ -551,4 +568,5 @@ public sealed partial class Clock : Page
     {
         localSettings.CentreText = centreTextBox.Text;
     }
+
 }

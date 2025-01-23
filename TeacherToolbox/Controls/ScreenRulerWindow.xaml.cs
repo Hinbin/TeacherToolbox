@@ -17,6 +17,7 @@ using Windows.Foundation.Collections;
 using WinUIEx;
 using Windows.Graphics;
 using Windows.Graphics.Printing3D;
+using Microsoft.UI.Xaml.Automation;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -30,7 +31,6 @@ namespace TeacherToolbox.Controls
     {
         private WindowDragHelper dragHelper;
         private static BlurredBackdrop blurredBackdrop = new BlurredBackdrop();
-        private DisplayManager diplayManager;
         private ScreenRulerPage screenRulerPage;
 
         public ScreenRulerWindow(ScreenRulerPage fromPage,ulong displayId = 0)
