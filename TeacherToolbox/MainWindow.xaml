@@ -54,7 +54,13 @@
                     Content="Exam Clock"
                     Icon="Clock"
                     Tag="TeacherToolbox.Controls.Clock" />
+                <NavigationViewItem Content="Settings" Tag="TeacherToolbox.Controls.SettingsPage">
+                    <NavigationViewItem.Icon>
+                        <FontIcon FontFamily="Segoe MDL2 Assets" Glyph="&#xE713;" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
             </NavigationView.MenuItems>
+
 
             <Frame
                 x:Name="ContentFrame"

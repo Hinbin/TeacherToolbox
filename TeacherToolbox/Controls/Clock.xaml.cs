@@ -19,6 +19,7 @@ using TeacherToolbox.Model;
 using Windows.Globalization;
 using Microsoft.UI.Xaml.Navigation;
 using System.Diagnostics;
+using TeacherToolbox.Helpers;
 
 namespace TeacherToolbox.Controls;
 
@@ -98,6 +99,7 @@ public sealed partial class Clock : AutomatedPage
 
     private SleepPreventer _sleepPreventer;
     private bool _isPreventingSleep = false;
+    CompositionColorBrush handColourBrush;
 
 
     public Clock()
@@ -109,11 +111,6 @@ public sealed partial class Clock : AutomatedPage
         _timer.Interval = TimeSpan.FromMilliseconds(200);
         _timer.Tick += Timer_Tick;
         timePickerFlyout.TimePicked += TimePickerFlyout_TimePicked;
-
-        //Load clock settings
-        string imagePath = System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "5051.png");
-        BackgroundImage = new BitmapImage(new Uri(imagePath));
-
     }    
 
     public bool ShowTicks { get; set; } = false;
@@ -168,6 +165,22 @@ public sealed partial class Clock : AutomatedPage
         _root = ElementCompositionPreview.GetElementVisual(Container) as ContainerVisual;
         _compositor = _root.Compositor;
 
+        var isDarkTheme = ThemeHelper.IsDarkTheme();
+        string imagePath = "";
+
+        if (isDarkTheme)
+        {
+            //Load clock settings
+            imagePath = System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "Clock_Face_Inverse.png");
+            handColourBrush = _compositor.CreateColorBrush(Colors.White);
+        }
+        else
+        {
+            imagePath = System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "Clock_Face.png");
+            handColourBrush = _compositor.CreateColorBrush(Colors.Black);
+        }
+        BackgroundImage = new BitmapImage(new Uri(imagePath));
+
         // Hour Ticks
         if (ShowTicks)
         {
@@ -196,7 +209,7 @@ public sealed partial class Clock : AutomatedPage
         // Hour Hand
         _hourhand = _compositor.CreateSpriteVisual();
         _hourhand.Size = new Vector2(4.0f, 70.0f);
-        _hourhand.Brush = _compositor.CreateColorBrush(Colors.Black);
+        _hourhand.Brush = handColourBrush;
         _hourhand.CenterPoint = new Vector3(2.0f, 50.0f, 0);
         _hourhand.Offset = new Vector3(98.0f, 50.0f, 0);
         _root.Children.InsertAtTop(_hourhand);
@@ -204,7 +217,7 @@ public sealed partial class Clock : AutomatedPage
         // Minute Hand
         _minutehand = _compositor.CreateSpriteVisual();
         _minutehand.Size = new Vector2(4.0f, 100.0f);
-        _minutehand.Brush = _compositor.CreateColorBrush(Colors.Black);
+        _minutehand.Brush = handColourBrush;
         _minutehand.CenterPoint = new Vector3(2.0f, 80.0f, 0);
         _minutehand.Offset = new Vector3(98.0f, 20.0f, 0);
         _root.Children.InsertAtTop(_minutehand);

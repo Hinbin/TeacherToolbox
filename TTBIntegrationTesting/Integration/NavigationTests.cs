@@ -11,70 +11,6 @@ namespace TTBIntegrationTesting
     [TestFixture]
     public class NavigationTests : TestBase
     {
-        private AutomationElement? _navigationView;
-
-        // Helper method to find and click navigation buttons
-        private void ClickNavigationButton(string buttonName)
-        {
-            var button = _navigationView!.FindFirstChild(cf =>
-                cf.ByName(buttonName));
-
-            if (button == null)
-                throw new InvalidOperationException($"Navigation button '{buttonName}' not found");
-
-            button.Click();
-            Thread.Sleep(500); // Keep existing wait logic
-        }
-
-        // Helper to ensure navigation is open
-        private void EnsureNavigationIsOpen()
-        {
-            var openButton = _navigationView!.FindFirstChild(cf =>
-                cf.ByName("Open Navigation"));
-
-            if (openButton != null) // If we find the open button, navigation is closed
-            {
-                ClickNavigationButton("Open Navigation");
-            }
-        }
-
-        // Helper for finding navigation items
-        private AutomationElement GetNavigationItem(string pageName)
-        {
-            var navItem = _navigationView!.FindFirstDescendant(cf =>
-                cf.ByName(pageName));
-
-            if (navItem == null)
-                throw new InvalidOperationException($"Navigation item '{pageName}' not found");
-
-            return navItem;
-        }
-
-
-        // Helper for navigating to a specific page
-        private void NavigateToPage(string pageName)
-        {
-            EnsureNavigationIsOpen();
-            var navItem = GetNavigationItem(pageName);
-            navItem.Click();
-            Thread.Sleep(500); // Maintain existing wait logic
-        }
-
-        // Helper to verify a page is loaded
-        private AutomationElement VerifyPageLoaded(string pageId)
-        {
-            var contentFrame = MainWindow!.FindFirstDescendant(cf =>
-                cf.ByAutomationId("NavigationPane"));
-
-            Assert.That(contentFrame, Is.Not.Null, "Navigation Pane should exist");
-
-            var pageElement = contentFrame.FindFirstDescendant(cf =>
-                cf.ByAutomationId(pageId));
-
-            Assert.That(pageElement, Is.Not.Null, $"{pageId} page should be loaded");
-
-            return pageElement;
-        }
 
         // Helper for screen ruler specific verification
         private void VerifyScreenRulerWindow()
@@ -93,17 +29,14 @@ namespace TTBIntegrationTesting
         [SetUp]
         public void NavigationSetUp()
         {
-            _navigationView = MainWindow!.FindFirstDescendant(cf =>
-                cf.ByAutomationId("NavigationPane"));
-
-            Assert.That(_navigationView, Is.Not.Null, "NavigationPane should be present");
+            Assert.That(NavigationView, Is.Not.Null, "NavigationPane should be present");
             EnsureNavigationIsOpen();
         }
 
         [Test]
         public void NavigationMenu_ContainsAllExpectedItems()
         {
-            var menuItemsHost = _navigationView!.FindFirstDescendant(cf =>
+            var menuItemsHost = NavigationView!.FindFirstDescendant(cf =>
                 cf.ByAutomationId("MenuItemsHost"));
 
             var menuItems = menuItemsHost.FindAllChildren(cf =>
@@ -176,14 +109,17 @@ namespace TTBIntegrationTesting
         [Test]
         public void NavigateThroughAllPages_SuccessfulNavigation()
         {
+            // Define the standard navigation pages
             var navigationOrder = new[]
             {
                 ("Timer", "Timer"),
                 ("Screen Ruler", "ScreenRulerPage"),
                 ("Exam Clock", "Clock"),
-                ("Random Name Generator", "RandomNameGenerator")
+                ("Random Name Generator", "RandomNameGenerator"),
+                ("Settings", "SettingsPage")
             };
 
+            // Navigate through all standard pages
             foreach (var (pageName, pageId) in navigationOrder)
             {
                 NavigateToPage(pageName);
@@ -198,7 +134,7 @@ namespace TTBIntegrationTesting
             ClickNavigationButton("Close Navigation");
 
             // Verify pane is closed
-            var openNavButton = _navigationView!.FindFirstChild(cf =>
+            var openNavButton = NavigationView!.FindFirstChild(cf =>
                 cf.ByName("Open Navigation"));
             Assert.That(openNavButton, Is.Not.Null, "Navigation pane should be closeable");
 
@@ -206,9 +142,16 @@ namespace TTBIntegrationTesting
             ClickNavigationButton("Open Navigation");
 
             // Verify pane is open
-            var closeNavButton = _navigationView!.FindFirstChild(cf =>
+            var closeNavButton = NavigationView!.FindFirstChild(cf =>
                 cf.ByName("Close Navigation"));
             Assert.That(closeNavButton, Is.Not.Null, "Navigation pane should be openable");
+        }
+
+        [Test]
+        public void NavigateToSettings_LoadsSettingsPage()
+        {
+            NavigateToPage("Settings");
+            var screenRulerPage = VerifyPageLoaded("SettingsPage");
         }
 
     }

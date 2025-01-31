@@ -16,6 +16,8 @@ using WinUIEx;
 using Microsoft.UI.Input;
 using Microsoft.UI.Xaml.Automation.Peers;
 using Microsoft.UI.Xaml.Automation;
+using TeacherToolbox.Helpers;
+using Windows.UI;
 
 
 
@@ -48,8 +50,9 @@ namespace TeacherToolbox
             _presenter = this.AppWindow.Presenter as OverlappedPresenter;
             Windows.Graphics.SizeInt32 size = new(_Width: 600, _Height: 200);
             this.AppWindow.ResizeClient(size);
-                       
+
             this.ExtendsContentIntoTitleBar = true;
+            UpdateTitleBarTheme();
             SetRegionsForCustomTitleBar(); // To allow the nav button to be selectable, but the rest of the title bar to function as normal
 
             NavView.IsPaneOpen = false;
@@ -108,22 +111,22 @@ namespace TeacherToolbox
                             if (timeInt == 0)
                             {
                                 timerWindow = new TimerWindow(30);
-                                await timerWindow.InitializeAsync();
-                            } else
+                            }
+                            else
                             {
                                 timerWindow = new TimerWindow(timeInt * 60);
-                                await timerWindow.InitializeAsync();
                             }
 
                             timerWindow.Activate();
 
                         }
-                    }else if (key == "F9")
+                    }
+                    else if (key == "F9")
                     {
 
                         // Grab focus and unminiize the window
                         this.Activate();
-                        
+
                         // Navigate to the RandomNameGenerator page if needed
 
                         if (ContentFrame.SourcePageType != typeof(RandomNameGenerator))
@@ -177,7 +180,6 @@ namespace TeacherToolbox
 
             if (ContentFrame.Content is AutomatedPage page)
             {
-                // Ensure automation properties are set after navigation
                 string className = page.GetType().Name;
                 AutomationProperties.SetAutomationId(page, className);
                 var peer = FrameworkElementAutomationPeer.FromElement(page);
@@ -187,14 +189,18 @@ namespace TeacherToolbox
                 }
             }
 
-            if (ContentFrame.SourcePageType != null)
+            if (ContentFrame.SourcePageType == typeof(SettingsPage))
+            {
+                NavView.SelectedItem = NavView.SettingsItem;
+            }
+            else if (ContentFrame.SourcePageType != null)
             {
                 NavView.SelectedItem = NavView.MenuItems
                             .OfType<NavigationViewItem>()
                             .First(i => i.Tag.Equals(ContentFrame.SourcePageType.FullName.ToString()));
-
-                dragHelper.OnNavigate();
             }
+
+            dragHelper.OnNavigate();
 
             // Only enable always on top for the RNG page
             if (ContentFrame.SourcePageType == typeof(RandomNameGenerator))
@@ -230,7 +236,11 @@ namespace TeacherToolbox
 
         private void NavView_ItemInvoked(NavigationView sender, NavigationViewItemInvokedEventArgs args)
         {
-            if (args.InvokedItemContainer != null)
+            if (args.IsSettingsInvoked)
+            {
+                NavView_Navigate(typeof(SettingsPage), args.RecommendedNavigationTransitionInfo);
+            }
+            else if (args.InvokedItemContainer != null)
             {
                 Type navPageType = Type.GetType(args.InvokedItemContainer.Tag.ToString());
 
@@ -298,6 +308,53 @@ namespace TeacherToolbox
                 });
         }
 
-    }
 
+        public void UpdateTitleBarTheme()
+        {
+            if (AppWindowTitleBar.IsCustomizationSupported())
+            {
+                var titleBar = this.AppWindow.TitleBar;
+                var isDarkTheme = ThemeHelper.IsDarkTheme();
+
+                if (isDarkTheme)
+                {
+                    // Remove the background color completely to let the NavigationView show through
+                    titleBar.BackgroundColor = null;
+                    titleBar.InactiveBackgroundColor = null;
+                    titleBar.ButtonBackgroundColor = null;
+                    titleBar.ButtonInactiveBackgroundColor = null;
+
+                    // Set the button states for dark theme
+                    titleBar.ButtonHoverBackgroundColor = Color.FromArgb(255, 44, 44, 44);
+                    titleBar.ButtonPressedBackgroundColor = Color.FromArgb(255, 54, 54, 54);
+
+                    // Set foreground colors
+                    titleBar.ForegroundColor = Colors.White;
+                    titleBar.ButtonForegroundColor = Colors.White;
+                    titleBar.ButtonHoverForegroundColor = Colors.White;
+                    titleBar.ButtonPressedForegroundColor = Colors.White;
+
+                    // Inactive states
+                    titleBar.InactiveForegroundColor = Color.FromArgb(255, 180, 180, 180);
+                    titleBar.ButtonInactiveForegroundColor = Color.FromArgb(255, 180, 180, 180);
+                }
+                else
+                {
+                    // Light theme - keeping existing colors
+                    var backgroundColor = ThemeHelper.GetApplicationBackgroundColor();
+
+                    titleBar.BackgroundColor = backgroundColor;
+                    titleBar.ButtonBackgroundColor = backgroundColor;
+                    titleBar.ButtonForegroundColor = Colors.Black;
+                    titleBar.ButtonHoverForegroundColor = Colors.Black;
+                    titleBar.ButtonPressedForegroundColor = Colors.Black;
+                    titleBar.ButtonInactiveForegroundColor = Color.FromArgb(255, 100, 100, 100);
+
+                    titleBar.ButtonHoverBackgroundColor = Color.FromArgb(255, 229, 229, 229);
+                    titleBar.ButtonPressedBackgroundColor = Color.FromArgb(255, 204, 204, 204);
+                    titleBar.ButtonInactiveBackgroundColor = Color.FromArgb(255, 243, 243, 243);
+                }
+            }
+        }
+    }
 }

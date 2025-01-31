@@ -35,4 +35,10 @@ public class TimerTests : TestBase
     {
         // Duration test implementation
     }
+
+    [Test]
+    public void Timer_WindowPositionPersists()
+    {
+        //  Move window and check that timer has same position as old window
+    }
 }

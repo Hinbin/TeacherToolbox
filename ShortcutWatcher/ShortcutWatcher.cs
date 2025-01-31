@@ -19,7 +19,6 @@ class ShortcutWatcher
     private static HashSet<Keys> keysBeingPressed = new HashSet<Keys>();
 
     private static DateTime lastWindowsKeyPress = DateTime.MinValue; // Timestamp of the last Windows key press
-
     public static void Main()
     {
         // Hide the console window
@@ -27,30 +26,39 @@ class ShortcutWatcher
         ShowWindow(handle, SW_HIDE);
 
         _hookID = SetHook(_proc);
-        pipeClient = new NamedPipeClientStream(".", "ShotcutWatcher", PipeDirection.Out);
-        pipeClient.Connect();
-        writer = new StreamWriter(pipeClient);
+
+        // Try to establish initial pipe connection
+        try
+        {
+            pipeClient = new NamedPipeClientStream(".", "ShotcutWatcher", PipeDirection.Out);
+            pipeClient.Connect(1000); // 1 second timeout
+            writer = new StreamWriter(pipeClient);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Initial pipe connection failed: {ex.Message}");
+            // Continue running even if initial connection fails
+        }
 
         // Subscribe to session switch events
         SystemEvents.SessionSwitch += new SessionSwitchEventHandler(SystemEvents_SessionSwitch);
 
-        // Call failsfe check periodically
+        // Call failsafe check periodically
         var timer = new System.Windows.Forms.Timer();
         timer.Interval = 5000;
         timer.Tick += (sender, e) => FailSafeCheck();
         timer.Start();
 
         Application.Run();
-        writer.Close();
-        pipeClient.Close();
-        UnhookWindowsHookEx(_hookID);
 
-        // Unsubscribe from session switch events when the application exits
+        // Cleanup
+        writer?.Dispose();
+        pipeClient?.Dispose();
+        UnhookWindowsHookEx(_hookID);
         SystemEvents.SessionSwitch -= new SessionSwitchEventHandler(SystemEvents_SessionSwitch);
 
         Application.ApplicationExit += (sender, e) =>
         {
-            // Clean up code here
             keysBeingPressed.Clear();
         };
     }
@@ -125,11 +133,86 @@ class ShortcutWatcher
 
         return CallNextHookEx(_hookID, nCode, wParam, lParam);
     }
-
     private static void SendKeyPress(Keys key)
     {
-        writer.WriteLine(key);
-        writer.Flush();
+        if (writer == null || pipeClient == null || !pipeClient.IsConnected)
+        {
+            // Try to establish connection if we don't have one
+            if (!ReconnectPipe())
+            {
+                Debug.WriteLine("Failed to send key press - no pipe connection available");
+                return;
+            }
+        }
+
+        try
+        {
+            // Double check writer is not null after potential reconnection
+            if (writer != null)
+            {
+                writer.WriteLine(key);
+                writer.Flush();
+            }
+        }
+        catch (IOException)
+        {
+            // Attempt to reconnect
+            try
+            {
+                if (ReconnectPipe())
+                {
+                    // Try to send the key press again
+                    writer?.WriteLine(key);
+                    writer?.Flush();
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Failed to reconnect to pipe: {ex.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error sending key press: {ex.Message}");
+        }
+    }
+
+    private static bool ReconnectPipe()
+    {
+        try
+        {
+            // Clean up existing resources
+            if (writer != null)
+            {
+                try { writer.Dispose(); } catch { }
+                writer = null;
+            }
+            if (pipeClient != null)
+            {
+                try { pipeClient.Dispose(); } catch { }
+                pipeClient = null;
+            }
+
+            // Create new pipe client
+            pipeClient = new NamedPipeClientStream(".", "ShotcutWatcher", PipeDirection.Out);
+
+            // Try to connect with a timeout
+            pipeClient.Connect(1000); // 1 second timeout
+
+            if (pipeClient.IsConnected)
+            {
+                writer = new StreamWriter(pipeClient);
+                return true;
+            }
+            return false;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Failed to reconnect to pipe: {ex.Message}");
+            writer = null;
+            pipeClient = null;
+            return false;
+        }
     }
 
     private static void FailSafeCheck()

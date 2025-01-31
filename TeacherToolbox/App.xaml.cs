@@ -2,6 +2,9 @@
 using System;
 using System.ComponentModel;
 using System.Text.Json.Nodes;
+using System.Threading.Tasks;
+using TeacherToolbox.Helpers;
+using TeacherToolbox.Model;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -15,6 +18,7 @@ namespace TeacherToolbox
     {
         public static Window MainWindow { get; set; }
         public static bool HandleClosedEvents { get; set; } = true;
+        private const string ThemeKey = "Theme";
 
         /// <summary>
         /// Initializes the singleton application object.  This is the first line of authored code
@@ -29,10 +33,45 @@ namespace TeacherToolbox
         /// Invoked when the application is launched.
         /// </summary>
         /// <param name="args">Details about the launch request and process.</param>
-        protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
+        protected override async void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
         {
             MainWindow = new MainWindow();
+            await InitializeAppThemeAsync();
+
             MainWindow.Activate();
+        }
+
+        private async Task InitializeAppThemeAsync()
+        {
+            try
+            {
+                // Load saved settings
+                var localSettings = await LocalSettings.CreateAsync();
+                var savedThemeIndex = localSettings.GetValueOrDefault(ThemeKey, 0);
+
+                // Convert index to ElementTheme
+                ElementTheme theme = savedThemeIndex switch
+                {
+                    1 => ElementTheme.Light,
+                    2 => ElementTheme.Dark,
+                    _ => ElementTheme.Default
+                };
+
+                // Set the theme
+                ThemeHelper.RootTheme = theme;
+
+                // Apply theme to main window
+                ThemeHelper.ApplyThemeToWindow(MainWindow);
+            }
+            catch (Exception ex)
+            {
+                // Log the error if you have logging set up
+                System.Diagnostics.Debug.WriteLine($"Failed to initialize theme: {ex}");
+
+                // Fallback to default theme
+                ThemeHelper.RootTheme = ElementTheme.Default;
+                ThemeHelper.ApplyThemeToWindow(MainWindow);
+            }
         }
 
     }

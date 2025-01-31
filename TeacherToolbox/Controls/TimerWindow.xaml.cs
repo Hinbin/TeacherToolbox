@@ -10,15 +10,12 @@ using Windows.Media.Playback;
 using Windows.Media.Core;
 using Windows.Graphics;
 using TeacherToolbox.Model;
-using Windows.ApplicationModel.VoiceCommands;
 using System.Threading.Tasks;
 using Microsoft.UI.Windowing;
 using System.Linq;
 using TeacherToolbox.Helpers;
 using Microsoft.UI;
-using static System.Net.WebRequestMethods;
 using Microsoft.UI.Xaml.Controls;
-using System.Runtime.CompilerServices;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -52,23 +49,126 @@ namespace TeacherToolbox.Controls
 
         public TimerWindow(int seconds)
         {
-            this.InitializeComponent();
+            try
+            {
+                // Set initial size before InitializeComponent
+                this.Height = 100;
+                this.Width = 100;
 
-            this.ExtendsContentIntoTitleBar = true;
-            this.IsMaximizable = false;
-            this.IsMinimizable = false;
+                this.InitializeComponent();
+
+                // Only set opacity if content exists
+                if (this.Content != null)
+                {
+                    this.Content.Opacity = 0;
+                }
+
+                InitializeWindowAsync(seconds);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error during window construction: {ex.Message}");
+                // Ensure content is visible if there's an error
+                if (this.Content != null)
+                {
+                    this.Content.Opacity = 1;
+                }
+            }
+        }
+
+        private async void InitializeWindowAsync(int seconds)
+        {
+            try
+            {
+                // Basic window setup
+                this.ExtendsContentIntoTitleBar = true;
+
+                // Initialize timers with proper error handling
+                InitializeTimers();
+
+                // Set up window properties
+                ConfigureWindowProperties();
+
+                // Initialize all resources
+                await InitializeResourcesAsync();
+
+                // Position and show the window
+                await FinalizeWindowSetupAsync(seconds);
+
+                // Make content visible
+                if (this.Content != null)
+                {
+                    this.Content.Opacity = 1;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error during initialization: {ex.Message}");
+                if (this.Content != null)
+                {
+                    this.Content.Opacity = 1;
+                }
+            }
+        }
+
+        private void InitializeTimers()
+        {
+            resizeEndTimer = new DispatcherTimer();
+            resizeEndTimer.Interval = TimeSpan.FromMilliseconds(500);
+            resizeEndTimer.Tick += ResizeEndTimer_Tick;
             this.SizeChanged += TimerWindow_SizeChanged;
+        }
 
-            // Set the background
+        private void ConfigureWindowProperties()
+        {
             TrySetAcrylicBackdrop(true);
+            ThemeHelper.ApplyThemeToWindow(this);
 
-            // Make this always on top and centered on screen
-            this.IsAlwaysOnTop = true;
-            LoadSoundFile();
+            var presenter = AppWindow?.Presenter as OverlappedPresenter;
+            if (presenter != null)
+            {
+                presenter.IsMinimizable = false;
+                presenter.IsMaximizable = false;
+                presenter.IsAlwaysOnTop = true;
+            }
+        }
 
+        private async Task InitializeResourcesAsync()
+        {
+            await LoadSoundFileAsync();
             dragHelper = new WindowDragHelper(this);
+            localSettings = await LocalSettings.CreateAsync();
+            displayManager = new DisplayManager();
+        }
 
-            // If the number of seconds is above 0, show the standard timer.  Otherwise, let the user select a time.
+        private async Task FinalizeWindowSetupAsync(int seconds)
+        {
+            if (localSettings?.LastWindowPosition != null)
+            {
+                if (localSettings.LastWindowPosition.Width > 10 && localSettings.LastWindowPosition.Height > 10)
+                {
+                    this.Height = localSettings.LastWindowPosition.Height;
+                    this.Width = localSettings.LastWindowPosition.Width;
+                }
+
+                PointInt32 lastPosition = new PointInt32(localSettings.LastWindowPosition.X, localSettings.LastWindowPosition.Y);
+                ulong lastDisplayIdValue = localSettings.LastWindowPosition.DisplayID;
+
+                var allDisplayAreas = displayManager?.DisplayAreas;
+                if (allDisplayAreas?.Any(da => da.DisplayId.Value == lastDisplayIdValue) == true)
+                {
+                    this.Move(lastPosition.X, lastPosition.Y);
+                }
+                else
+                {
+                    this.CenterOnScreen();
+                }
+            }
+            else
+            {
+                this.CenterOnScreen();
+            }
+
             if (seconds > 0)
             {
                 StartTimer(seconds);
@@ -78,42 +178,7 @@ namespace TeacherToolbox.Controls
                 SetupCustomTimerSelection();
             }
 
-            displayManager = new DisplayManager();
-
-            // ResizeEndTimer is used to save the window position after resizing
-            resizeEndTimer = new DispatcherTimer();
-            resizeEndTimer.Interval = TimeSpan.FromMilliseconds(500); // Adjust the delay as needed
-            resizeEndTimer.Tick += ResizeEndTimer_Tick;
-        }
-
-        public async Task InitializeAsync()
-        {
-            localSettings = await LocalSettings.CreateAsync();
-            PointInt32 lastPosition = new PointInt32(localSettings.LastWindowPosition.X, localSettings.LastWindowPosition.Y);
-            ulong lastDisplayIdValue = localSettings.LastWindowPosition.DisplayID;
-            // Check to see if the last display are is present - if so , move the window to that position
-            var allDisplayAreas = displayManager.DisplayAreas;
-            // Check through all the displayIDs of the display areas to see if the last display area is present                
-            if (allDisplayAreas.Any(da => da.DisplayId.Value == lastDisplayIdValue))
-            {
-                this.Move(lastPosition.X, lastPosition.Y);
-            }
-            else
-            {
-                // If not, center the window on the screen
-                this.CenterOnScreen();
-            }
-
-            if (localSettings.LastWindowPosition.Width > 10 && localSettings.LastWindowPosition.Height > 10)
-            {
-                this.Height = localSettings.LastWindowPosition.Height;
-                this.Width = localSettings.LastWindowPosition.Width;
-            } 
-            else {
-                this.Height = 300;
-                this.Width = 300;
-            }
-
+            await Task.Delay(50);
         }
 
         private void SetupCustomTimerSelection()
@@ -151,28 +216,67 @@ namespace TeacherToolbox.Controls
             timer.Start();
         }
 
-        private void LoadSoundFile()
+        private async Task LoadSoundFileAsync()
         {
             try
             {
-                string soundPath = Path.Combine(AppContext.BaseDirectory, "Assets", "ring.wav");
+                var settings = await LocalSettings.CreateAsync();
+                int soundIndex = settings.GetValueOrDefault(SoundSettings.SoundKey, 0);
+                string soundFileName = SoundSettings.GetSoundFileName(soundIndex);
+                string soundPath = Path.Combine(AppContext.BaseDirectory, "Assets", soundFileName);
+
                 player = new MediaPlayer();
                 player.Source = MediaSource.CreateFromUri(new Uri(soundPath));
             }
             catch (UriFormatException uriEx)
             {
-                // Handle exception related to URI format
                 Console.WriteLine($"URI format exception: {uriEx.Message}");
             }
             catch (FileNotFoundException fileEx)
             {
-                // Handle exception related to file not found
                 Console.WriteLine($"File not found: {fileEx.Message}");
+                // Fallback to default sound if the selected sound file is not found
+                try
+                {
+                    string defaultSoundPath = Path.Combine(AppContext.BaseDirectory, "Assets", SoundSettings.GetSoundFileName(0));
+                    player = new MediaPlayer();
+                    player.Source = MediaSource.CreateFromUri(new Uri(defaultSoundPath));
+                }
+                catch (Exception)
+                {
+                    Console.WriteLine("Failed to load default sound file");
+                }
             }
             catch (Exception ex)
             {
-                // Handle any other exception
                 Console.WriteLine($"An error occurred: {ex.Message}");
+            }
+        }
+
+        private async Task InitializeWindowPositionAsync()
+        {
+            PointInt32 lastPosition = new PointInt32(localSettings.LastWindowPosition.X, localSettings.LastWindowPosition.Y);
+            ulong lastDisplayIdValue = localSettings.LastWindowPosition.DisplayID;
+
+            var allDisplayAreas = displayManager.DisplayAreas;
+            if (allDisplayAreas.Any(da => da.DisplayId.Value == lastDisplayIdValue))
+            {
+                this.Move(lastPosition.X, lastPosition.Y);
+            }
+            else
+            {
+                this.CenterOnScreen();
+            }
+
+            if (localSettings.LastWindowPosition.Width > 10 && localSettings.LastWindowPosition.Height > 10)
+            {
+                this.Height = localSettings.LastWindowPosition.Height;
+                this.Width = localSettings.LastWindowPosition.Width;
+            }
+            else
+            {
+                this.Height = 300;
+                this.Width = 300;
             }
         }
 
@@ -289,26 +393,69 @@ namespace TeacherToolbox.Controls
 
         private void Window_Closed(object sender, WindowEventArgs args)
         {
-            // Make sure any Mica/Acrylic controller is disposed so it doesn't try to
-            // use this closed window.
-            if (m_acrylicController != null)
+            try
             {
-                m_acrylicController.Dispose();
-                m_acrylicController = null;
+                // Unregister event handlers
+                this.SizeChanged -= TimerWindow_SizeChanged;
+                this.Activated -= Window_Activated;
+                ((FrameworkElement)this.Content).ActualThemeChanged -= Window_ThemeChanged;
+
+                // Dispose the acrylic controller
+                if (m_acrylicController != null)
+                {
+                    m_acrylicController.Dispose();
+                    m_acrylicController = null;
+                }
+                m_configurationSource = null;
+
+                // Stop and cleanup the timer
+                if (timer != null)
+                {
+                    timer.Stop();
+                    timer.Tick -= Timer_Tick;
+                    timer = null;
+                }
+
+                // Stop and cleanup the resize timer
+                if (resizeEndTimer != null)
+                {
+                    resizeEndTimer.Stop();
+                    resizeEndTimer.Tick -= ResizeEndTimer_Tick;
+                    resizeEndTimer = null;
+                }
+
+                // Cleanup the media player
+                if (player != null)
+                {
+                    player.Dispose();
+                    player = null;
+                }
+
+                // Cleanup the display manager
+                if (displayManager != null)
+                {
+                    displayManager.Dispose();
+                    displayManager = null;
+                }
+
+                // Set content opacity back to normal in case window is reused
+                if (this.Content != null)
+                {
+                    this.Content.Opacity = 1;
+                }
+
+                // Cleanup drag helper
+                dragHelper = null;
+
+                // Clear any remaining references
+                m_wsdqHelper = null;
+                localSettings = null;
             }
-            this.Activated -= Window_Activated;
-            m_configurationSource = null;
-
-            // Remove the timer
-            player.Dispose();
-
-            // Check to see if the timer is running, and if so stop it
-            if (timer != null)
+            catch (Exception ex)
             {
-                timer.Stop();
+                // Log but don't rethrow as we're already closing
+                Console.WriteLine($"Error during window cleanup: {ex.Message}");
             }
-
-            displayManager.Dispose();
         }
 
         private void Window_ThemeChanged(FrameworkElement sender, object args)
@@ -338,15 +485,24 @@ namespace TeacherToolbox.Controls
 
         private void TimerWindow_SizeChanged(object sender, WindowSizeChangedEventArgs e)
         {
-            resizeEndTimer.Stop();
-            resizeEndTimer.Start();
+            if (resizeEndTimer != null)
+            {
+                resizeEndTimer.Stop();
+                resizeEndTimer.Start();
+            }
         }
 
         private void ResizeEndTimer_Tick(object sender, object e)
         {
-            resizeEndTimer.Stop();
-            // Perform actions here after resizing has stopped
-            localSettings.LastWindowPosition = GetCurrentWindowInformation();
+            if (resizeEndTimer != null)
+            {
+                resizeEndTimer.Stop();
+                // Perform actions here after resizing has stopped
+                if (localSettings != null)
+                {
+                    localSettings.LastWindowPosition = GetCurrentWindowInformation();
+                }
+            }
         }
 
 
@@ -435,6 +591,7 @@ namespace TeacherToolbox.Controls
             }
 
         }
+
     }
 
 

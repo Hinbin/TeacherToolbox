@@ -3,6 +3,7 @@ using FlaUI.Core;
 using FlaUI.Core.AutomationElements;
 using System.Diagnostics;
 using FlaUI.Core.Tools;
+using Microsoft.UI.Xaml.Controls;
 
 namespace TTBIntegrationTesting.Integration_Tests;
 
@@ -11,6 +12,7 @@ public class TestBase
     protected Application? App { get; private set; }
     protected UIA3Automation? Automation { get; private set; }
     protected Window? MainWindow { get; private set; }
+    protected AutomationElement? NavigationView;
 
     // Array of files to delete during setup
     private readonly string[] filesToDelete = new[]
@@ -68,6 +70,9 @@ public class TestBase
             throw new Exception("Failed to get main window. Make sure the application launches correctly.", ex);
         }
 
+        NavigationView = MainWindow!.FindFirstDescendant(cf =>
+            cf.ByAutomationId("NavigationPane"));
+
         Assert.That(MainWindow, Is.Not.Null, "Main window should be found");
     }
 
@@ -111,5 +116,95 @@ public class TestBase
 
         Assert.That(clickResult.Success, Is.True,
             $"Failed to click element: {element.Name}");
+    }
+
+    protected void NavigateToPage(string pageName)
+    {
+        EnsureNavigationIsOpen();
+        var navItem = GetNavigationItem(pageName);
+
+        // Find scrollable parent
+        var scrollContainer = NavigationView!.FindFirstDescendant(cf =>
+            cf.ByAutomationId("MenuItemsHost"));
+
+        if (scrollContainer != null)
+        {
+            var navItemPattern = navItem.Patterns.ScrollItem.Pattern;
+            navItemPattern.ScrollIntoView();                
+        }
+
+        navItem.Focus();
+        WaitForElementOnScreen(navItem);
+
+        navItem.Click();
+        Thread.Sleep(500);
+    }
+
+    // Helper to ensure navigation is open
+    protected void EnsureNavigationIsOpen()
+    {
+        var openButton = NavigationView!.FindFirstChild(cf =>
+            cf.ByName("Open Navigation"));
+
+        if (openButton != null) // If we find the open button, navigation is closed
+        {
+            ClickNavigationButton("Open Navigation");
+        }
+    }
+
+    // Helper for finding navigation items
+    protected AutomationElement GetNavigationItem(string pageName)
+    {
+        var navItem = NavigationView!.FindFirstDescendant(cf =>
+            cf.ByName(pageName));
+
+        if (navItem == null)
+            throw new InvalidOperationException($"Navigation item '{pageName}' not found");
+
+        return navItem;
+    }
+
+    // Helper method to find and click navigation buttons
+    protected void ClickNavigationButton(string buttonName)
+    {
+        var button = NavigationView!.FindFirstChild(cf =>
+            cf.ByName(buttonName));
+
+        if (button == null)
+            throw new InvalidOperationException($"Navigation button '{buttonName}' not found");
+
+        button.Click();
+        Thread.Sleep(500); // Keep existing wait logic
+
+    }
+
+    private void WaitForElementOnScreen(AutomationElement element, int timeoutMs = 2000)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        while (element.Properties.IsOffscreen && stopwatch.ElapsedMilliseconds < timeoutMs)
+        {
+            Thread.Sleep(100);
+        }
+
+        if (element.Properties.IsOffscreen)
+        {
+            throw new Exception($"Element {element.Name} remained offscreen after {timeoutMs}ms");
+        }
+    }
+
+    // Helper to verify a page is loaded
+    protected AutomationElement VerifyPageLoaded(string pageId)
+    {
+        var contentFrame = MainWindow!.FindFirstDescendant(cf =>
+            cf.ByAutomationId("NavigationPane"));
+
+        Assert.That(contentFrame, Is.Not.Null, "Navigation Pane should exist");
+
+        var pageElement = contentFrame.FindFirstDescendant(cf =>
+            cf.ByAutomationId(pageId));
+
+        Assert.That(pageElement, Is.Not.Null, $"{pageId} page should be loaded");
+
+        return pageElement;
     }
 }
