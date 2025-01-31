@@ -65,7 +65,9 @@
                                 Grid.Column="0"
                                 HorizontalContentAlignment="Center"
                                 Header="Hours"
-                                SelectedIndex="0">
+                                IsEditable="True"
+                                SelectedIndex="0"
+                                Text="0">
                                 <ComboBox.HeaderTemplate>
                                     <DataTemplate>
                                         <TextBlock HorizontalAlignment="Center" Text="{Binding}" />
@@ -78,7 +80,9 @@
                                 Grid.Column="1"
                                 HorizontalContentAlignment="Center"
                                 Header="Minutes"
-                                SelectedIndex="0">
+                                IsEditable="True"
+                                SelectedIndex="0"
+                                Text="0">
                                 <ComboBox.HeaderTemplate>
                                     <DataTemplate>
                                         <TextBlock HorizontalAlignment="Center" Text="{Binding}" />
@@ -91,7 +95,9 @@
                                 Grid.Column="2"
                                 HorizontalContentAlignment="Center"
                                 Header="Seconds"
-                                SelectedIndex="0">
+                                IsEditable="True"
+                                SelectedIndex="0"
+                                Text="0">
                                 <ComboBox.HeaderTemplate>
                                     <DataTemplate>
                                         <TextBlock HorizontalAlignment="Center" Text="{Binding}" />

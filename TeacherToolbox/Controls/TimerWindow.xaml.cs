@@ -16,6 +16,8 @@ using System.Linq;
 using TeacherToolbox.Helpers;
 using Microsoft.UI;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Dispatching;
+using Windows.System;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -39,13 +41,14 @@ namespace TeacherToolbox.Controls
         // To allow for a draggable window
         IntPtr hWnd = IntPtr.Zero;
 
-        MediaPlayer player;
-
         int secondsLeft;
         DispatcherTimer timer;
         DisplayManager displayManager;
 
         private PointInt32 lastPosition;
+
+        private bool isSoundAvailable;
+        private MediaPlayer player;
 
         public TimerWindow(int seconds)
         {
@@ -143,6 +146,7 @@ namespace TeacherToolbox.Controls
 
         private async Task FinalizeWindowSetupAsync(int seconds)
         {
+            // Handle window positioning first
             if (localSettings?.LastWindowPosition != null)
             {
                 if (localSettings.LastWindowPosition.Width > 10 && localSettings.LastWindowPosition.Height > 10)
@@ -169,6 +173,9 @@ namespace TeacherToolbox.Controls
                 this.CenterOnScreen();
             }
 
+            // Wait for window positioning to complete
+            await Task.Delay(100);
+
             if (seconds > 0)
             {
                 StartTimer(seconds);
@@ -176,13 +183,31 @@ namespace TeacherToolbox.Controls
             else
             {
                 SetupCustomTimerSelection();
-            }
 
-            await Task.Delay(50);
+                // Add a slight delay after setup and then focus the minutes control
+                await Task.Delay(100);
+
+                DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.High, async () =>
+                {
+                    // Ensure the ComboBox is in edit mode
+                    minutes.IsDropDownOpen = false;  // Close dropdown if open
+                    minutes.IsEditable = true;       // Ensure it's editable
+                    minutes.Focus(FocusState.Programmatic);
+
+                    // Get the TextBox and put it in edit mode
+                    var textBox = minutes.Descendants<TextBox>().FirstOrDefault();
+                    if (textBox != null)
+                    {
+                        textBox.Focus(FocusState.Programmatic);
+                        textBox.SelectAll();
+                    }
+                });
+            }
         }
 
         private void SetupCustomTimerSelection()
         {
+            // Populate the combo boxes
             for (int i = 0; i < 60; i++)
             {
                 minutes.Items.Add(i);
@@ -194,10 +219,92 @@ namespace TeacherToolbox.Controls
                 hours.Items.Add(i);
             }
 
+            // Set visibility
             timerGauge.Visibility = Visibility.Collapsed;
             timerText.Visibility = Visibility.Collapsed;
             timeSelector.Visibility = Visibility.Visible;
+
+            // Set initial values
+            hours.Text = "0";
+            minutes.Text = "0";
+            seconds.Text = "0";
+
+            // Remove any existing handlers first to prevent duplicates
+            hours.KeyDown -= ComboBox_KeyDown;
+            minutes.KeyDown -= ComboBox_KeyDown;
+            seconds.KeyDown -= ComboBox_KeyDown;
+            hours.TextSubmitted -= ComboBox_TextSubmitted;
+            minutes.TextSubmitted -= ComboBox_TextSubmitted;
+            seconds.TextSubmitted -= ComboBox_TextSubmitted;
+
+            // Add event handlers to all combo boxes
+            hours.KeyDown += ComboBox_KeyDown;
+            minutes.KeyDown += ComboBox_KeyDown;
+            seconds.KeyDown += ComboBox_KeyDown;
+            hours.TextSubmitted += ComboBox_TextSubmitted;
+            minutes.TextSubmitted += ComboBox_TextSubmitted;
+            seconds.TextSubmitted += ComboBox_TextSubmitted;
+
+            // Set tab order
+            hours.TabIndex = 0;
+            minutes.TabIndex = 1;
+            seconds.TabIndex = 2;
+            startButton.TabIndex = 3;
         }
+
+        private void ComboBox_KeyDown(object sender, KeyRoutedEventArgs e)
+        {
+            if (e.Key == VirtualKey.Enter)
+            {
+                e.Handled = true;
+                StartTimer_FromCustomSelection();
+            }
+        }
+
+        private void ComboBox_TextSubmitted(ComboBox sender, ComboBoxTextSubmittedEventArgs args)
+        {
+            bool isValid = false;
+            if (int.TryParse(args.Text, out int value))
+            {
+                // Validate range based on which ComboBox it is
+                if (sender == hours && value >= 0 && value < 24)
+                {
+                    isValid = true;
+                }
+                else if ((sender == minutes || sender == seconds) && value >= 0 && value < 60)
+                {
+                    isValid = true;
+                }
+            }
+
+            if (!isValid)
+            {
+                args.Handled = true;
+                sender.Text = "0";
+            }
+        }
+
+        private void StartTimer_FromCustomSelection()
+        {
+            // Parse values from text instead of using SelectedItem
+            int hoursSelected = int.TryParse(hours.Text, out int h) ? h : 0;
+            int minutesSelected = int.TryParse(minutes.Text, out int m) ? m : 0;
+            int secondsSelected = int.TryParse(seconds.Text, out int s) ? s : 0;
+
+            // Work out the overall number of seconds
+            int totalSeconds = (hoursSelected * 3600) + (minutesSelected * 60) + secondsSelected;
+
+            StartTimer(totalSeconds);
+            timerGauge.Visibility = Visibility.Visible;
+            timerText.Visibility = Visibility.Visible;
+            timeSelector.Visibility = Visibility.Collapsed;
+        }
+
+        private void StartButton_Click(object sender, RoutedEventArgs e)
+        {
+            StartTimer_FromCustomSelection();
+        }
+      
 
         private void StartTimer(int seconds)
         {
@@ -225,31 +332,33 @@ namespace TeacherToolbox.Controls
                 string soundFileName = SoundSettings.GetSoundFileName(soundIndex);
                 string soundPath = Path.Combine(AppContext.BaseDirectory, "Assets", soundFileName);
 
-                player = new MediaPlayer();
-                player.Source = MediaSource.CreateFromUri(new Uri(soundPath));
-            }
-            catch (UriFormatException uriEx)
-            {
-                Console.WriteLine($"URI format exception: {uriEx.Message}");
-            }
-            catch (FileNotFoundException fileEx)
-            {
-                Console.WriteLine($"File not found: {fileEx.Message}");
-                // Fallback to default sound if the selected sound file is not found
-                try
+                if (File.Exists(soundPath))
                 {
-                    string defaultSoundPath = Path.Combine(AppContext.BaseDirectory, "Assets", SoundSettings.GetSoundFileName(0));
                     player = new MediaPlayer();
-                    player.Source = MediaSource.CreateFromUri(new Uri(defaultSoundPath));
+                    player.Source = MediaSource.CreateFromUri(new Uri(soundPath));
+                    isSoundAvailable = true;
                 }
-                catch (Exception)
+                else
                 {
-                    Console.WriteLine("Failed to load default sound file");
+                    // Try loading default sound
+                    string defaultSoundPath = Path.Combine(AppContext.BaseDirectory, "Assets", SoundSettings.GetSoundFileName(0));
+                    if (File.Exists(defaultSoundPath))
+                    {
+                        player = new MediaPlayer();
+                        player.Source = MediaSource.CreateFromUri(new Uri(defaultSoundPath));
+                        isSoundAvailable = true;
+                    }
+                    else
+                    {
+                        Console.WriteLine("No sound files available");
+                        isSoundAvailable = false;
+                    }
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"An error occurred: {ex.Message}");
+                Console.WriteLine($"Error loading sound: {ex.Message}");
+                isSoundAvailable = false;
             }
         }
 
@@ -315,8 +424,18 @@ namespace TeacherToolbox.Controls
 
             if (secondsLeft == 0)
             {
-                // Play ring.wav in the Assets directory
-                player.Play();
+                // Only try to play sound if it's available
+                if (isSoundAvailable && player != null)
+                {
+                    try
+                    {
+                        player.Play();
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error playing sound: {ex.Message}");
+                    }
+                }
             }
         }
 
@@ -396,6 +515,12 @@ namespace TeacherToolbox.Controls
             try
             {
                 // Unregister event handlers
+                if (minutes != null)
+                {
+                    minutes.KeyDown -= ComboBox_KeyDown;
+                    minutes.TextSubmitted -= ComboBox_TextSubmitted;
+                }
+
                 this.SizeChanged -= TimerWindow_SizeChanged;
                 this.Activated -= Window_Activated;
                 ((FrameworkElement)this.Content).ActualThemeChanged -= Window_ThemeChanged;
@@ -525,26 +650,6 @@ namespace TeacherToolbox.Controls
         protected override void OnPositionChanged(PointInt32 newPosition)
         {
             lastPosition = newPosition;
-        }
-
-
-        private void StartButton_Click(object sender, RoutedEventArgs e)
-        {
-
-            // Get the number of seconds from the comboboxes - blank values should be treated as 0
-            int hoursSelected = hours.SelectedItem == null ? 0 : (int)hours.SelectedItem;
-            int minutesSelected = minutes.SelectedItem == null ? 0 : (int)minutes.SelectedItem;
-            int secondsSelected = seconds.SelectedItem == null ? 0 : (int)seconds.SelectedItem;
-
-            // Work out the overall number of seconds
-            int totalSeconds = (hoursSelected * 3600) + (minutesSelected * 60) + secondsSelected;
-
-            StartTimer(totalSeconds);
-            timerGauge.Visibility = Visibility.Visible;
-            timerText.Visibility = Visibility.Visible;
-            timeSelector.Visibility = Visibility.Collapsed;
-
-
         }
 
         private void Grid_Tapped(object sender, TappedRoutedEventArgs e)
