@@ -31,6 +31,13 @@ namespace TeacherToolbox.Controls
                 return;
             }
 
+            if (buttonContent.Contains("Interval"))
+            {
+                TimerWindow timerWindow = new(-1);
+                timerWindow.Activate();
+                return;
+            }
+
             // Check for format exception and log it
             try
             {

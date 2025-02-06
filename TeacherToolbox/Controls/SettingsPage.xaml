@@ -31,6 +31,18 @@
                 Style="{StaticResource TitleTextBlockStyle}"
                 Text="Settings" />
 
+            <!--  Feedback section  -->
+            <local:ExpanderItem Header="Feedback" Subheader="Report bugs and suggest improvements by clicking on this button">
+                <local:ExpanderItem.ItemContent>
+                    <StackPanel Spacing="8">
+                        <Button
+                            x:Name="FeedbackButton"
+                            Click="FeedbackButton_Click"
+                            Content="Send Feedback" />
+                    </StackPanel>
+                </local:ExpanderItem.ItemContent>
+            </local:ExpanderItem>
+
             <!--  Timer Section  -->
             <TextBlock
                 Margin="0,24,0,0"
@@ -102,26 +114,27 @@
 
                 <Border Height="1" Background="{ThemeResource CardStrokeColorDefaultBrush}" />
 
-                <!--  About Section  -->
-                <TextBlock
-                    Margin="0,24,0,0"
-                    Style="{StaticResource SubtitleTextBlockStyle}"
-                    Text="About" />
-
-                <StackPanel
-                    Margin="0,8"
-                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="1"
-                    CornerRadius="4">
-
-                    <local:ExpanderItem Header="Teacher Toolbox">
-                        <local:ExpanderItem.ItemContent>
-                            <TextBlock Style="{StaticResource CaptionTextBlockStyle}" Text="Version 0.2" />
-                        </local:ExpanderItem.ItemContent>
-                    </local:ExpanderItem>
-                </StackPanel>
             </StackPanel>
+            <!--  About Section  -->
+            <TextBlock
+                Margin="0,24,0,0"
+                Style="{StaticResource SubtitleTextBlockStyle}"
+                Text="About" />
+
+            <StackPanel
+                Margin="0,8"
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                CornerRadius="4">
+
+                <local:ExpanderItem Header="Teacher Toolbox">
+                    <local:ExpanderItem.ItemContent>
+                        <TextBlock Style="{StaticResource CaptionTextBlockStyle}" Text="Version 0.2" />
+                    </local:ExpanderItem.ItemContent>
+                </local:ExpanderItem>
+            </StackPanel>
+
         </StackPanel>
     </ScrollViewer>
 </local:AutomatedPage>
