@@ -15,6 +15,7 @@ class ShortcutWatcher
     private static LowLevelKeyboardProc _proc = HookCallback;
     private static IntPtr _hookID = IntPtr.Zero;
     private static NamedPipeClientStream pipeClient;
+    private static NamedPipeServerStream shutdownPipeServer;
     private static StreamWriter writer;
     private static HashSet<Keys> keysBeingPressed = new HashSet<Keys>();
 
@@ -40,6 +41,9 @@ class ShortcutWatcher
             // Continue running even if initial connection fails
         }
 
+        // Start listening for shutdown signal
+        StartShutdownListener();
+
         // Subscribe to session switch events
         SystemEvents.SessionSwitch += new SessionSwitchEventHandler(SystemEvents_SessionSwitch);
 
@@ -52,15 +56,45 @@ class ShortcutWatcher
         Application.Run();
 
         // Cleanup
+        CleanupResources();
+    }
+
+    private static void StartShutdownListener()
+    {
+        shutdownPipeServer = new NamedPipeServerStream("ShotcutWatcherShutdown", PipeDirection.In);
+
+        // Start an async operation to wait for and handle shutdown signal
+        Task.Run(async () => {
+            try
+            {
+                await shutdownPipeServer.WaitForConnectionAsync();
+
+                using (StreamReader reader = new StreamReader(shutdownPipeServer))
+                {
+                    string message = await reader.ReadLineAsync();
+                    if (message == "SHUTDOWN")
+                    {
+                        // Gracefully exit the application
+                        Application.Exit();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error in shutdown listener: {ex.Message}");
+            }
+        });
+    }
+
+    private static void CleanupResources()
+    {
         writer?.Dispose();
         pipeClient?.Dispose();
+        shutdownPipeServer?.Dispose();
         UnhookWindowsHookEx(_hookID);
         SystemEvents.SessionSwitch -= new SessionSwitchEventHandler(SystemEvents_SessionSwitch);
 
-        Application.ApplicationExit += (sender, e) =>
-        {
-            keysBeingPressed.Clear();
-        };
+        keysBeingPressed.Clear();
     }
 
     private static void SystemEvents_SessionSwitch(object sender, SessionSwitchEventArgs e)

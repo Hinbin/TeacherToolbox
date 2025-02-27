@@ -39,6 +39,19 @@ namespace TeacherToolbox
             await InitializeAppThemeAsync();
 
             MainWindow.Activate();
+
+            this.UnhandledException += (sender, args) =>
+            {
+                System.Diagnostics.Debug.WriteLine($"UNHANDLED EXCEPTION: {args.Message}");
+                System.Diagnostics.Debug.WriteLine($"Exception: {args.Exception}");
+                if (args.Exception.InnerException != null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Inner Exception: {args.Exception.InnerException}");
+                    System.Diagnostics.Debug.WriteLine($"Inner Stack Trace: {args.Exception.InnerException.StackTrace}");
+                }
+                System.Diagnostics.Debug.WriteLine($"Stack Trace: {args.Exception.StackTrace}");
+                args.Handled = true;
+            };
         }
 
         private async Task InitializeAppThemeAsync()

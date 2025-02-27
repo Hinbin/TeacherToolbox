@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="utf-8" ?>
 <winex:WindowEx
     x:Class="TeacherToolbox.Controls.TimerWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -17,7 +16,7 @@
             PointerPressed="Grid_PointerPressed"
             PointerReleased="Grid_PointerReleased"
             Tapped="Grid_Tapped">
-            <Grid Width="100" Height="100">
+            <Grid Width="400" Height="400">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
@@ -27,6 +26,7 @@
                     <Viewbox>
                         <controls:RadialGauge
                             x:Name="timerGauge"
+                            x:FieldModifier="public"
                             MaxAngle="360"
                             MinAngle="0"
                             NeedleBrush="Transparent"
@@ -43,95 +43,154 @@
                             TrailBrush="{StaticResource darkPurpleBrush}"
                             ValueStringFormat="'" />
                     </Viewbox>
-                    <Grid Width="75" Height="75">
-                        <Viewbox>
-                            <Border Padding="2,2,2,5" CornerRadius="50">
+                    <Grid Width="200" Height="200">
+                        <Viewbox Stretch="Uniform">
+                            <Grid VerticalAlignment="Center">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
                                 <TextBlock
                                     x:Name="timerText"
+                                    Grid.Row="0"
                                     HorizontalAlignment="Center"
-                                    VerticalAlignment="Center" />
-                            </Border>
+                                    FontSize="48"
+                                    FontWeight="Bold" />
+                                <TextBlock
+                                    x:Name="intervalInfoText"
+                                    Grid.Row="1"
+                                    Margin="0,5,0,0"
+                                    HorizontalAlignment="Center"
+                                    FontSize="24"
+                                    FontWeight="Normal" />
+                            </Grid>
                         </Viewbox>
                     </Grid>
-                    <Grid x:Name="timeSelector" Visibility="Collapsed">
-                        <Viewbox>
-                            <StackPanel>
-                                <Grid x:Name="intervalsPanel">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto" />
-                                    </Grid.RowDefinitions>
-                                    <ComboBox
-                                        x:Name="hours"
-                                        Grid.Row="0"
-                                        Grid.Column="0"
-                                        HorizontalContentAlignment="Center"
-                                        Header="Hours"
-                                        IsEditable="True"
-                                        SelectedIndex="0"
-                                        Text="0">
-                                        <ComboBox.HeaderTemplate>
-                                            <DataTemplate>
-                                                <TextBlock HorizontalAlignment="Center" Text="{Binding}" />
-                                            </DataTemplate>
-                                        </ComboBox.HeaderTemplate>
-                                    </ComboBox>
-                                    <ComboBox
-                                        x:Name="minutes"
-                                        Grid.Row="0"
-                                        Grid.Column="1"
-                                        HorizontalContentAlignment="Center"
-                                        Header="Minutes"
-                                        IsEditable="True"
-                                        SelectedIndex="0"
-                                        Text="0">
-                                        <ComboBox.HeaderTemplate>
-                                            <DataTemplate>
-                                                <TextBlock HorizontalAlignment="Center" Text="{Binding}" />
-                                            </DataTemplate>
-                                        </ComboBox.HeaderTemplate>
-                                    </ComboBox>
-                                    <ComboBox
-                                        x:Name="seconds"
-                                        Grid.Row="0"
-                                        Grid.Column="2"
-                                        HorizontalContentAlignment="Center"
-                                        Header="Seconds"
-                                        IsEditable="True"
-                                        SelectedIndex="0"
-                                        Text="0">
-                                        <ComboBox.HeaderTemplate>
-                                            <DataTemplate>
-                                                <TextBlock HorizontalAlignment="Center" Text="{Binding}" />
-                                            </DataTemplate>
-                                        </ComboBox.HeaderTemplate>
-                                    </ComboBox>
-                                </Grid>
+                    <Grid
+                        x:Name="timeSelector"
+                        VerticalAlignment="Center"
+                        Visibility="Collapsed">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel Padding="24">
+                                <ListView
+                                    x:Name="intervalsListView"
+                                    Margin="0,8"
+                                    HorizontalAlignment="Stretch"
+                                    IsItemClickEnabled="False"
+                                    SelectionMode="None">
+                                    <ListView.ItemContainerStyle>
+                                        <Style TargetType="ListViewItem">
+                                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                            <Setter Property="Padding" Value="0" />
+                                            <Setter Property="Margin" Value="0,4" />
+                                            <Setter Property="Background" Value="Transparent" />
+                                        </Style>
+                                    </ListView.ItemContainerStyle>
+                                    <ListView.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid
+                                                Padding="16"
+                                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                                CornerRadius="8">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+
+                                                <TextBlock
+                                                    Grid.Column="0"
+                                                    Margin="0,0,16,0"
+                                                    VerticalAlignment="Center"
+                                                    FontSize="18"
+                                                    FontWeight="Bold"
+                                                    Text="{Binding IntervalNumber}" />
+
+                                                <Grid Grid.Column="1" HorizontalAlignment="Stretch">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                                        <ComboBox
+                                                            HorizontalAlignment="Stretch"
+                                                            IsEditable="True"
+                                                            ItemsSource="{Binding HoursList}"
+                                                            Text="{Binding Hours, Mode=TwoWay}" />
+                                                        <TextBlock HorizontalAlignment="Center" Text="Hours" />
+                                                    </StackPanel>
+
+                                                    <TextBlock
+                                                        Grid.Column="1"
+                                                        Margin="8,0"
+                                                        VerticalAlignment="Center"
+                                                        Text=":" />
+
+                                                    <StackPanel Grid.Column="2" Margin="0,0,8,0">
+                                                        <ComboBox
+                                                            HorizontalAlignment="Stretch"
+                                                            IsEditable="True"
+                                                            ItemsSource="{Binding MinutesList}"
+                                                            Text="{Binding Minutes, Mode=TwoWay}" />
+                                                        <TextBlock HorizontalAlignment="Center" Text="Minutes" />
+                                                    </StackPanel>
+
+                                                    <TextBlock
+                                                        Grid.Column="3"
+                                                        Margin="8,0"
+                                                        VerticalAlignment="Center"
+                                                        Text=":" />
+
+                                                    <StackPanel Grid.Column="4">
+                                                        <ComboBox
+                                                            HorizontalAlignment="Stretch"
+                                                            IsEditable="True"
+                                                            ItemsSource="{Binding SecondsList}"
+                                                            Text="{Binding Seconds, Mode=TwoWay}" />
+                                                        <TextBlock HorizontalAlignment="Center" Text="Seconds" />
+                                                    </StackPanel>
+                                                </Grid>
+
+                                                <Button
+                                                    Grid.Column="2"
+                                                    Margin="16,0,0,0"
+                                                    VerticalAlignment="Center"
+                                                    Click="RemoveInterval_Click"
+                                                    Visibility="{Binding ShowRemoveButton, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                    <FontIcon FontSize="12" Glyph="&#xE711;" />
+                                                </Button>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ListView.ItemTemplate>
+                                </ListView>
+
+                                <Button
+                                    x:Name="addIntervalButton"
+                                    Margin="0,16"
+                                    HorizontalAlignment="Stretch"
+                                    Click="AddIntervalButton_Click"
+                                    Style="{StaticResource AccentButtonStyle}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <FontIcon Margin="0,0,8,0" Glyph="&#xE710;" />
+                                        <TextBlock Text="Add Interval" />
+                                    </StackPanel>
+                                </Button>
+
                                 <Button
                                     x:Name="startButton"
-                                    Margin="2"
-                                    Padding="2"
                                     HorizontalAlignment="Stretch"
                                     Click="StartButton_Click"
-                                    Content="Start" />
+                                    Style="{StaticResource AccentButtonStyle}">
+                                    <TextBlock Text="Start Timer" />
+                                </Button>
                             </StackPanel>
-                        </Viewbox>
+                        </ScrollViewer>
                     </Grid>
                 </Grid>
-
-                <Button
-                    x:Name="addIntervalButton"
-                    Grid.Row="1"
-                    Margin="2"
-                    Padding="2"
-                    HorizontalAlignment="Stretch"
-                    Click="AddIntervalButton_Click"
-                    Content="Add Interval"
-                    Visibility="Collapsed" />
             </Grid>
         </Grid>
     </Viewbox>

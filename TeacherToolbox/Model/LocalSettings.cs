@@ -26,21 +26,29 @@ namespace TeacherToolbox.Model
         }
     }
 
+    public class SavedIntervalConfig
+    {
+        public int Hours { get; set; }
+        public int Minutes { get; set; }
+        public int Seconds { get; set; }
+    }
+
     public class LocalSettings : ObservableObject
     {
         private string centreText;
         private WindowPosition lastWindowPosition;
         private Dictionary<string, object> settings;
         private readonly string filePath;
+        private List<SavedIntervalConfig> savedIntervalConfigs;
 
         public LocalSettings()
         {
             centreText = "Centre";
             lastWindowPosition = new WindowPosition(0, 0, 0, 0, 0);
             settings = new Dictionary<string, object>();
+            savedIntervalConfigs = new List<SavedIntervalConfig>();
             filePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TeacherToolbox", "settings.json");
 
-            // Ensure directory exists
             Directory.CreateDirectory(Path.GetDirectoryName(filePath));
         }
 
@@ -71,6 +79,93 @@ namespace TeacherToolbox.Model
             set => SetAndSave(ref centreText, value);
         }
 
+        public void SaveIntervalConfigs(List<SavedIntervalConfig> configs)
+        {
+            savedIntervalConfigs = new List<SavedIntervalConfig>(configs);
+            SaveSettings();
+        }
+
+        public List<SavedIntervalConfig> GetSavedIntervalConfigs()
+        {
+            return new List<SavedIntervalConfig>(savedIntervalConfigs ?? new List<SavedIntervalConfig>());
+        }
+
+        public void SaveSettings()
+        {
+            try
+            {
+                var options = new JsonSerializerOptions
+                {
+                    WriteIndented = true
+                };
+
+                var settingsToSave = new Dictionary<string, object>
+                {
+                    { "CentreText", CentreText },
+                    { "LastWindowPosition", LastWindowPosition },
+                    { "SavedIntervalConfigs", savedIntervalConfigs }
+                };
+
+                foreach (var setting in settings)
+                {
+                    settingsToSave[setting.Key] = setting.Value;
+                }
+
+                string json = JsonSerializer.Serialize(settingsToSave, options);
+                File.WriteAllText(filePath, json);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"Error saving settings: {e.Message}");
+            }
+        }
+
+        public async Task LoadSettings()
+        {
+            try
+            {
+                if (File.Exists(filePath))
+                {
+                    string json = await File.ReadAllTextAsync(filePath);
+                    var options = new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    };
+
+                    var loadedSettings = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json, options);
+
+                    if (loadedSettings != null)
+                    {
+                        settings = new Dictionary<string, object>();
+                        foreach (var kvp in loadedSettings)
+                        {
+                            switch (kvp.Key)
+                            {
+                                case "CentreText":
+                                    CentreText = kvp.Value.GetString() ?? "Centre";
+                                    break;
+                                case "LastWindowPosition":
+                                    LastWindowPosition = kvp.Value.Deserialize<WindowPosition>(options);
+                                    break;
+                                case "SavedIntervalConfigs":
+                                    savedIntervalConfigs = kvp.Value.Deserialize<List<SavedIntervalConfig>>(options) ?? new List<SavedIntervalConfig>();
+                                    break;
+                                default:
+                                    settings[kvp.Key] = kvp.Value;
+                                    break;
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"Error loading settings: {e.Message}");
+                // Initialize with defaults if loading fails
+                savedIntervalConfigs = new List<SavedIntervalConfig>();
+            }
+        }
+
         public T GetValueOrDefault<T>(string key, T defaultValue)
         {
             if (settings.TryGetValue(key, out object value))
@@ -94,61 +189,7 @@ namespace TeacherToolbox.Model
         public void SetValue<T>(string key, T value)
         {
             settings[key] = value;
-        }
-
-        public void SaveSettings()
-        {
-            try
-            {
-                var settingsToSave = new Dictionary<string, object>(settings)
-                {
-                    { "CentreText", CentreText },
-                    { "LastWindowPosition", LastWindowPosition }
-                };
-
-                string json = JsonSerializer.Serialize(settingsToSave);
-                File.WriteAllText(filePath, json);
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine($"Error saving settings: {e.Message}");
-            }
-        }
-
-        public async Task LoadSettings()
-        {
-            try
-            {
-                if (File.Exists(filePath))
-                {
-                    string json = await File.ReadAllTextAsync(filePath);
-                    var loadedSettings = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json);
-
-                    if (loadedSettings != null)
-                    {
-                        settings = new Dictionary<string, object>();
-                        foreach (var kvp in loadedSettings)
-                        {
-                            if (kvp.Key == "CentreText")
-                            {
-                                CentreText = kvp.Value.GetString() ?? "Centre";
-                            }
-                            else if (kvp.Key == "LastWindowPosition")
-                            {
-                                LastWindowPosition = kvp.Value.Deserialize<WindowPosition>();
-                            }
-                            else
-                            {
-                                settings[kvp.Key] = kvp.Value;
-                            }
-                        }
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine($"Error loading settings: {e.Message}");
-            }
+            SaveSettings();
         }
     }
 }

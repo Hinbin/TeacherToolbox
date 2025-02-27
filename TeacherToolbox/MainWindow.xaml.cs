@@ -82,12 +82,34 @@ namespace TeacherToolbox
             try
             {
                 _sleepPreventer?.Dispose();
+
+                SendShutdownSignalToShortcutWatcher();
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error disposing SleepPreventer: {ex}");
             }
 
+        }
+
+        private void SendShutdownSignalToShortcutWatcher()
+        {
+            try
+            {
+                using (NamedPipeClientStream pipeClient = new NamedPipeClientStream(".", "ShotcutWatcherShutdown", PipeDirection.Out))
+                {
+                    pipeClient.Connect(1000); // 1 second timeout
+                    using (StreamWriter writer = new StreamWriter(pipeClient))
+                    {
+                        writer.WriteLine("SHUTDOWN");
+                        writer.Flush();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error sending shutdown signal: {ex.Message}");
+            }
         }
 
         private async void ListenForKeyPresses()

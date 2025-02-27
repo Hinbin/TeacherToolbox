@@ -19,6 +19,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Dispatching;
 using Windows.System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -35,6 +36,7 @@ namespace TeacherToolbox.Controls
         WindowsSystemDispatcherQueueHelper m_wsdqHelper; // See separate sample below for implementation
         Microsoft.UI.Composition.SystemBackdrops.DesktopAcrylicController m_acrylicController;
         Microsoft.UI.Composition.SystemBackdrops.SystemBackdropConfiguration m_configurationSource;
+        private ObservableCollection<IntervalTimeViewModel> intervalsList;
 
         private WindowDragHelper dragHelper;
         public LocalSettings localSettings;
@@ -53,39 +55,46 @@ namespace TeacherToolbox.Controls
         private MediaPlayer player;
 
         private int intervalCount = 1;
-        private const int MaxIntervals = 8;        
+        private const int MaxIntervals = 8;
         private Queue<IntervalTime> intervals;
         private int currentIntervalTotal;
         private int intervalNumber = 0;
 
         public TimerWindow(int seconds)
         {
-            try
+
+            // First initialize the intervalsList to prevent null reference
+            intervalsList = new ObservableCollection<IntervalTimeViewModel>();
+
+            this.InitializeComponent();
+
+            // Set initial size after InitializeComponent
+            if (seconds == 0) // Custom timer
             {
-                // Set initial size before InitializeComponent
+                this.Height = 400;
+                this.Width = 300;
+            }
+            else if (seconds == -1) // Interval timer
+            {
+                this.Height = 400;
+                this.Width = 300;
+            }
+            else
+            {
                 this.Height = 100;
                 this.Width = 100;
-
-                this.InitializeComponent();
-
-                // Only set opacity if content exists
-                if (this.Content != null)
-                {
-                    this.Content.Opacity = 0;
-                }
-
-                InitializeWindowAsync(seconds);
             }
-            catch (Exception ex)
+
+            // Only set opacity if content exists
+            if (this.Content != null)
             {
-                Console.WriteLine($"Error during window construction: {ex.Message}");
-                // Ensure content is visible if there's an error
-                if (this.Content != null)
-                {
-                    this.Content.Opacity = 1;
-                }
+                this.Content.Opacity = 0;
             }
+
+            InitializeWindowAsync(seconds);
+
         }
+
 
         private async void InitializeWindowAsync(int seconds)
         {
@@ -104,13 +113,14 @@ namespace TeacherToolbox.Controls
                 await InitializeResourcesAsync();
 
                 // Position and show the window
-                await FinalizeWindowSetupAsync(seconds);                
+                await FinalizeWindowSetupAsync(seconds);
 
                 // Make content visible
                 if (this.Content != null)
                 {
                     this.Content.Opacity = 1;
                 }
+
             }
             catch (Exception ex)
             {
@@ -121,6 +131,7 @@ namespace TeacherToolbox.Controls
                 }
             }
         }
+
 
         private void InitializeTimers()
         {
@@ -188,83 +199,86 @@ namespace TeacherToolbox.Controls
             {
                 StartTimer(seconds);
             }
-            else if (seconds == 0)
+            else if (seconds == 0) // Custom timer
             {
-                SetupCustomTimerSelection();
-
-                // Add a slight delay after setup and then focus the minutes control
-                await Task.Delay(100);
-
-                DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.High, async () =>
-                {
-                    // Ensure the ComboBox is in edit mode
-                    minutes.IsDropDownOpen = false;  // Close dropdown if open
-                    minutes.IsEditable = true;       // Ensure it's editable
-                    minutes.Focus(FocusState.Programmatic);
-
-                    // Get the TextBox and put it in edit mode
-                    var textBox = minutes.Descendants<TextBox>().FirstOrDefault();
-                    if (textBox != null)
-                    {
-                        textBox.Focus(FocusState.Programmatic);
-                        textBox.SelectAll();
-                    }
-                });
+                SetupCustomTimerSelection(seconds);
             }
-            else if (seconds == -1)
+            else if (seconds == -1) // Interval timer
             {
-                SetupCustomTimerSelection();
-
-                addIntervalButton.Visibility = Visibility.Visible;
+                SetupCustomTimerSelection(seconds);
             }
         }
 
-        private void SetupCustomTimerSelection()
+        // In TimerWindow.cs, update the SetupCustomTimerSelection method:
+
+        private async void SetupCustomTimerSelection(int timerType)
         {
-            // Populate the combo boxes
-            for (int i = 0; i < 60; i++)
+
+            // Ensure intervalsList is initialized
+            if (intervalsList == null)
             {
-                minutes.Items.Add(i);
-                seconds.Items.Add(i);
+                intervalsList = new ObservableCollection<IntervalTimeViewModel>();
             }
 
-            for (int i = 0; i < 24; i++)
+            // Try to load saved interval configurations
+            var localSettings = await LocalSettings.CreateAsync();
+            var savedConfigs = localSettings.GetSavedIntervalConfigs();
+
+            if (savedConfigs != null && savedConfigs.Any())
             {
-                hours.Items.Add(i);
+                // Clear existing intervals and load saved configurations
+                intervalsList.Clear();
+                foreach (var config in savedConfigs)
+                {
+                    intervalsList.Add(new IntervalTimeViewModel(intervalsList.Count + 1)
+                    {
+                        Hours = config.Hours,
+                        Minutes = config.Minutes,
+                        Seconds = config.Seconds
+                    });
+                }
+            }
+            else if (!intervalsList.Any())
+            {
+                // If no saved configurations, add a default first interval
+                intervalsList.Add(new IntervalTimeViewModel(1));
             }
 
-            // Set visibility
-            timerGauge.Visibility = Visibility.Collapsed;
-            timerText.Visibility = Visibility.Collapsed;
-            timeSelector.Visibility = Visibility.Visible;
+            // Set UI element properties
+            if (intervalsListView != null)
+            {
+                intervalsListView.ItemsSource = intervalsList;
+            }
 
-            // Set initial values
-            hours.Text = "0";
-            minutes.Text = "0";
-            seconds.Text = "0";
+            if (timerGauge != null)
+            {
+                timerGauge.Visibility = Visibility.Collapsed;
+            }
 
-            // Remove any existing handlers first to prevent duplicates
-            hours.KeyDown -= ComboBox_KeyDown;
-            minutes.KeyDown -= ComboBox_KeyDown;
-            seconds.KeyDown -= ComboBox_KeyDown;
-            hours.TextSubmitted -= ComboBox_TextSubmitted;
-            minutes.TextSubmitted -= ComboBox_TextSubmitted;
-            seconds.TextSubmitted -= ComboBox_TextSubmitted;
+            if (timerText != null)
+            {
+                timerText.Visibility = Visibility.Collapsed;
+            }
 
-            // Add event handlers to all combo boxes
-            hours.KeyDown += ComboBox_KeyDown;
-            minutes.KeyDown += ComboBox_KeyDown;
-            seconds.KeyDown += ComboBox_KeyDown;
-            hours.TextSubmitted += ComboBox_TextSubmitted;
-            minutes.TextSubmitted += ComboBox_TextSubmitted;
-            seconds.TextSubmitted += ComboBox_TextSubmitted;
+            if (timeSelector != null)
+            {
+                timeSelector.Visibility = Visibility.Visible;
+            }
 
-            // Set tab order
-            hours.TabIndex = 0;
-            minutes.TabIndex = 1;
-            seconds.TabIndex = 2;
-            startButton.TabIndex = 3;
+            // Show or hide the add interval button based on the timer type
+            if (addIntervalButton != null)
+            {
+                // Check if this is an interval timer (-1) or custom timer (0)
+                bool isIntervalTimer = timerType == -1;
+                addIntervalButton.Visibility = isIntervalTimer ? Visibility.Visible : Visibility.Collapsed;
+            }
+
+            // Update interval numbers and remove button visibility
+            UpdateIntervalNumbers();
+
+
         }
+
 
         private void ComboBox_KeyDown(object sender, KeyRoutedEventArgs e)
         {
@@ -280,12 +294,16 @@ namespace TeacherToolbox.Controls
             bool isValid = false;
             if (int.TryParse(args.Text, out int value))
             {
-                // Validate range based on which ComboBox it is
-                if (sender == hours && value >= 0 && value < 24)
+                // Get the binding property name from the ComboBox's parent StackPanel
+                var stackPanel = VisualTreeHelper.GetParent(sender) as StackPanel;
+                var label = stackPanel?.Children.OfType<TextBlock>().FirstOrDefault();
+                string propertyName = label?.Text.ToLower();
+
+                if (propertyName == "hours" && value >= 0 && value < 24)
                 {
                     isValid = true;
                 }
-                else if ((sender == minutes || sender == seconds) && value >= 0 && value < 60)
+                else if ((propertyName == "minutes" || propertyName == "seconds") && value >= 0 && value < 60)
                 {
                     isValid = true;
                 }
@@ -498,20 +516,32 @@ namespace TeacherToolbox.Controls
                 timeText = secondsToShow.ToString();
             }
 
-            // Add interval number if we have multiple intervals and we're not in overtime
+            // Update main timer text
+            timerText.Text = timeText;
+
+            // Update interval info if applicable
             if (intervals != null && intervalCount > 1 && secondsLeft >= 0)
             {
-                timerText.Text = $"{intervalNumber}/{intervalCount}: {timeText}";
+                intervalInfoText.Text = $"Interval {intervalNumber}/{intervalCount}";
+                intervalInfoText.Visibility = Visibility.Visible;
             }
             else
             {
-                timerText.Text = timeText;
+                intervalInfoText.Text = "";
+                intervalInfoText.Visibility = Visibility.Collapsed;
             }
 
             // Set text color to red if we're in overtime
             if (secondsLeft < 0)
             {
                 timerText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red);
+                intervalInfoText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red);
+            }
+            else
+            {
+                // Reset to system text color 
+                timerText.Foreground = (Brush)Application.Current.Resources["SystemControlForegroundBaseHighBrush"];
+                intervalInfoText.Foreground = (Brush)Application.Current.Resources["SystemControlForegroundBaseHighBrush"];
             }
         }
 
@@ -555,13 +585,6 @@ namespace TeacherToolbox.Controls
         {
             try
             {
-                // Unregister event handlers
-                if (minutes != null)
-                {
-                    minutes.KeyDown -= ComboBox_KeyDown;
-                    minutes.TextSubmitted -= ComboBox_TextSubmitted;
-                }
-
                 this.SizeChanged -= TimerWindow_SizeChanged;
                 this.Activated -= Window_Activated;
                 ((FrameworkElement)this.Content).ActualThemeChanged -= Window_ThemeChanged;
@@ -678,103 +701,86 @@ namespace TeacherToolbox.Controls
             return new WindowPosition(lastPosition.X, lastPosition.Y, this.Width, this.Height, displayId.Value);
         }
 
+
         private void AddIntervalButton_Click(object sender, RoutedEventArgs e)
         {
-            if (intervalCount >= MaxIntervals) return;
-
-            // Create a new row in the Grid
-            var rowDef = new RowDefinition { Height = new GridLength(1, GridUnitType.Auto) };
-            intervalsPanel.RowDefinitions.Add(rowDef);
-
-            // Create and add the new ComboBoxes
-            var hoursBox = new ComboBox
+            if (intervalsList.Count < MaxIntervals)
             {
-                HorizontalContentAlignment = HorizontalAlignment.Center,
-                Header = "Hours",
-                IsEditable = true,
-                Text = "0"
-            };
-
-            var minutesBox = new ComboBox
-            {
-                HorizontalContentAlignment = HorizontalAlignment.Center,
-                Header = "Minutes",
-                IsEditable = true,
-                Text = "0"
-            };
-
-            var secondsBox = new ComboBox
-            {
-                HorizontalContentAlignment = HorizontalAlignment.Center,
-                Header = "Seconds",
-                IsEditable = true,
-                Text = "0"
-            };
-
-            // Add the same event handlers as the original ComboBoxes
-            hoursBox.KeyDown += ComboBox_KeyDown;
-            minutesBox.KeyDown += ComboBox_KeyDown;
-            secondsBox.KeyDown += ComboBox_KeyDown;
-            hoursBox.TextSubmitted += ComboBox_TextSubmitted;
-            minutesBox.TextSubmitted += ComboBox_TextSubmitted;
-            secondsBox.TextSubmitted += ComboBox_TextSubmitted;
-
-            // Populate the ComboBoxes
-            for (int i = 0; i < 24; i++) hoursBox.Items.Add(i);
-            for (int i = 0; i < 60; i++)
-            {
-                minutesBox.Items.Add(i);
-                secondsBox.Items.Add(i);
+                // Add new interval at the end of the list
+                intervalsList.Add(new IntervalTimeViewModel(intervalsList.Count + 1));
+                UpdateIntervalNumbers();
             }
 
-            // Set Grid positions
-            Grid.SetRow(hoursBox, intervalCount);
-            Grid.SetColumn(hoursBox, 0);
-            Grid.SetRow(minutesBox, intervalCount);
-            Grid.SetColumn(minutesBox, 1);
-            Grid.SetRow(secondsBox, intervalCount);
-            Grid.SetColumn(secondsBox, 2);
-
-            // Add to the Grid
-            intervalsPanel.Children.Add(hoursBox);
-            intervalsPanel.Children.Add(minutesBox);
-            intervalsPanel.Children.Add(secondsBox);
-
-            intervalCount++;
-
-            // Disable Add Interval button if we've reached the maximum
-            if (intervalCount >= MaxIntervals)
+            if (intervalsList.Count >= MaxIntervals)
             {
                 addIntervalButton.IsEnabled = false;
             }
         }
 
-        private void StartTimer_FromCustomSelection()
+
+        private void RemoveInterval_Click(object sender, RoutedEventArgs e)
+        {
+            var button = sender as Button;
+            var interval = button.DataContext as IntervalTimeViewModel;
+
+            int removedIndex = intervalsList.IndexOf(interval);
+            intervalsList.RemoveAt(removedIndex);
+
+            // Update numbers for all remaining intervals
+            UpdateIntervalNumbers();
+
+            if (intervalsList.Count < MaxIntervals)
+            {
+                addIntervalButton.IsEnabled = true;
+            }
+        }
+
+        private void UpdateIntervalNumbers()
+        {
+            // Intervals will run in the order they appear, so the numbers should match their position
+            for (int i = 0; i < intervalsList.Count; i++)
+            {
+                intervalsList[i].IntervalNumber = i + 1;
+                // Show remove button for all intervals except the first one
+                intervalsList[i].ShowRemoveButton = i > 0;
+            }
+        }
+
+        private async void StartTimer_FromCustomSelection()
         {
             intervals = new Queue<IntervalTime>();
+            var savedConfigs = new List<SavedIntervalConfig>();
 
-            // Collect all intervals
-            for (int row = 0; row < intervalCount; row++)
+            foreach (var intervalVM in intervalsList)
             {
-                var hourBox = GetComboBoxAt(row, 0);
-                var minuteBox = GetComboBoxAt(row, 1);
-                var secondBox = GetComboBoxAt(row, 2);
-
-                if (hourBox != null && minuteBox != null && secondBox != null)
+                if (intervalVM.TotalSeconds > 0)
                 {
-                    var interval = new IntervalTime
+                    // Add to intervals queue for timer functionality
+                    intervals.Enqueue(new IntervalTime
                     {
-                        Hours = int.TryParse(hourBox.Text, out int h) ? h : 0,
-                        Minutes = int.TryParse(minuteBox.Text, out int m) ? m : 0,
-                        Seconds = int.TryParse(secondBox.Text, out int s) ? s : 0
-                    };
+                        Hours = intervalVM.Hours,
+                        Minutes = intervalVM.Minutes,
+                        Seconds = intervalVM.Seconds
+                    });
 
-                    if (interval.TotalSeconds > 0)
+                    // Save configuration for persisting across sessions
+                    savedConfigs.Add(new SavedIntervalConfig
                     {
-                        intervals.Enqueue(interval);
-                    }
+                        Hours = intervalVM.Hours,
+                        Minutes = intervalVM.Minutes,
+                        Seconds = intervalVM.Seconds
+                    });
                 }
             }
+
+            // Save the interval configurations
+            if (savedConfigs.Any())
+            {
+                var localSettings = await LocalSettings.CreateAsync();
+                localSettings.SaveIntervalConfigs(savedConfigs);
+            }
+
+            intervalCount = intervals.Count;
 
             if (intervals.Count > 0)
             {
@@ -783,12 +789,6 @@ namespace TeacherToolbox.Controls
                 timerText.Visibility = Visibility.Visible;
                 timeSelector.Visibility = Visibility.Collapsed;
             }
-        }
-        private ComboBox GetComboBoxAt(int row, int column)
-        {
-            return intervalsPanel.Children
-                .Cast<FrameworkElement>()
-                .FirstOrDefault(e => Grid.GetRow(e) == row && Grid.GetColumn(e) == column) as ComboBox;
         }
 
         private void Grid_PointerPressed(object sender, PointerRoutedEventArgs e)
@@ -828,14 +828,16 @@ namespace TeacherToolbox.Controls
                 if (tappedElement is Button startButton) return;
             }
 
-            // Pause the timer if running.  If timer is paused, unpause it
+            // Prevent pausing immediately after starting
+            if (secondsLeft == currentIntervalTotal) return;
+
+            // Pause the timer if running. If timer is paused, unpause it
             if (timer.IsEnabled)
             {
                 timer.Stop();
                 // Change the font to bold to indicate the timer is paused
                 timerText.FontWeight = Microsoft.UI.Text.FontWeights.Thin;
                 timerGauge.TrailBrush = new SolidColorBrush(Microsoft.UI.Colors.DarkGray);
-
             }
             else
             {
@@ -848,9 +850,7 @@ namespace TeacherToolbox.Controls
                     timerGauge.TrailBrush = darkPurpleBrush as SolidColorBrush;
                 }
             }
-
         }
-
     }
 
 
