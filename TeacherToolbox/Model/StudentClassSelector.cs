@@ -7,6 +7,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using System.IO;
 using System.Text.Json.Serialization;
+using System.Diagnostics;
 
 namespace TeacherToolbox.Model
 {
@@ -50,7 +51,7 @@ namespace TeacherToolbox.Model
             }
             catch (Exception e)
             {
-                Console.WriteLine("Error loading classes: " + e.Message);
+                Debug.WriteLine("Error loading classes: " + e.Message);
             }
 
             // Check to see if the studentClasses object is null, if it is, create a new one

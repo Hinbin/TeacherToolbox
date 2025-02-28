@@ -59,7 +59,7 @@ namespace TeacherToolbox
             try
             {
                 // Load saved settings
-                var localSettings = await LocalSettings.CreateAsync();
+                var localSettings = await LocalSettings.GetSharedInstanceAsync();
                 var savedThemeIndex = localSettings.GetValueOrDefault(ThemeKey, 0);
 
                 // Convert index to ElementTheme

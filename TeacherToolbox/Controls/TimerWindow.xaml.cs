@@ -20,6 +20,7 @@ using Microsoft.UI.Dispatching;
 using Windows.System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -124,7 +125,7 @@ namespace TeacherToolbox.Controls
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error during initialization: {ex.Message}");
+                Debug.WriteLine($"Error during initialization: {ex.Message}");
                 if (this.Content != null)
                 {
                     this.Content.Opacity = 1;
@@ -157,10 +158,65 @@ namespace TeacherToolbox.Controls
 
         private async Task InitializeResourcesAsync()
         {
-            await LoadSoundFileAsync();
-            dragHelper = new WindowDragHelper(this);
-            localSettings = await LocalSettings.CreateAsync();
-            displayManager = new DisplayManager();
+            try
+            {
+                // Use a local variable for sound loading to avoid creating multiple LocalSettings instances
+                var soundSettings = await LocalSettings.GetSharedInstanceAsync();
+                int soundIndex = soundSettings.GetValueOrDefault(SoundSettings.SoundKey, 0);
+                string soundFileName = SoundSettings.GetSoundFileName(soundIndex);
+                string soundPath = Path.Combine(AppContext.BaseDirectory, "Assets", soundFileName);
+
+                if (File.Exists(soundPath))
+                {
+                    player = new MediaPlayer();
+                    player.Source = MediaSource.CreateFromUri(new Uri(soundPath));
+                    isSoundAvailable = true;
+                }
+                else
+                {
+                    // Try loading default sound
+                    string defaultSoundPath = Path.Combine(AppContext.BaseDirectory, "Assets", SoundSettings.GetSoundFileName(0));
+                    if (File.Exists(defaultSoundPath))
+                    {
+                        player = new MediaPlayer();
+                        player.Source = MediaSource.CreateFromUri(new Uri(defaultSoundPath));
+                        isSoundAvailable = true;
+                    }
+                    else
+                    {
+                        Console.WriteLine("No sound files available");
+                        isSoundAvailable = false;
+                    }
+                }
+
+                // Set up drag helper
+                dragHelper = new WindowDragHelper(this);
+
+                // Get the shared instance
+                localSettings = await LocalSettings.GetSharedInstanceAsync();
+                Console.WriteLine("Using shared LocalSettings instance in TimerWindow");
+
+                // Initialize display manager
+                displayManager = new DisplayManager();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in InitializeResourcesAsync: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+
+                // Create minimal setup to avoid null references
+                if (localSettings == null)
+                {
+                    localSettings = await LocalSettings.GetSharedInstanceAsync();
+                }
+
+                if (displayManager == null)
+                {
+                    displayManager = new DisplayManager();
+                }
+
+                isSoundAvailable = false;
+            }
         }
 
         private async Task FinalizeWindowSetupAsync(int seconds)
@@ -208,21 +264,41 @@ namespace TeacherToolbox.Controls
                 SetupCustomTimerSelection(seconds);
             }
         }
-
-        // In TimerWindow.cs, update the SetupCustomTimerSelection method:
-
         private async void SetupCustomTimerSelection(int timerType)
         {
-
             // Ensure intervalsList is initialized
             if (intervalsList == null)
             {
                 intervalsList = new ObservableCollection<IntervalTimeViewModel>();
             }
 
-            // Try to load saved interval configurations
-            var localSettings = await LocalSettings.CreateAsync();
-            var savedConfigs = localSettings.GetSavedIntervalConfigs();
+            Debug.WriteLine($"Setting up custom timer selection. Type: {timerType}");
+            Debug.WriteLine($"Is localSettings null? {localSettings == null}");
+
+            if (localSettings == null)
+            {
+                Debug.WriteLine("LocalSettings is null, creating it now");
+                localSettings = await LocalSettings.GetSharedInstanceAsync();
+            }
+
+            // Determine whether this is an interval timer or custom timer
+            bool isIntervalTimer = timerType == -1;
+
+            // Try to load saved configurations based on timer type
+            List<SavedIntervalConfig> savedConfigs;
+
+            if (isIntervalTimer)
+            {
+                // Load interval timer configurations
+                savedConfigs = localSettings.GetSavedIntervalConfigs();
+                Debug.WriteLine($"Loaded {savedConfigs?.Count ?? 0} saved interval configurations");
+            }
+            else
+            {
+                // Load custom timer configurations
+                savedConfigs = localSettings.GetSavedCustomTimerConfigs();
+                Debug.WriteLine($"Loaded {savedConfigs?.Count ?? 0} saved custom timer configurations");
+            }
 
             if (savedConfigs != null && savedConfigs.Any())
             {
@@ -230,6 +306,7 @@ namespace TeacherToolbox.Controls
                 intervalsList.Clear();
                 foreach (var config in savedConfigs)
                 {
+                    Debug.WriteLine($"Loading interval: H:{config.Hours} M:{config.Minutes} S:{config.Seconds}");
                     intervalsList.Add(new IntervalTimeViewModel(intervalsList.Count + 1)
                     {
                         Hours = config.Hours,
@@ -240,6 +317,7 @@ namespace TeacherToolbox.Controls
             }
             else if (!intervalsList.Any())
             {
+                Debug.WriteLine("No saved configs found, adding default interval");
                 // If no saved configurations, add a default first interval
                 intervalsList.Add(new IntervalTimeViewModel(1));
             }
@@ -268,17 +346,12 @@ namespace TeacherToolbox.Controls
             // Show or hide the add interval button based on the timer type
             if (addIntervalButton != null)
             {
-                // Check if this is an interval timer (-1) or custom timer (0)
-                bool isIntervalTimer = timerType == -1;
                 addIntervalButton.Visibility = isIntervalTimer ? Visibility.Visible : Visibility.Collapsed;
             }
 
             // Update interval numbers and remove button visibility
             UpdateIntervalNumbers();
-
-
         }
-
 
         private void ComboBox_KeyDown(object sender, KeyRoutedEventArgs e)
         {
@@ -351,7 +424,7 @@ namespace TeacherToolbox.Controls
         {
             try
             {
-                var settings = await LocalSettings.CreateAsync();
+                var settings = await LocalSettings.GetSharedInstanceAsync();
                 int soundIndex = settings.GetValueOrDefault(SoundSettings.SoundKey, 0);
                 string soundFileName = SoundSettings.GetSoundFileName(soundIndex);
                 string soundPath = Path.Combine(AppContext.BaseDirectory, "Assets", soundFileName);
@@ -374,14 +447,14 @@ namespace TeacherToolbox.Controls
                     }
                     else
                     {
-                        Console.WriteLine("No sound files available");
+                        Debug.WriteLine("No sound files available");
                         isSoundAvailable = false;
                     }
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error loading sound: {ex.Message}");
+                Debug.WriteLine($"Error loading sound: {ex.Message}");
                 isSoundAvailable = false;
             }
         }
@@ -456,7 +529,7 @@ namespace TeacherToolbox.Controls
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"Error playing sound: {ex.Message}");
+                        Debug.WriteLine($"Error playing sound: {ex.Message}");
                     }
                 }
 
@@ -465,13 +538,109 @@ namespace TeacherToolbox.Controls
                 {
                     StartNextInterval();
                 }
-                // If no more intervals, let it continue counting up
                 else
                 {
-                    timerText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red);
-                    // Don't stop the timer - let it continue counting
+                    // Get the configured behavior for when timer finishes
+                    TimerFinishBehavior behavior = GetTimerFinishBehavior();
+
+                    // Handle timer finish behavior
+                    HandleTimerFinish(behavior);
                 }
             }
+        }
+
+        private void HandleTimerFinish(TimerFinishBehavior behavior)
+        {
+            switch (behavior)
+            {
+                case TimerFinishBehavior.CloseTimer:
+                    // Stop the timer to prevent further ticks
+                    timer.Stop();
+
+                    // Set text color to red to indicate it's finished
+                    timerText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red);
+
+                    // Play the sound and wait for it to complete before closing
+                    if (isSoundAvailable && player != null)
+                    {
+                        try
+                        {
+                            // Subscribe to MediaEnded event to close window after sound completes
+                            player.MediaEnded += (s, args) =>
+                            {
+                                // Use dispatcher to ensure we run on UI thread
+                                DispatcherQueue.TryEnqueue(() =>
+                                {
+                                    this.Close();
+                                });
+                            };
+
+                            // Play the sound
+                            player.Play();
+
+                            // Set a fallback timer in case MediaEnded doesn't fire
+                            DispatcherTimer fallbackTimer = new DispatcherTimer();
+                            fallbackTimer.Interval = TimeSpan.FromSeconds(5); // Longer timeout to be safe
+                            fallbackTimer.Tick += (s, args) =>
+                            {
+                                fallbackTimer.Stop();
+                                this.Close();
+                            };
+                            fallbackTimer.Start();
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"Error playing sound: {ex.Message}");
+                            // Close window immediately if there was an error playing sound
+                            this.Close();
+                        }
+                    }
+                    else
+                    {
+                        // No sound to play, close after a short delay
+                        DispatcherTimer closeTimer = new DispatcherTimer();
+                        closeTimer.Interval = TimeSpan.FromSeconds(1);
+                        closeTimer.Tick += (s, args) =>
+                        {
+                            closeTimer.Stop();
+                            this.Close();
+                        };
+                        closeTimer.Start();
+                    }
+                    break;
+
+                case TimerFinishBehavior.CountUp:
+                    // Timer continues counting (negative values)
+                    timerText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red);
+                    break;
+
+                case TimerFinishBehavior.StayAtZero:
+                    // Stop the timer
+                    timer.Stop();
+
+                    // Set text color to red to indicate it's finished
+                    timerText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red);
+
+                    // Reset secondsLeft to 0 to ensure it displays as 0
+                    secondsLeft = 0;
+                    SetTimerText();
+                    break;
+            }
+        }
+
+        private TimerFinishBehavior GetTimerFinishBehavior()
+        {
+            // Default to CountUp if setting isn't found
+            // Using the same key as defined in SettingsPage
+            int behaviorValue = localSettings.GetValueOrDefault("TimerFinishBehavior", (int)TimerFinishBehavior.CountUp);
+
+            // Ensure the value is within valid range
+            if (!Enum.IsDefined(typeof(TimerFinishBehavior), behaviorValue))
+            {
+                behaviorValue = (int)TimerFinishBehavior.CountUp;
+            }
+
+            return (TimerFinishBehavior)behaviorValue;
         }
 
 
@@ -638,12 +807,11 @@ namespace TeacherToolbox.Controls
 
                 // Clear any remaining references
                 m_wsdqHelper = null;
-                localSettings = null;
             }
             catch (Exception ex)
             {
                 // Log but don't rethrow as we're already closing
-                Console.WriteLine($"Error during window cleanup: {ex.Message}");
+                Debug.WriteLine($"Error during window cleanup: {ex.Message}");
             }
         }
 
@@ -751,10 +919,14 @@ namespace TeacherToolbox.Controls
             intervals = new Queue<IntervalTime>();
             var savedConfigs = new List<SavedIntervalConfig>();
 
+            Debug.WriteLine($"Starting timer from custom selection. Intervals count: {intervalsList.Count}");
+
             foreach (var intervalVM in intervalsList)
             {
                 if (intervalVM.TotalSeconds > 0)
                 {
+                    Debug.WriteLine($"Adding interval: H:{intervalVM.Hours} M:{intervalVM.Minutes} S:{intervalVM.Seconds}");
+
                     // Add to intervals queue for timer functionality
                     intervals.Enqueue(new IntervalTime
                     {
@@ -773,11 +945,36 @@ namespace TeacherToolbox.Controls
                 }
             }
 
-            // Save the interval configurations
+            // Save the interval configurations using the existing localSettings instance
             if (savedConfigs.Any())
             {
-                var localSettings = await LocalSettings.CreateAsync();
-                localSettings.SaveIntervalConfigs(savedConfigs);
+                Debug.WriteLine($"Saving {savedConfigs.Count} interval configurations");
+
+                if (localSettings == null)
+                {
+                    Debug.WriteLine("LocalSettings is null, creating it now");
+                    localSettings = await LocalSettings.GetSharedInstanceAsync();
+                }
+
+                // Determine whether this is an interval timer or custom timer
+                // We can identify interval timers by checking if the addIntervalButton is visible
+                bool isIntervalTimer = addIntervalButton != null && addIntervalButton.Visibility == Visibility.Visible;
+
+                // Save to the appropriate configuration
+                if (isIntervalTimer)
+                {
+                    localSettings.SaveIntervalConfigs(savedConfigs);
+                    Debug.WriteLine("Saved interval timer configurations");
+                }
+                else
+                {
+                    localSettings.SaveCustomTimerConfigs(savedConfigs);
+                    Debug.WriteLine("Saved custom timer configurations");
+                }
+
+                // Force save to ensure it's written to disk
+                localSettings.SaveSettings();
+                Debug.WriteLine("Saved configurations to settings");
             }
 
             intervalCount = intervals.Count;
@@ -790,6 +987,7 @@ namespace TeacherToolbox.Controls
                 timeSelector.Visibility = Visibility.Collapsed;
             }
         }
+
 
         private void Grid_PointerPressed(object sender, PointerRoutedEventArgs e)
         {

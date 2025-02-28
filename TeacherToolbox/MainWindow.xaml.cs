@@ -71,7 +71,7 @@ namespace TeacherToolbox
             }
             catch (Exception e)
             {
-                Console.WriteLine(e.Message);
+                Debug.WriteLine(e.Message);
             }
 
             this.Closed += MainWindow_Closed;

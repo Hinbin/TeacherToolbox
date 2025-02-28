@@ -5,6 +5,8 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Linq;
+using System.Diagnostics;
 
 namespace TeacherToolbox.Model
 {
@@ -28,8 +30,13 @@ namespace TeacherToolbox.Model
 
     public class SavedIntervalConfig
     {
+        [System.Text.Json.Serialization.JsonPropertyName("hours")]
         public int Hours { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("minutes")]
         public int Minutes { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("seconds")]
         public int Seconds { get; set; }
     }
 
@@ -40,6 +47,14 @@ namespace TeacherToolbox.Model
         private Dictionary<string, object> settings;
         private readonly string filePath;
         private List<SavedIntervalConfig> savedIntervalConfigs;
+        private List<SavedIntervalConfig> savedCustomTimerConfigs;
+        private readonly object _settingsLock = new object();
+        private static LocalSettings _sharedInstance;
+        private static readonly object _initLock = new object();
+
+        // Constants for the settings keys
+        public const string IntervalConfigsKey = "SavedIntervalConfigs";
+        public const string CustomTimerConfigsKey = "SavedCustomTimerConfigs";
 
         public LocalSettings()
         {
@@ -47,16 +62,37 @@ namespace TeacherToolbox.Model
             lastWindowPosition = new WindowPosition(0, 0, 0, 0, 0);
             settings = new Dictionary<string, object>();
             savedIntervalConfigs = new List<SavedIntervalConfig>();
+            savedCustomTimerConfigs = new List<SavedIntervalConfig>();
             filePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TeacherToolbox", "settings.json");
 
             Directory.CreateDirectory(Path.GetDirectoryName(filePath));
         }
 
+        public static async Task<LocalSettings> GetSharedInstanceAsync()
+        {
+            if (_sharedInstance == null)
+            {
+                lock (_initLock)
+                {
+                    if (_sharedInstance == null)
+                    {
+                        Console.WriteLine("Creating new shared LocalSettings instance");
+                        _sharedInstance = new LocalSettings();
+                    }
+                }
+
+                // Load settings outside the lock to prevent deadlocks
+                await _sharedInstance.LoadSettings();
+                Console.WriteLine("Loaded settings into shared instance");
+            }
+
+            return _sharedInstance;
+        }
+
         public static async Task<LocalSettings> CreateAsync()
         {
-            var localSettings = new LocalSettings();
-            await localSettings.LoadSettings();
-            return localSettings;
+            Console.WriteLine("CreateAsync called - using shared instance");
+            return await GetSharedInstanceAsync();
         }
 
         private void SetAndSave<T>(ref T field, T value, [CallerMemberName] string propertyName = null)
@@ -79,44 +115,96 @@ namespace TeacherToolbox.Model
             set => SetAndSave(ref centreText, value);
         }
 
+        // Save interval timer configurations
         public void SaveIntervalConfigs(List<SavedIntervalConfig> configs)
         {
-            savedIntervalConfigs = new List<SavedIntervalConfig>(configs);
+            // Create a deep copy to avoid reference issues
+            savedIntervalConfigs = configs.Select(c => new SavedIntervalConfig
+            {
+                Hours = c.Hours,
+                Minutes = c.Minutes,
+                Seconds = c.Seconds
+            }).ToList();
+
+            // Immediately save settings to persist changes
             SaveSettings();
+            Debug.WriteLine($"Saved {savedIntervalConfigs.Count} interval configurations");
         }
 
+        // Save custom timer configurations
+        public void SaveCustomTimerConfigs(List<SavedIntervalConfig> configs)
+        {
+            // Create a deep copy to avoid reference issues
+            savedCustomTimerConfigs = configs.Select(c => new SavedIntervalConfig
+            {
+                Hours = c.Hours,
+                Minutes = c.Minutes,
+                Seconds = c.Seconds
+            }).ToList();
+
+            // Immediately save settings to persist changes
+            SaveSettings();
+            Debug.WriteLine($"Saved {savedCustomTimerConfigs.Count} custom timer configurations");
+        }
+
+        // Get interval timer configurations
         public List<SavedIntervalConfig> GetSavedIntervalConfigs()
         {
             return new List<SavedIntervalConfig>(savedIntervalConfigs ?? new List<SavedIntervalConfig>());
         }
 
+        // Get custom timer configurations
+        public List<SavedIntervalConfig> GetSavedCustomTimerConfigs()
+        {
+            return new List<SavedIntervalConfig>(savedCustomTimerConfigs ?? new List<SavedIntervalConfig>());
+        }
+
         public void SaveSettings()
         {
-            try
+            lock (_settingsLock)
             {
-                var options = new JsonSerializerOptions
+                try
                 {
-                    WriteIndented = true
-                };
+                    var options = new JsonSerializerOptions
+                    {
+                        WriteIndented = true
+                    };
 
-                var settingsToSave = new Dictionary<string, object>
-                {
-                    { "CentreText", CentreText },
-                    { "LastWindowPosition", LastWindowPosition },
-                    { "SavedIntervalConfigs", savedIntervalConfigs }
-                };
+                    var settingsToSave = new Dictionary<string, object>
+                    {
+                        { "CentreText", CentreText },
+                        { "LastWindowPosition", LastWindowPosition },
+                        { IntervalConfigsKey, savedIntervalConfigs ?? new List<SavedIntervalConfig>() },
+                        { CustomTimerConfigsKey, savedCustomTimerConfigs ?? new List<SavedIntervalConfig>() }
+                    };
 
-                foreach (var setting in settings)
-                {
-                    settingsToSave[setting.Key] = setting.Value;
+                    foreach (var setting in settings)
+                    {
+                        settingsToSave[setting.Key] = setting.Value;
+                    }
+
+                    string json = JsonSerializer.Serialize(settingsToSave, options);
+
+                    // Use a temporary file to prevent corruption
+                    string tempPath = filePath + ".tmp";
+                    File.WriteAllText(tempPath, json);
+
+                    // If the write was successful, replace the original file
+                    if (File.Exists(tempPath))
+                    {
+                        if (File.Exists(filePath))
+                        {
+                            File.Delete(filePath);
+                        }
+                        File.Move(tempPath, filePath);
+                        Debug.WriteLine("Settings saved successfully");
+                    }
                 }
-
-                string json = JsonSerializer.Serialize(settingsToSave, options);
-                File.WriteAllText(filePath, json);
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine($"Error saving settings: {e.Message}");
+                catch (Exception e)
+                {
+                    Debug.WriteLine($"Error saving settings: {e.Message}");
+                    Debug.WriteLine($"Stack trace: {e.StackTrace}");
+                }
             }
         }
 
@@ -145,10 +233,40 @@ namespace TeacherToolbox.Model
                                     CentreText = kvp.Value.GetString() ?? "Centre";
                                     break;
                                 case "LastWindowPosition":
-                                    LastWindowPosition = kvp.Value.Deserialize<WindowPosition>(options);
+                                    try
+                                    {
+                                        LastWindowPosition = kvp.Value.Deserialize<WindowPosition>(options);
+                                    }
+                                    catch
+                                    {
+                                        LastWindowPosition = new WindowPosition(0, 0, 0, 0, 0);
+                                    }
                                     break;
-                                case "SavedIntervalConfigs":
-                                    savedIntervalConfigs = kvp.Value.Deserialize<List<SavedIntervalConfig>>(options) ?? new List<SavedIntervalConfig>();
+                                case IntervalConfigsKey:
+                                    try
+                                    {
+                                        savedIntervalConfigs = kvp.Value.Deserialize<List<SavedIntervalConfig>>(options);
+                                        // Log successful loading for debugging
+                                        Debug.WriteLine($"Loaded {savedIntervalConfigs?.Count ?? 0} interval configs");
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        Debug.WriteLine($"Error deserializing SavedIntervalConfigs: {ex.Message}");
+                                        savedIntervalConfigs = new List<SavedIntervalConfig>();
+                                    }
+                                    break;
+                                case CustomTimerConfigsKey:
+                                    try
+                                    {
+                                        savedCustomTimerConfigs = kvp.Value.Deserialize<List<SavedIntervalConfig>>(options);
+                                        // Log successful loading for debugging
+                                        Debug.WriteLine($"Loaded {savedCustomTimerConfigs?.Count ?? 0} custom timer configs");
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        Debug.WriteLine($"Error deserializing SavedCustomTimerConfigs: {ex.Message}");
+                                        savedCustomTimerConfigs = new List<SavedIntervalConfig>();
+                                    }
                                     break;
                                 default:
                                     settings[kvp.Key] = kvp.Value;
@@ -157,12 +275,20 @@ namespace TeacherToolbox.Model
                         }
                     }
                 }
+                else
+                {
+                    Debug.WriteLine("Settings file does not exist, using defaults");
+                    savedIntervalConfigs = new List<SavedIntervalConfig>();
+                    savedCustomTimerConfigs = new List<SavedIntervalConfig>();
+                }
             }
             catch (Exception e)
             {
-                Console.WriteLine($"Error loading settings: {e.Message}");
+                Debug.WriteLine($"Error loading settings: {e.Message}");
+                Debug.WriteLine($"Stack trace: {e.StackTrace}");
                 // Initialize with defaults if loading fails
                 savedIntervalConfigs = new List<SavedIntervalConfig>();
+                savedCustomTimerConfigs = new List<SavedIntervalConfig>();
             }
         }
 

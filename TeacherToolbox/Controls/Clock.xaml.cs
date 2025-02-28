@@ -238,7 +238,7 @@ public sealed partial class Clock : AutomatedPage
 
         _timer.Start();
 
-        localSettings = await LocalSettings.CreateAsync();
+        localSettings = await LocalSettings.GetSharedInstanceAsync();
         centreTextBox.Text = localSettings.CentreText;
     }
 

@@ -37,7 +37,7 @@ public class TestBase
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Warning: Failed to delete {filePath}: {ex.Message}");
+                    Debug.WriteLine($"Warning: Failed to delete {filePath}: {ex.Message}");
                 }
             }
         }

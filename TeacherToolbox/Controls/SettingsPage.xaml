@@ -80,6 +80,20 @@
                             Content="Test Sound" />
                     </local:ExpanderItem.ItemContent>
                 </local:ExpanderItem>
+                <local:ExpanderItem Header="Timer finish behavior" Subheader="Select what happens when the timer finishes">
+                    <local:ExpanderItem.ItemContent>
+                        <ComboBox
+                            x:Name="TimerFinishBehaviorComboBox"
+                            MinWidth="120"
+                            SelectionChanged="TimerFinishBehavior_SelectionChanged">
+                            <ComboBoxItem Content="Close timer" />
+                            <ComboBoxItem Content="Count up" />
+                            <ComboBoxItem Content="Stay at zero" />
+                        </ComboBox>
+                    </local:ExpanderItem.ItemContent>
+                </local:ExpanderItem>
+
+                <Border Height="1" Background="{ThemeResource CardStrokeColorDefaultBrush}" />
 
                 <Border Height="1" Background="{ThemeResource CardStrokeColorDefaultBrush}" />
             </StackPanel>

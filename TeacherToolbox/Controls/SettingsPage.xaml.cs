@@ -9,13 +9,22 @@ using Windows.Media.Core;
 using Windows.Media.Playback;
 using System.IO;
 using System.Linq;
+using System.Diagnostics;
 
 namespace TeacherToolbox.Controls;
+
+public enum TimerFinishBehavior
+{
+    CloseTimer = 0,
+    CountUp = 1,
+    StayAtZero = 2
+}
 
 public sealed partial class SettingsPage : AutomatedPage
 {
     private const string ThemeKey = "Theme";
     private const string SoundKey = "Sound";
+    private const string TimerFinishBehaviorKey = "TimerFinishBehavior";
     private LocalSettings _localSettings;
     private MediaPlayer _testPlayer;
 
@@ -36,7 +45,7 @@ public sealed partial class SettingsPage : AutomatedPage
 
     private async void InitializeSettingsAsync()
     {
-        _localSettings = await LocalSettings.CreateAsync();
+        _localSettings = await LocalSettings.GetSharedInstanceAsync();
 
         // Clear and populate the sound combo box
         TimerSoundComboBox.Items.Clear();
@@ -48,6 +57,8 @@ public sealed partial class SettingsPage : AutomatedPage
         // Load settings from LocalSettings
         ThemeComboBox.SelectedIndex = _localSettings.GetValueOrDefault(ThemeKey, 0);
         TimerSoundComboBox.SelectedIndex = _localSettings.GetValueOrDefault(SoundSettings.SoundKey, 0);
+        TimerFinishBehaviorComboBox.SelectedIndex = _localSettings.GetValueOrDefault(TimerFinishBehaviorKey, 0);
+
     }
 
     private void TimerSound_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -97,6 +108,20 @@ public sealed partial class SettingsPage : AutomatedPage
         _localSettings.SaveSettings();
     }
 
+    private void TimerFinishBehavior_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (TimerFinishBehaviorComboBox.SelectedItem is ComboBoxItem selectedItem)
+        {
+            UpdateTimerFinishBehavior();
+        }
+    }
+
+    private void UpdateTimerFinishBehavior()
+    {
+        _localSettings.SetValue(TimerFinishBehaviorKey, TimerFinishBehaviorComboBox.SelectedIndex);
+        _localSettings.SaveSettings();
+    }
+
     private void TimerSoundButton_Clicked(object sender, RoutedEventArgs e)
     {
         try
@@ -115,7 +140,7 @@ public sealed partial class SettingsPage : AutomatedPage
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error playing test sound: {ex.Message}");
+            Debug.WriteLine($"Error playing test sound: {ex.Message}");
         }
     }
 
