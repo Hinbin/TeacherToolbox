@@ -14,55 +14,38 @@ namespace TeacherToolbox.Helpers
             var titleBar = window.AppWindow.TitleBar;
             var isDarkTheme = ThemeHelper.IsDarkTheme();
 
+            // Set the title bar background to null (default)
+            titleBar.BackgroundColor = null;
+            titleBar.InactiveBackgroundColor = null;
+
+            // Set transparent background for the caption buttons
+            titleBar.ButtonBackgroundColor = Colors.Transparent;
+            titleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
+            titleBar.ButtonHoverBackgroundColor = Colors.Transparent;
+            titleBar.ButtonPressedBackgroundColor = Colors.Transparent;
+
+            // Set appropriate foreground colors based on theme
             if (isDarkTheme)
             {
-                // Dark theme colors
-                var darkBackground = Color.FromArgb(255, 32, 32, 32);
-
-                // Active window state
-                titleBar.BackgroundColor = darkBackground;
-                titleBar.ButtonBackgroundColor = darkBackground;
                 titleBar.ButtonForegroundColor = Colors.White;
                 titleBar.ButtonHoverForegroundColor = Colors.White;
-                titleBar.ButtonPressedForegroundColor = Colors.White;
-                titleBar.ButtonHoverBackgroundColor = Color.FromArgb(255, 45, 45, 45);
-                titleBar.ButtonPressedBackgroundColor = Color.FromArgb(255, 55, 55, 55);
-
-                // Inactive window state
-                titleBar.InactiveBackgroundColor = darkBackground;
-                titleBar.ButtonInactiveBackgroundColor = darkBackground;
+                titleBar.ButtonPressedForegroundColor = Colors.LightGray;
                 titleBar.ButtonInactiveForegroundColor = Color.FromArgb(255, 180, 180, 180);
             }
             else
             {
-                // Light theme colors
-                var lightBackground = Color.FromArgb(255, 243, 243, 243);
-
-                // Active window state
-                titleBar.BackgroundColor = lightBackground;
-                titleBar.ButtonBackgroundColor = lightBackground;
                 titleBar.ButtonForegroundColor = Colors.Black;
                 titleBar.ButtonHoverForegroundColor = Colors.Black;
-                titleBar.ButtonPressedForegroundColor = Colors.Black;
-                titleBar.ButtonHoverBackgroundColor = Color.FromArgb(255, 229, 229, 229);
-                titleBar.ButtonPressedBackgroundColor = Color.FromArgb(255, 204, 204, 204);
-
-                // Inactive window state
-                titleBar.InactiveBackgroundColor = lightBackground;
-                titleBar.ButtonInactiveBackgroundColor = lightBackground;
+                titleBar.ButtonPressedForegroundColor = Color.FromArgb(255, 80, 80, 80);
                 titleBar.ButtonInactiveForegroundColor = Color.FromArgb(255, 100, 100, 100);
             }
         }
 
         public static Color ApplySystemThemeToCaptionButtons(Window window)
         {
-            var backgroundColor = ThemeHelper.GetApplicationBackgroundColor();
-            var luminance = (0.299 * backgroundColor.R + 0.587 * backgroundColor.G + 0.114 * backgroundColor.B) / 255;
-            var foregroundColor = luminance > 0.5 ? Colors.Black : Colors.White;
-
             ApplyThemeToWindow(window);
-
-            return foregroundColor;
+            var isDarkTheme = ThemeHelper.IsDarkTheme();
+            return isDarkTheme ? Colors.White : Colors.Black;
         }
     }
 }

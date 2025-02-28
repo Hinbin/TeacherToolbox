@@ -5,6 +5,7 @@ using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using TeacherToolbox.Helpers;
 using TeacherToolbox.Model;
+using System.Diagnostics;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -79,7 +80,7 @@ namespace TeacherToolbox
             catch (Exception ex)
             {
                 // Log the error if you have logging set up
-                System.Diagnostics.Debug.WriteLine($"Failed to initialize theme: {ex}");
+                Debug.WriteLine($"Failed to initialize theme: {ex}");
 
                 // Fallback to default theme
                 ThemeHelper.RootTheme = ElementTheme.Default;

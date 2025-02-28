@@ -37,7 +37,7 @@ public class TestBase
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"Warning: Failed to delete {filePath}: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"Warning: Failed to delete {filePath}: {ex.Message}");
                 }
             }
         }
@@ -45,7 +45,7 @@ public class TestBase
         var solutionDir = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"..\..\..\..\..\.."));
         var appPath = Path.Combine(
             solutionDir,
-            @"TeacherToolbox\bin\x86\Debug\net6.0-windows10.0.19041.0\TeacherToolbox.exe"
+            @"TeacherToolbox\bin\x86\Debug\net6.0-windows10.0.19041.0\win10-x86\TeacherToolbox.exe"
         );
 
         if (!File.Exists(appPath))
