@@ -9,7 +9,11 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
     mc:Ignorable="d">
-    <Grid Margin="5" AutomationProperties.Name="ExamClock">
+
+    <Grid
+        x:Name="MainGrid"
+        Margin="5"
+        AutomationProperties.Name="ExamClock">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="3*" />
             <ColumnDefinition Width="2*" />
@@ -20,6 +24,15 @@
             <RowDefinition Height="*" />
 
         </Grid.RowDefinitions>
+        <TeachingTip
+            x:Name="ClockInstructionTip"
+            Title="Exam Clock Controls"
+            CloseButtonContent="Got it!"
+            IsLightDismissEnabled="True"
+            PlacementMargin="20"
+            PreferredPlacement="Bottom"
+            Subtitle="Left-click and drag to create time segments. Right-click to remove segments." />
+
         <Viewbox
             Grid.Row="0"
             Grid.RowSpan="3"

@@ -240,6 +240,14 @@ public sealed partial class Clock : AutomatedPage
 
         localSettings = await LocalSettings.GetSharedInstanceAsync();
         centreTextBox.Text = localSettings.CentreText;
+
+        // Inside your Clock_Loaded method, after other initialization:
+        if (!localSettings.HasShownClockInstructions)
+        {
+            ClockInstructionTip.IsOpen = true;
+            localSettings.HasShownClockInstructions = true;
+        }
+
     }
 
     private void Timer_Tick(object sender, object e)

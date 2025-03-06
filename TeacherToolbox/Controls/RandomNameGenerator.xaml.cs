@@ -78,7 +78,7 @@ namespace TeacherToolbox.Controls
                 "Use the 'Send Feedback' button in Settings to let us know any great ideas you have for TeacherToolBox!",
                 "You can change what happens when the timer finishes, such as closing when finished, in settings",
                 "There is a dark mode theme that you can activate in settings",
-                "Keyboard shortcuts let you create timers without interrupting your teaching flow."
+                "Keyboard shortcuts like Windows Key + 0 let you create timers without interrupting your teaching flow."
             };
 
             // Display a tip immediately since no class is selected yet

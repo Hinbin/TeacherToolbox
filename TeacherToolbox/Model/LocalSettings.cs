@@ -51,6 +51,7 @@ namespace TeacherToolbox.Model
         private readonly object _settingsLock = new object();
         private static LocalSettings _sharedInstance;
         private static readonly object _initLock = new object();
+        private bool hasShownClockInstructions;
 
         // Constants for the settings keys
         public const string IntervalConfigsKey = "SavedIntervalConfigs";
@@ -131,6 +132,12 @@ namespace TeacherToolbox.Model
             Debug.WriteLine($"Saved {savedIntervalConfigs.Count} interval configurations");
         }
 
+        public bool HasShownClockInstructions
+        {
+            get => hasShownClockInstructions;
+            set => SetAndSave(ref hasShownClockInstructions, value);
+        }
+
         // Save custom timer configurations
         public void SaveCustomTimerConfigs(List<SavedIntervalConfig> configs)
         {
@@ -175,6 +182,7 @@ namespace TeacherToolbox.Model
                         { "CentreText", CentreText },
                         { "LastWindowPosition", LastWindowPosition },
                         { IntervalConfigsKey, savedIntervalConfigs ?? new List<SavedIntervalConfig>() },
+                        { "HasShownClockInstructions", HasShownClockInstructions },
                         { CustomTimerConfigsKey, savedCustomTimerConfigs ?? new List<SavedIntervalConfig>() }
                     };
 
@@ -268,6 +276,9 @@ namespace TeacherToolbox.Model
                                         savedCustomTimerConfigs = new List<SavedIntervalConfig>();
                                     }
                                     break;
+                                case "HasShownClockInstructions":
+                                    HasShownClockInstructions = kvp.Value.GetBoolean();
+                                    break;
                                 default:
                                     settings[kvp.Key] = kvp.Value;
                                     break;
@@ -337,8 +348,6 @@ namespace TeacherToolbox.Model
 
             return _sharedInstance;
         }
-
-        // Add this new synchronous method to LocalSettings
         public void LoadSettingsSync()
         {
             try
@@ -358,7 +367,7 @@ namespace TeacherToolbox.Model
                         settings = new Dictionary<string, object>();
                         foreach (var kvp in loadedSettings)
                         {
-                            switch (kvp.Key)
+                            switch (kvp.Key) // This line was missing in your code
                             {
                                 case "CentreText":
                                     CentreText = kvp.Value.GetString() ?? "Centre";
@@ -373,7 +382,35 @@ namespace TeacherToolbox.Model
                                         LastWindowPosition = new WindowPosition(0, 0, 0, 0, 0);
                                     }
                                     break;
-                                // Rest of your switch cases...
+                                case IntervalConfigsKey:
+                                    try
+                                    {
+                                        savedIntervalConfigs = kvp.Value.Deserialize<List<SavedIntervalConfig>>(options);
+                                        // Log successful loading for debugging
+                                        Debug.WriteLine($"Loaded {savedIntervalConfigs?.Count ?? 0} interval configs");
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        Debug.WriteLine($"Error deserializing SavedIntervalConfigs: {ex.Message}");
+                                        savedIntervalConfigs = new List<SavedIntervalConfig>();
+                                    }
+                                    break;
+                                case CustomTimerConfigsKey:
+                                    try
+                                    {
+                                        savedCustomTimerConfigs = kvp.Value.Deserialize<List<SavedIntervalConfig>>(options);
+                                        // Log successful loading for debugging
+                                        Debug.WriteLine($"Loaded {savedCustomTimerConfigs?.Count ?? 0} custom timer configs");
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        Debug.WriteLine($"Error deserializing SavedCustomTimerConfigs: {ex.Message}");
+                                        savedCustomTimerConfigs = new List<SavedIntervalConfig>();
+                                    }
+                                    break;
+                                case "HasShownClockInstructions":
+                                    HasShownClockInstructions = kvp.Value.GetBoolean();
+                                    break;
                                 default:
                                     settings[kvp.Key] = kvp.Value;
                                     break;
