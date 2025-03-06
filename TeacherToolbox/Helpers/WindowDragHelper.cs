@@ -12,16 +12,19 @@ public class WindowDragHelper
     private Microsoft.UI.Windowing.AppWindow _apw;
     private bool isClicked = false;
     private bool onlyVertical = false;
+    private TeacherToolbox.Model.LocalSettings _settings; // Add this field
 
     [DllImport("User32.dll", CharSet = CharSet.Auto, SetLastError = true)]
     public static extern bool GetCursorPos(out Windows.Graphics.PointInt32 lpPoint);
 
-    public WindowDragHelper(Window window, bool onlyAllowVertical = false)
+    // Update constructor to receive settings
+    public WindowDragHelper(Window window, TeacherToolbox.Model.LocalSettings settings, bool onlyAllowVertical = false)
     {
         IntPtr hWnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
         Microsoft.UI.WindowId myWndId = Microsoft.UI.Win32Interop.GetWindowIdFromWindow(hWnd);
         _apw = Microsoft.UI.Windowing.AppWindow.GetFromWindowId(myWndId);
         onlyVertical = onlyAllowVertical;
+        _settings = settings; // Store settings reference
     }
 
     public void OnNavigate()
@@ -30,10 +33,28 @@ public class WindowDragHelper
         bMoving = false;
     }
 
+    // Update PointerReleased to save position
     public void PointerReleased(object sender, PointerRoutedEventArgs e)
     {
         ((UIElement)sender).ReleasePointerCaptures();
         bMoving = false;
+
+        // Save the window position to settings
+        if (_settings != null && isClicked)
+        {
+            var position = _apw.Position;
+            var size = _apw.Size;
+
+            _settings.LastWindowPosition = new TeacherToolbox.Model.WindowPosition(
+                position.X,
+                position.Y,
+                size.Width,
+                size.Height,
+                0 // DisplayID is likely not needed for this, but set as needed
+            );
+        }
+
+        isClicked = false;
     }
 
     public void PointerPressed(object sender, PointerRoutedEventArgs e)

@@ -62,7 +62,8 @@ namespace TeacherToolbox
 
             this.SetIsAlwaysOnTop(true);
 
-            dragHelper = new WindowDragHelper(this);
+            var settings = TeacherToolbox.Model.LocalSettings.GetSharedInstanceSync();
+            dragHelper = new WindowDragHelper(this, settings);
 
             try
             {
@@ -133,6 +134,10 @@ namespace TeacherToolbox
                             if (timeInt == 0)
                             {
                                 timerWindow = new TimerWindow(30);
+                            }
+                            else if (timeInt == 9)
+                            {
+                                timerWindow = new TimerWindow(0);
                             }
                             else
                             {

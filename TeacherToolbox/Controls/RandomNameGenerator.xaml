@@ -11,19 +11,53 @@
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
     NavigationCacheMode="Enabled"
     mc:Ignorable="d">
-
     <Grid Name="RandomNameGeneratorPage">
         <Grid.RowDefinitions>
             <RowDefinition Height="3*" />
             <RowDefinition Height="1*" />
         </Grid.RowDefinitions>
-        <Viewbox Grid.Row="0" Tapped="NameDisplay_Tapped">
+
+        <!--  Original Name Display (visible when class is selected)  -->
+        <Viewbox
+            x:Name="NameViewbox"
+            Grid.Row="0"
+            Tapped="NameDisplay_Tapped">
             <TextBlock
                 x:Name="NameDisplay"
                 Margin="2"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center" />
         </Viewbox>
+
+        <!--  Tip of the Day Display (visible when no class is selected)  -->
+        <Border
+            x:Name="TipContainer"
+            Grid.Row="0"
+            MaxWidth="600"
+            Padding="20"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            Tapped="NameDisplay_Tapped"
+            Visibility="Collapsed">
+            <StackPanel>
+                <TextBlock
+                    x:Name="TipHeader"
+                    Margin="0,0,0,10"
+                    HorizontalAlignment="Center"
+                    FontSize="24"
+                    FontWeight="Bold"
+                    Text="Tip of the Day"
+                    TextAlignment="Center" />
+                <TextBlock
+                    x:Name="TipContent"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    FontSize="18"
+                    TextAlignment="Center"
+                    TextWrapping="Wrap" />
+            </StackPanel>
+        </Border>
+
         <Viewbox Grid.Row="1">
             <ScrollViewer
                 Name="ClassesViewer"

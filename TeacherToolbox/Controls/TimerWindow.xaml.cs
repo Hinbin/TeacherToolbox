@@ -82,8 +82,8 @@ namespace TeacherToolbox.Controls
             }
             else
             {
-                this.Height = 100;
-                this.Width = 100;
+                this.Height = 400;
+                this.Width = 300;
             }
 
             // Only set opacity if content exists
@@ -190,7 +190,8 @@ namespace TeacherToolbox.Controls
                 }
 
                 // Set up drag helper
-                dragHelper = new WindowDragHelper(this);
+                var settings = TeacherToolbox.Model.LocalSettings.GetSharedInstanceSync();
+                dragHelper = new WindowDragHelper(this, settings);
 
                 // Get the shared instance
                 localSettings = await LocalSettings.GetSharedInstanceAsync();

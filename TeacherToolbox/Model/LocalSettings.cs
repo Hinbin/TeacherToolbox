@@ -317,5 +317,85 @@ namespace TeacherToolbox.Model
             settings[key] = value;
             SaveSettings();
         }
+
+
+        public static LocalSettings GetSharedInstanceSync()
+        {
+            if (_sharedInstance == null)
+            {
+                lock (_initLock)
+                {
+                    if (_sharedInstance == null)
+                    {
+                        _sharedInstance = new LocalSettings();
+
+                        // Use synchronous file I/O instead of async
+                        _sharedInstance.LoadSettingsSync();
+                    }
+                }
+            }
+
+            return _sharedInstance;
+        }
+
+        // Add this new synchronous method to LocalSettings
+        public void LoadSettingsSync()
+        {
+            try
+            {
+                if (File.Exists(filePath))
+                {
+                    string json = File.ReadAllText(filePath);  // Synchronous read
+                    var options = new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    };
+
+                    var loadedSettings = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json, options);
+
+                    if (loadedSettings != null)
+                    {
+                        settings = new Dictionary<string, object>();
+                        foreach (var kvp in loadedSettings)
+                        {
+                            switch (kvp.Key)
+                            {
+                                case "CentreText":
+                                    CentreText = kvp.Value.GetString() ?? "Centre";
+                                    break;
+                                case "LastWindowPosition":
+                                    try
+                                    {
+                                        LastWindowPosition = kvp.Value.Deserialize<WindowPosition>(options);
+                                    }
+                                    catch
+                                    {
+                                        LastWindowPosition = new WindowPosition(0, 0, 0, 0, 0);
+                                    }
+                                    break;
+                                // Rest of your switch cases...
+                                default:
+                                    settings[kvp.Key] = kvp.Value;
+                                    break;
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    Debug.WriteLine("Settings file does not exist, using defaults");
+                    savedIntervalConfigs = new List<SavedIntervalConfig>();
+                    savedCustomTimerConfigs = new List<SavedIntervalConfig>();
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.WriteLine($"Error loading settings: {e.Message}");
+                Debug.WriteLine($"Stack trace: {e.StackTrace}");
+                // Initialize with defaults if loading fails
+                savedIntervalConfigs = new List<SavedIntervalConfig>();
+                savedCustomTimerConfigs = new List<SavedIntervalConfig>();
+            }
+        }
     }
 }

@@ -27,11 +27,15 @@ namespace TeacherToolbox.Controls
         int dayOfWeek;
         Button classRightClicked;
         IntPtr hWnd;
+        Random random = new Random();
+        List<string> tips;
 
         public RandomNameGenerator()
         {
             this.InitializeComponent();
 
+            // Initialize tips of the day
+            InitializeTips();
 
             this.Loaded += RandomNameGenerator_Loaded;
             // Set dayOfWeek as a number, Monday = 0, Tuesday = 1, etc.
@@ -42,17 +46,69 @@ namespace TeacherToolbox.Controls
 
             // Retrieve the window handle (HWND) of the current WinUI 3 window.
             hWnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
-            
+        }
 
+        private void InitializeTips()
+        {
+            tips = new List<string>
+            {
+                "Click on a student's name to select another student randomly.",
+                "Add a new class by clicking the 'Add Class' button and selecting a text file with student names.",
+                "Right-click on a class button to quickly remove that class.",
+                "Classes are organized by day of the week. Today's classes are shown automatically.",
+                "Use the Random Name Generator to ensure fair participation from all students.",
+                "You can tap anywhere in the name display area to generate a new random name.",
+                "Click the 'Get Started' button to learn more about using the Random Name Generator.",
+                "Try using the exam clock tool to help students understand time management with color-coded segments.",
+                "The colour coded segments in the exam clock are colour blind friendly",
+                "In the exam clock left click and drag to create a segment.  Right clicking deletes a segment.",
+                "The interval timer feature is great for managing timed classroom activities and rotations.",
+                "Timer sounds can be customized in the settings to alert students when time is up.",
+                "You can pause any active timer by tapping on it during a countdown.",
+                "For large numbers of classes, use the 'More' dropdown to access additional class lists.",
+                "Timer windows can be positioned on your preferred display for optimal visibility.",
+                "Press F9 to quickly generate a random name from anywhere in the application.",
+                "Use Windows Key + 1 through Windows Key + 8 to instantly create timers for that many minutes.",
+                "Need a quick 30-second timer? Press Windows Key + 0 from anywhere in the application.",
+                "Press Windows Key + 9 to open the custom timer interface for precise timing control.",
+                "Keyboard shortcuts such as F9 work even when you have a presentation showing.",
+                "The F9 key will focus the application and generate a new name in one keystroke.",
+                "Set up interval timers for complex classroom activities in the Timer section.",
+                "Found a bug?  Please report it using the 'Send Feedback' button in Settings.",
+                "Use the 'Send Feedback' button in Settings to let us know any great ideas you have for TeacherToolBox!",
+                "You can change what happens when the timer finishes, such as closing when finished, in settings",
+                "There is a dark mode theme that you can activate in settings",
+                "Keyboard shortcuts let you create timers without interrupting your teaching flow."
+            };
 
+            // Display a tip immediately since no class is selected yet
+            DisplayRandomTip();
+        }
+
+        private void DisplayRandomTip()
+        {
+            if (tips != null && tips.Count > 0)
+            {
+                int tipIndex = random.Next(tips.Count);
+                TipContent.Text = tips[tipIndex];
+
+                // Show tip container, hide name display
+                TipContainer.Visibility = Visibility.Visible;
+                NameViewbox.Visibility = Visibility.Collapsed;
+            }
         }
 
         public async void RandomNameGenerator_Loaded(object sender, RoutedEventArgs e)
         {
-
             studentClassSelector = await StudentClassSelector.CreateAsync();
             studentClasses = studentClassSelector.studentClasses[dayOfWeek];
             UpdateButtons();
+
+            // Display a tip if no class is selected
+            if (currentClass == null)
+            {
+                DisplayRandomTip();
+            }
         }
 
         public async Task AddClass()
@@ -83,7 +139,6 @@ namespace TeacherToolbox.Controls
 
             UpdateButtons();
             GenerateName();
-
         }
 
         private void UpdateButtons()
@@ -191,7 +246,16 @@ namespace TeacherToolbox.Controls
 
         public void GenerateName()
         {
-            if (currentClass == null) return;
+            if (currentClass == null)
+            {
+                // No class selected, show a tip of the day instead
+                DisplayRandomTip();
+                return;
+            }
+
+            // Show name display, hide tip container
+            NameViewbox.Visibility = Visibility.Visible;
+            TipContainer.Visibility = Visibility.Collapsed;
 
             Student randomStudent = currentClass.GetRandomStudent();
             if (randomStudent == null) return;
@@ -207,7 +271,16 @@ namespace TeacherToolbox.Controls
                 return;
             }
 
-            GenerateName();
+            if (currentClass == null)
+            {
+                // If no class is selected, show a different tip
+                DisplayRandomTip();
+            }
+            else
+            {
+                GenerateName();
+            }
+
             e.Handled = true;
         }
 
@@ -224,6 +297,8 @@ namespace TeacherToolbox.Controls
                 studentClassSelector.RemoveClass(currentClass, dayOfWeek);
                 currentClass = null;
                 UpdateButtons();
+                // After removing the class, show a tip of the day
+                DisplayRandomTip();
             }
             else
             {
@@ -239,6 +314,14 @@ namespace TeacherToolbox.Controls
                         {
                             studentClassSelector.RemoveClass(studentClass, dayOfWeek);
                             UpdateButtons();
+
+                            // If we removed the current class, show a tip
+                            if (currentClass == studentClass)
+                            {
+                                currentClass = null;
+                                DisplayRandomTip();
+                            }
+
                             break;
                         }
                     }
@@ -248,7 +331,6 @@ namespace TeacherToolbox.Controls
 
         private void Class_Clicked(object sender, RoutedEventArgs e)
         {
-
             string className;
 
             // Check we have a button object as a sender - if not return
@@ -291,7 +373,6 @@ namespace TeacherToolbox.Controls
 
             GenerateName();
             UpdateButtons();
-
         }
 
         private void Class_Right_Clicked(object sender, RoutedEventArgs e)
@@ -315,12 +396,11 @@ namespace TeacherToolbox.Controls
             Button button = (Button)sender;
             button.Flyout = menuFlyout;
             button.Flyout.ShowAt(button);
-
         }
 
         private void How_To_Use_Clicked(object sender, RoutedEventArgs e)
         {
-            RNGHowToUseWindow howToUseWindow= new();
+            RNGHowToUseWindow howToUseWindow = new();
             howToUseWindow.Activate();
         }
 
@@ -337,8 +417,6 @@ namespace TeacherToolbox.Controls
                 studentClasses.Insert(0, studentClass);
                 UpdateButtons();
             }
-
         }
     }
-
 }

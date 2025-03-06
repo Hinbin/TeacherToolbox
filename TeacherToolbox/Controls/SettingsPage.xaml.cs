@@ -33,13 +33,15 @@ public sealed partial class SettingsPage : AutomatedPage
         this.InitializeComponent();
         WindowHelper.SetWindowForElement(this, App.MainWindow);
 
+        /*
         // Get the window for this page
         var window = WindowHelper.GetWindowForElement(this);
         if (window != null)
         {
             // Set minimum width and height to ensure settings are visible
             window.AppWindow.Resize(new Windows.Graphics.SizeInt32(600, 400));
-        }
+        }*/
+
         InitializeSettingsAsync();
     }
 
