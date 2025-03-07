@@ -44,6 +44,7 @@ namespace TeacherToolbox.Model
     {
         private string centreText;
         private WindowPosition lastWindowPosition;
+        private WindowPosition lastTimerWindowPosition;
         private Dictionary<string, object> settings;
         private readonly string filePath;
         private List<SavedIntervalConfig> savedIntervalConfigs;
@@ -61,6 +62,7 @@ namespace TeacherToolbox.Model
         {
             centreText = "Centre";
             lastWindowPosition = new WindowPosition(0, 0, 0, 0, 0);
+            lastTimerWindowPosition = new WindowPosition(0, 0, 0, 0, 0);
             settings = new Dictionary<string, object>();
             savedIntervalConfigs = new List<SavedIntervalConfig>();
             savedCustomTimerConfigs = new List<SavedIntervalConfig>();
@@ -108,6 +110,12 @@ namespace TeacherToolbox.Model
         {
             get => lastWindowPosition;
             set => SetAndSave(ref lastWindowPosition, value);
+        }
+
+        public WindowPosition LastTimerWindowPosition
+        {
+            get => lastTimerWindowPosition;
+            set => SetAndSave(ref lastTimerWindowPosition, value);
         }
 
         public string CentreText
@@ -181,6 +189,7 @@ namespace TeacherToolbox.Model
                     {
                         { "CentreText", CentreText },
                         { "LastWindowPosition", LastWindowPosition },
+                        { "LastTimerWindowPosition", LastTimerWindowPosition },
                         { IntervalConfigsKey, savedIntervalConfigs ?? new List<SavedIntervalConfig>() },
                         { "HasShownClockInstructions", HasShownClockInstructions },
                         { CustomTimerConfigsKey, savedCustomTimerConfigs ?? new List<SavedIntervalConfig>() }
@@ -248,6 +257,16 @@ namespace TeacherToolbox.Model
                                     catch
                                     {
                                         LastWindowPosition = new WindowPosition(0, 0, 0, 0, 0);
+                                    }
+                                    break;
+                                case "LastTimerWindowPosition": 
+                                    try
+                                    {
+                                        LastTimerWindowPosition = kvp.Value.Deserialize<WindowPosition>(options);
+                                    }
+                                    catch
+                                    {
+                                        LastTimerWindowPosition = new WindowPosition(0, 0, 0, 0, 0);
                                     }
                                     break;
                                 case IntervalConfigsKey:
@@ -382,6 +401,16 @@ namespace TeacherToolbox.Model
                                         LastWindowPosition = new WindowPosition(0, 0, 0, 0, 0);
                                     }
                                     break;
+                                case "LastTimerWindowPosition":  // Add this case
+                                    try
+                                    {
+                                        LastTimerWindowPosition = kvp.Value.Deserialize<WindowPosition>(options);
+                                    }
+                                    catch
+                                    {
+                                        LastTimerWindowPosition = new WindowPosition(0, 0, 0, 0, 0);
+                                    }
+                                    break;
                                 case IntervalConfigsKey:
                                     try
                                     {
@@ -402,6 +431,7 @@ namespace TeacherToolbox.Model
                                         // Log successful loading for debugging
                                         Debug.WriteLine($"Loaded {savedCustomTimerConfigs?.Count ?? 0} custom timer configs");
                                     }
+
                                     catch (Exception ex)
                                     {
                                         Debug.WriteLine($"Error deserializing SavedCustomTimerConfigs: {ex.Message}");

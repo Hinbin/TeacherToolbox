@@ -223,16 +223,16 @@ namespace TeacherToolbox.Controls
         private async Task FinalizeWindowSetupAsync(int seconds)
         {
             // Handle window positioning first
-            if (localSettings?.LastWindowPosition != null)
+            if (localSettings?.LastTimerWindowPosition != null)
             {
-                if (localSettings.LastWindowPosition.Width > 10 && localSettings.LastWindowPosition.Height > 10)
+                if (localSettings.LastTimerWindowPosition.Width > 10 && localSettings.LastTimerWindowPosition.Height > 10)
                 {
-                    this.Height = localSettings.LastWindowPosition.Height;
-                    this.Width = localSettings.LastWindowPosition.Width;
+                    this.Height = localSettings.LastTimerWindowPosition.Height;
+                    this.Width = localSettings.LastTimerWindowPosition.Width;
                 }
 
-                PointInt32 lastPosition = new PointInt32(localSettings.LastWindowPosition.X, localSettings.LastWindowPosition.Y);
-                ulong lastDisplayIdValue = localSettings.LastWindowPosition.DisplayID;
+                PointInt32 lastPosition = new PointInt32(localSettings.LastTimerWindowPosition.X, localSettings.LastTimerWindowPosition.Y);
+                ulong lastDisplayIdValue = localSettings.LastTimerWindowPosition.DisplayID;
 
                 var allDisplayAreas = displayManager?.DisplayAreas;
                 if (allDisplayAreas?.Any(da => da.DisplayId.Value == lastDisplayIdValue) == true)
@@ -462,8 +462,8 @@ namespace TeacherToolbox.Controls
 
         private async Task InitializeWindowPositionAsync()
         {
-            PointInt32 lastPosition = new PointInt32(localSettings.LastWindowPosition.X, localSettings.LastWindowPosition.Y);
-            ulong lastDisplayIdValue = localSettings.LastWindowPosition.DisplayID;
+            PointInt32 lastPosition = new PointInt32(localSettings.LastTimerWindowPosition.X, localSettings.LastTimerWindowPosition.Y);
+            ulong lastDisplayIdValue = localSettings.LastTimerWindowPosition.DisplayID;
 
             var allDisplayAreas = displayManager.DisplayAreas;
             if (allDisplayAreas.Any(da => da.DisplayId.Value == lastDisplayIdValue))
@@ -475,10 +475,10 @@ namespace TeacherToolbox.Controls
                 this.CenterOnScreen();
             }
 
-            if (localSettings.LastWindowPosition.Width > 10 && localSettings.LastWindowPosition.Height > 10)
+            if (localSettings.LastTimerWindowPosition.Width > 10 && localSettings.LastTimerWindowPosition.Height > 10)
             {
-                this.Height = localSettings.LastWindowPosition.Height;
-                this.Width = localSettings.LastWindowPosition.Width;
+                this.Height = localSettings.LastTimerWindowPosition.Height;
+                this.Width = localSettings.LastTimerWindowPosition.Width;
             }
             else
             {
@@ -663,57 +663,70 @@ namespace TeacherToolbox.Controls
         }
 
         private void SetTimerText()
+{
+    int secondsToShow = Math.Abs(secondsLeft);
+
+    string timeText;
+    // Always use same format to ensure consistent width
+    if (secondsToShow > 3599)
+    {
+        int hours = secondsToShow / 3600;
+        int minutes = (secondsToShow % 3600) / 60;
+        int seconds = secondsToShow % 60;
+        timeText = $"{hours:D2}:{minutes:D2}:{seconds:D2}";
+    }
+    else if (secondsToShow > 59)
+    {
+        int minutes = secondsToShow / 60;
+        int seconds = secondsToShow % 60;
+        // Use padding for single-digit minutes to match 2-digit width
+        timeText = $"{minutes:D2}:{seconds:D2}";
+    }
+    else
+    {
+        // Pad seconds with spaces to create consistent width
+        timeText = $"{secondsToShow:D2}";
+    }
+
+    // Update main timer text
+    timerText.Text = timeText;
+
+    // Update interval info if applicable
+    if (intervals != null && intervalCount > 1 && secondsLeft >= 0)
+    {
+        intervalInfoText.Text = $"Interval {intervalNumber}/{intervalCount}";
+        intervalInfoText.Visibility = Visibility.Visible;
+    }
+    else
+    {
+        intervalInfoText.Text = "";
+        intervalInfoText.Visibility = Visibility.Collapsed;
+    }
+
+    // Set text color to red if we're in overtime
+    if (secondsLeft < 0)
+    {
+        timerText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red);
+        intervalInfoText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red);
+    }
+    else
+    {
+        // Use a resource that properly adapts to theme changes
+        var currentTheme = ((FrameworkElement)this.Content).ActualTheme;
+        if (currentTheme == ElementTheme.Dark)
         {
-            int secondsToShow = Math.Abs(secondsLeft);
-
-            string timeText;
-            // If more than an hour, show hours, minutes and seconds
-            if (secondsToShow > 3599)
-            {
-                int hours = secondsToShow / 3600;
-                int minutes = (secondsToShow % 3600) / 60;
-                int seconds = secondsToShow % 60;
-                timeText = $"{hours}:{minutes.ToString("D2")}:{seconds.ToString("D2")}";
-            }
-            else if (secondsToShow > 59)
-            {
-                int minutes = secondsToShow / 60;
-                int seconds = secondsToShow % 60;
-                timeText = $"{minutes}:{seconds.ToString("D2")}";
-            }
-            else
-            {
-                timeText = secondsToShow.ToString();
-            }
-
-            // Update main timer text
-            timerText.Text = timeText;
-
-            // Update interval info if applicable
-            if (intervals != null && intervalCount > 1 && secondsLeft >= 0)
-            {
-                intervalInfoText.Text = $"Interval {intervalNumber}/{intervalCount}";
-                intervalInfoText.Visibility = Visibility.Visible;
-            }
-            else
-            {
-                intervalInfoText.Text = "";
-                intervalInfoText.Visibility = Visibility.Collapsed;
-            }
-
-            // Set text color to red if we're in overtime
-            if (secondsLeft < 0)
-            {
-                timerText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red);
-                intervalInfoText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red);
-            }
-            else
-            {
-                // Reset to system text color 
-                timerText.Foreground = (Brush)Application.Current.Resources["SystemControlForegroundBaseHighBrush"];
-                intervalInfoText.Foreground = (Brush)Application.Current.Resources["SystemControlForegroundBaseHighBrush"];
-            }
+            // Use white text in dark theme
+            timerText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.White);
+            intervalInfoText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.White);
         }
+        else
+        {
+            // Use dark text in light theme
+            timerText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Black);
+            intervalInfoText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Black);
+        }
+    }
+}
 
         bool TrySetAcrylicBackdrop(bool useAcrylicThin)
         {
@@ -838,7 +851,7 @@ namespace TeacherToolbox.Controls
         {
             dragHelper.PointerReleased(sender, e);
 
-            localSettings.LastWindowPosition = GetCurrentWindowInformation();
+            localSettings.LastTimerWindowPosition = GetCurrentWindowInformation();
         }
 
         private void TimerWindow_SizeChanged(object sender, WindowSizeChangedEventArgs e)
@@ -858,7 +871,7 @@ namespace TeacherToolbox.Controls
                 // Perform actions here after resizing has stopped
                 if (localSettings != null)
                 {
-                    localSettings.LastWindowPosition = GetCurrentWindowInformation();
+                    localSettings.LastTimerWindowPosition = GetCurrentWindowInformation();
                 }
             }
         }

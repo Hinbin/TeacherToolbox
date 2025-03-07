@@ -9,189 +9,222 @@
     xmlns:winex="using:WinUIEx"
     mc:Ignorable="d">
 
-    <Viewbox>
-        <Grid
-            Padding="2"
-            PointerMoved="Grid_PointerMoved"
-            PointerPressed="Grid_PointerPressed"
-            PointerReleased="Grid_PointerReleased"
-            Tapped="Grid_Tapped">
-            <Grid Width="400" Height="400">
+    <Grid
+        PointerMoved="Grid_PointerMoved"
+        PointerPressed="Grid_PointerPressed"
+        PointerReleased="Grid_PointerReleased"
+        Tapped="Grid_Tapped">
+
+        <!--  Timer Display  -->
+        <Grid>
+            <Viewbox Visibility="{Binding ElementName=timerGauge, Path=Visibility}">
+                <controls:RadialGauge
+                    x:Name="timerGauge"
+                    x:FieldModifier="public"
+                    MaxAngle="360"
+                    MinAngle="0"
+                    NeedleBrush="Transparent"
+                    NeedleLength="70"
+                    NeedleWidth="0"
+                    ScaleBrush="Transparent"
+                    ScalePadding="0"
+                    ScaleTickBrush="Transparent"
+                    ScaleWidth="20"
+                    StepSize="1"
+                    TickLength="20"
+                    TickSpacing="5"
+                    TickWidth="2"
+                    TrailBrush="{StaticResource darkPurpleBrush}"
+                    ValueStringFormat="'" />
+            </Viewbox>
+
+            <Grid
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Visibility="{Binding ElementName=timerGauge, Path=Visibility}">
+                <Viewbox
+                    MaxWidth="120"
+                    MaxHeight="120"
+                    Stretch="Uniform">
+                    <Grid VerticalAlignment="Center">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <TextBlock
+                            x:Name="timerText"
+                            Grid.Row="0"
+                            HorizontalAlignment="Center"
+                            FontSize="40"
+                            FontWeight="SemiBold" />
+                        <TextBlock
+                            x:Name="intervalInfoText"
+                            Grid.Row="1"
+                            Margin="0,5,0,0"
+                            HorizontalAlignment="Center"
+                            FontSize="20"
+                            FontWeight="Normal" />
+                    </Grid>
+                </Viewbox>
+            </Grid>
+
+            <!--  Timer Setup UI  -->
+            <Grid
+                x:Name="timeSelector"
+                Margin="0"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch"
+                Visibility="Collapsed">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <Grid Grid.Row="0">
-                    <Viewbox>
-                        <controls:RadialGauge
-                            x:Name="timerGauge"
-                            x:FieldModifier="public"
-                            MaxAngle="360"
-                            MinAngle="0"
-                            NeedleBrush="Transparent"
-                            NeedleLength="70"
-                            NeedleWidth="0"
-                            ScaleBrush="Transparent"
-                            ScalePadding="0"
-                            ScaleTickBrush="Transparent"
-                            ScaleWidth="20"
-                            StepSize="1"
-                            TickLength="20"
-                            TickSpacing="5"
-                            TickWidth="2"
-                            TrailBrush="{StaticResource darkPurpleBrush}"
-                            ValueStringFormat="'" />
-                    </Viewbox>
-                    <Grid Width="200" Height="200">
-                        <Viewbox Stretch="Uniform">
-                            <Grid VerticalAlignment="Center">
+                <!--  Intervals List  -->
+                <ListView
+                    x:Name="intervalsListView"
+                    Grid.Row="0"
+                    Margin="4,8,4,4"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Stretch"
+                    IsItemClickEnabled="False"
+                    SelectionMode="None">
+                    <ListView.ItemContainerStyle>
+                        <Style TargetType="ListViewItem">
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                            <Setter Property="Padding" Value="0" />
+                            <Setter Property="Margin" Value="0,4" />
+                            <Setter Property="Background" Value="Transparent" />
+                        </Style>
+                    </ListView.ItemContainerStyle>
+                    <ListView.ItemTemplate>
+                        <DataTemplate>
+                            <Grid
+                                Padding="8"
+                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                CornerRadius="8">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
                                 <TextBlock
-                                    x:Name="timerText"
-                                    Grid.Row="0"
-                                    HorizontalAlignment="Center"
-                                    FontSize="48"
-                                    FontWeight="Bold" />
-                                <TextBlock
-                                    x:Name="intervalInfoText"
-                                    Grid.Row="1"
-                                    Margin="0,5,0,0"
-                                    HorizontalAlignment="Center"
-                                    FontSize="24"
-                                    FontWeight="Normal" />
+                                    Grid.Column="0"
+                                    Margin="0,0,8,0"
+                                    VerticalAlignment="Center"
+                                    FontSize="22"
+                                    FontWeight="Bold"
+                                    Text="{Binding IntervalNumber}" />
+
+                                <Grid Grid.Column="1" HorizontalAlignment="Stretch">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <!--  Hours  -->
+                                    <TextBox
+                                        Grid.Column="0"
+                                        MinWidth="60"
+                                        HorizontalAlignment="Stretch"
+                                        FontSize="22"
+                                        PlaceholderText="h"
+                                        Text="{Binding Hours, Mode=TwoWay}"
+                                        TextAlignment="Center" />
+
+                                    <TextBlock
+                                        Grid.Column="1"
+                                        Margin="4,0"
+                                        VerticalAlignment="Center"
+                                        FontSize="22"
+                                        FontWeight="Bold"
+                                        Text=":" />
+
+                                    <!--  Minutes  -->
+                                    <TextBox
+                                        Grid.Column="2"
+                                        MinWidth="60"
+                                        HorizontalAlignment="Stretch"
+                                        FontSize="22"
+                                        PlaceholderText="m"
+                                        Text="{Binding Minutes, Mode=TwoWay}"
+                                        TextAlignment="Center" />
+
+                                    <TextBlock
+                                        Grid.Column="3"
+                                        Margin="4,0"
+                                        VerticalAlignment="Center"
+                                        FontSize="22"
+                                        FontWeight="Bold"
+                                        Text=":" />
+
+                                    <!--  Seconds  -->
+                                    <TextBox
+                                        Grid.Column="4"
+                                        MinWidth="60"
+                                        HorizontalAlignment="Stretch"
+                                        FontSize="22"
+                                        PlaceholderText="s"
+                                        Text="{Binding Seconds, Mode=TwoWay}"
+                                        TextAlignment="Center" />
+                                </Grid>
+
+                                <Button
+                                    Grid.Column="2"
+                                    Width="36"
+                                    Height="36"
+                                    Margin="8,0,0,0"
+                                    VerticalAlignment="Center"
+                                    Click="RemoveInterval_Click"
+                                    Visibility="{Binding ShowRemoveButton, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <FontIcon FontSize="16" Glyph="&#xE711;" />
+                                </Button>
                             </Grid>
-                        </Viewbox>
-                    </Grid>
-                    <Grid
-                        x:Name="timeSelector"
-                        VerticalAlignment="Center"
-                        Visibility="Collapsed">
-                        <ScrollViewer VerticalScrollBarVisibility="Auto">
-                            <StackPanel Padding="24">
-                                <ListView
-                                    x:Name="intervalsListView"
-                                    Margin="0,8"
-                                    HorizontalAlignment="Stretch"
-                                    IsItemClickEnabled="False"
-                                    SelectionMode="None">
-                                    <ListView.ItemContainerStyle>
-                                        <Style TargetType="ListViewItem">
-                                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                                            <Setter Property="Padding" Value="0" />
-                                            <Setter Property="Margin" Value="0,4" />
-                                            <Setter Property="Background" Value="Transparent" />
-                                        </Style>
-                                    </ListView.ItemContainerStyle>
-                                    <ListView.ItemTemplate>
-                                        <DataTemplate>
-                                            <Grid
-                                                Padding="16"
-                                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                                CornerRadius="8">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="Auto" />
-                                                    <ColumnDefinition Width="*" />
-                                                    <ColumnDefinition Width="Auto" />
-                                                </Grid.ColumnDefinitions>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
 
-                                                <TextBlock
-                                                    Grid.Column="0"
-                                                    Margin="0,0,16,0"
-                                                    VerticalAlignment="Center"
-                                                    FontSize="18"
-                                                    FontWeight="Bold"
-                                                    Text="{Binding IntervalNumber}" />
+                <!--  Action Buttons  -->
+                <StackPanel Grid.Row="1" Margin="4,2,4,8">
+                    <Button
+                        x:Name="addIntervalButton"
+                        Height="44"
+                        Margin="0,4,0,8"
+                        HorizontalAlignment="Stretch"
+                        Click="AddIntervalButton_Click"
+                        Style="{StaticResource AccentButtonStyle}">
+                        <StackPanel Orientation="Horizontal">
+                            <FontIcon
+                                Margin="0,0,8,0"
+                                FontSize="16"
+                                Glyph="&#xE710;" />
+                            <TextBlock
+                                FontSize="16"
+                                FontWeight="SemiBold"
+                                Text="Add Interval" />
+                        </StackPanel>
+                    </Button>
 
-                                                <Grid Grid.Column="1" HorizontalAlignment="Stretch">
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="*" />
-                                                        <ColumnDefinition Width="Auto" />
-                                                        <ColumnDefinition Width="*" />
-                                                        <ColumnDefinition Width="Auto" />
-                                                        <ColumnDefinition Width="*" />
-                                                    </Grid.ColumnDefinitions>
-
-                                                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
-                                                        <ComboBox
-                                                            HorizontalAlignment="Stretch"
-                                                            IsEditable="True"
-                                                            ItemsSource="{Binding HoursList}"
-                                                            Text="{Binding Hours, Mode=TwoWay}" />
-                                                        <TextBlock HorizontalAlignment="Center" Text="Hours" />
-                                                    </StackPanel>
-
-                                                    <TextBlock
-                                                        Grid.Column="1"
-                                                        Margin="8,0"
-                                                        VerticalAlignment="Center"
-                                                        Text=":" />
-
-                                                    <StackPanel Grid.Column="2" Margin="0,0,8,0">
-                                                        <ComboBox
-                                                            HorizontalAlignment="Stretch"
-                                                            IsEditable="True"
-                                                            ItemsSource="{Binding MinutesList}"
-                                                            Text="{Binding Minutes, Mode=TwoWay}" />
-                                                        <TextBlock HorizontalAlignment="Center" Text="Minutes" />
-                                                    </StackPanel>
-
-                                                    <TextBlock
-                                                        Grid.Column="3"
-                                                        Margin="8,0"
-                                                        VerticalAlignment="Center"
-                                                        Text=":" />
-
-                                                    <StackPanel Grid.Column="4">
-                                                        <ComboBox
-                                                            HorizontalAlignment="Stretch"
-                                                            IsEditable="True"
-                                                            ItemsSource="{Binding SecondsList}"
-                                                            Text="{Binding Seconds, Mode=TwoWay}" />
-                                                        <TextBlock HorizontalAlignment="Center" Text="Seconds" />
-                                                    </StackPanel>
-                                                </Grid>
-
-                                                <Button
-                                                    Grid.Column="2"
-                                                    Margin="16,0,0,0"
-                                                    VerticalAlignment="Center"
-                                                    Click="RemoveInterval_Click"
-                                                    Visibility="{Binding ShowRemoveButton, Converter={StaticResource BoolToVisibilityConverter}}">
-                                                    <FontIcon FontSize="12" Glyph="&#xE711;" />
-                                                </Button>
-                                            </Grid>
-                                        </DataTemplate>
-                                    </ListView.ItemTemplate>
-                                </ListView>
-
-                                <Button
-                                    x:Name="addIntervalButton"
-                                    Margin="0,16"
-                                    HorizontalAlignment="Stretch"
-                                    Click="AddIntervalButton_Click"
-                                    Style="{StaticResource AccentButtonStyle}">
-                                    <StackPanel Orientation="Horizontal">
-                                        <FontIcon Margin="0,0,8,0" Glyph="&#xE710;" />
-                                        <TextBlock Text="Add Interval" />
-                                    </StackPanel>
-                                </Button>
-
-                                <Button
-                                    x:Name="startButton"
-                                    HorizontalAlignment="Stretch"
-                                    Click="StartButton_Click"
-                                    Style="{StaticResource AccentButtonStyle}">
-                                    <TextBlock Text="Start Timer" />
-                                </Button>
-                            </StackPanel>
-                        </ScrollViewer>
-                    </Grid>
-                </Grid>
+                    <Button
+                        x:Name="startButton"
+                        Height="50"
+                        HorizontalAlignment="Stretch"
+                        Click="StartButton_Click"
+                        Style="{StaticResource AccentButtonStyle}">
+                        <TextBlock
+                            FontSize="20"
+                            FontWeight="SemiBold"
+                            Text="Start Timer" />
+                    </Button>
+                </StackPanel>
             </Grid>
         </Grid>
-    </Viewbox>
+    </Grid>
 </winex:WindowEx>

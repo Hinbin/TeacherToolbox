@@ -18,6 +18,7 @@ using Microsoft.UI.Xaml.Automation.Peers;
 using Microsoft.UI.Xaml.Automation;
 using TeacherToolbox.Helpers;
 using Windows.UI;
+using System.Threading.Tasks;
 
 
 
@@ -36,6 +37,12 @@ namespace TeacherToolbox
         private NamedPipeServerStream pipeServer;
         private WindowDragHelper dragHelper;
         private readonly SleepPreventer _sleepPreventer;  // readonly to prevent accidental nulling
+        private Process shortcutWatcherProcess;
+        private System.Threading.Timer watchdogTimer;
+        private const int MAX_RESTART_ATTEMPTS = 3;
+        private int restartAttempts = 0;
+        private bool isShortcutWatcherRunning = false;
+        private int pipeFailedChecks = 0;
 
         private void ContentFrame_NavigationFailed(object sender, NavigationFailedEventArgs e)
         {
@@ -56,6 +63,7 @@ namespace TeacherToolbox
             SetRegionsForCustomTitleBar(); // To allow the nav button to be selectable, but the rest of the title bar to function as normal
 
             NavView.IsPaneOpen = false;
+            pipeFailedChecks = 0;
 
             pipeServer = new NamedPipeServerStream("ShotcutWatcher", PipeDirection.In);
             ListenForKeyPresses();
@@ -68,7 +76,7 @@ namespace TeacherToolbox
             try
             {
                 // Start the KeyInterceptor application
-                Process.Start("ShortcutWatcher.exe");
+                StartShortcutWatcher();
             }
             catch (Exception e)
             {
@@ -78,19 +86,584 @@ namespace TeacherToolbox
             this.Closed += MainWindow_Closed;
         }
 
+        private void OnShortcutWatcherExited(object sender, EventArgs e)
+        {
+            Debug.WriteLine("ShortcutWatcher process exited unexpectedly");
+            isShortcutWatcherRunning = false;
+            AttemptRestartIfNeeded();
+        }
+
+        private async void VerifyShortcutWatcherRunning()
+        {
+            // Wait briefly to allow ShortcutWatcher to initialize
+            await Task.Delay(1000);
+
+            // Verify pipe connection can be established
+            await VerifyPipeConnectionAsync();
+        }
+
+        private async Task VerifyPipeConnectionAsync()
+        {
+            try
+            {
+                Debug.WriteLine("Verifying ShortcutWatcher pipe connection...");
+
+                // Check if process is still running first
+                if (shortcutWatcherProcess == null || shortcutWatcherProcess.HasExited)
+                {
+                    Debug.WriteLine("ShortcutWatcher process has exited before verification");
+                    isShortcutWatcherRunning = false;
+                    AttemptRestartIfNeeded();
+                    return;
+                }
+
+                // Try to establish a test pipe connection to verify ShortcutWatcher is responsive
+                using (NamedPipeClientStream testPipe = new NamedPipeClientStream(".", "ShortcutWatcherShutdown", PipeDirection.Out))
+                {
+                    try
+                    {
+                        // Use a shorter timeout first for better responsiveness
+                        var connectTask = testPipe.ConnectAsync(2000);
+
+                        // Wait for the connection attempt to complete
+                        await connectTask;
+
+                        if (testPipe.IsConnected)
+                        {
+                            Debug.WriteLine("ShortcutWatcher shutdown pipe connection verified");
+                            isShortcutWatcherRunning = true;
+                            restartAttempts = 0; // Reset the counter upon successful connection
+
+                            // Just testing connection, don't send actual shutdown signal
+
+                            // Try to clean up properly
+                            testPipe.Close();
+                            return;
+                        }
+                    }
+                    catch (TimeoutException)
+                    {
+                        Debug.WriteLine("ShortcutWatcher shutdown pipe connection timed out");
+                    }
+                    catch (Exception innerEx)
+                    {
+                        Debug.WriteLine($"Error during verification: {innerEx.Message}");
+                    }
+                }
+
+                // If we reach here, the first method failed - check process again
+                if (shortcutWatcherProcess != null && !shortcutWatcherProcess.HasExited)
+                {
+                    Debug.WriteLine("Process is still running but pipe connection failed - waiting for ALIVE signal");
+
+                    // Don't restart yet - wait for an ALIVE signal or process exit
+                    // The WatchdogCallback will eventually restart if needed
+                }
+                else
+                {
+                    Debug.WriteLine("ShortcutWatcher pipe connection failed - process not running");
+                    isShortcutWatcherRunning = false;
+                    AttemptRestartIfNeeded();
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"ShortcutWatcher pipe connection test failed: {ex.Message}");
+                isShortcutWatcherRunning = false;
+                AttemptRestartIfNeeded();
+            }
+        }
+
+        private void WatchdogCallback(object state)
+        {
+            // Run on background thread to avoid UI blocking
+            Task.Run(async () => {
+                try
+                {
+                    Debug.WriteLine("Watchdog checking ShortcutWatcher status...");
+
+                    // First check if process is still running
+                    bool processRunning = shortcutWatcherProcess != null && !shortcutWatcherProcess.HasExited;
+
+                    if (!processRunning)
+                    {
+                        Debug.WriteLine("Watchdog detected ShortcutWatcher process is not running");
+                        isShortcutWatcherRunning = false;
+                        AttemptRestartIfNeeded();
+                        return;
+                    }
+
+                    // Process is running, now verify pipe connection is working
+                    bool isPipeConnected = false;
+
+                    try
+                    {
+                        // First check if our server pipe is connected
+                        if (pipeServer != null && pipeServer.IsConnected)
+                        {
+                            Debug.WriteLine("Main pipe server is connected");
+                            isPipeConnected = true;
+                        }
+                        else
+                        {
+                            // Try the shutdown pipe as a backup check
+                            using (NamedPipeClientStream testPipe = new NamedPipeClientStream(".", "ShortcutWatcherShutdown", PipeDirection.Out))
+                            {
+                                var connectTask = testPipe.ConnectAsync(2000);
+                                bool connectResult = await Task.WhenAny(connectTask, Task.Delay(3000)) == connectTask;
+
+                                if (connectResult && testPipe.IsConnected)
+                                {
+                                    Debug.WriteLine("Watchdog: ShortcutWatcher shutdown pipe is responsive");
+                                    isPipeConnected = true;
+
+                                    // Don't send a shutdown signal, just close the connection
+                                    testPipe.Close();
+                                }
+                                else
+                                {
+                                    Debug.WriteLine("Watchdog: ShortcutWatcher shutdown pipe is not responsive");
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception pipeEx)
+                    {
+                        Debug.WriteLine($"Watchdog: Error checking pipe status: {pipeEx.Message}");
+                    }
+
+                    // Make decision based on both process and pipe status
+                    if (processRunning && !isPipeConnected)
+                    {
+                        Debug.WriteLine("Watchdog: Process is running but pipes are not responsive");
+
+                        // If this happens multiple times in a row, kill and restart
+                        if (++pipeFailedChecks >= 3) // Add this field to your class
+                        {
+                            Debug.WriteLine("Watchdog: Multiple pipe check failures, forcing process restart");
+                            try
+                            {
+                                // Kill the process
+                                if (!shortcutWatcherProcess.HasExited)
+                                {
+                                    shortcutWatcherProcess.Kill();
+                                }
+                            }
+                            catch { }
+
+                            isShortcutWatcherRunning = false;
+                            AttemptRestartIfNeeded();
+                            pipeFailedChecks = 0;
+                        }
+                    }
+                    else if (processRunning && isPipeConnected)
+                    {
+                        // Everything is working
+                        Debug.WriteLine("Watchdog: ShortcutWatcher is running properly");
+                        isShortcutWatcherRunning = true;
+                        pipeFailedChecks = 0;
+                    }
+                    else
+                    {
+                        // Process not running or other issues
+                        Debug.WriteLine("Watchdog: ShortcutWatcher needs restart");
+                        isShortcutWatcherRunning = false;
+                        AttemptRestartIfNeeded();
+                        pipeFailedChecks = 0;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Error in watchdog: {ex.Message}");
+
+                    // If an exception occurs in watchdog, try restarting
+                    try
+                    {
+                        isShortcutWatcherRunning = false;
+                        AttemptRestartIfNeeded();
+                    }
+                    catch { }
+                }
+            });
+        }
+
+        private void AttemptRestartIfNeeded()
+        {
+            // Run on background thread to prevent UI blocking
+            Task.Run(() => {
+                try
+                {
+                    // Limit restart attempts to avoid infinite restart loops
+                    if (restartAttempts < MAX_RESTART_ATTEMPTS)
+                    {
+                        restartAttempts++;
+                        Debug.WriteLine($"Attempting to restart ShortcutWatcher (attempt {restartAttempts} of {MAX_RESTART_ATTEMPTS})");
+
+                        // Clean up previous process reference if it exists
+                        if (shortcutWatcherProcess != null)
+                        {
+                            // Unsubscribe from events first to avoid race conditions
+                            try
+                            {
+                                shortcutWatcherProcess.Exited -= OnShortcutWatcherExited;
+                            }
+                            catch { }
+
+                            // Then try to terminate if it's still running
+                            try
+                            {
+                                if (!shortcutWatcherProcess.HasExited)
+                                {
+                                    shortcutWatcherProcess.Kill();
+                                    // Wait briefly for it to exit
+                                    shortcutWatcherProcess.WaitForExit(1000);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                Debug.WriteLine($"Error killing process: {ex.Message}");
+                            }
+
+                            // Clean up
+                            try { shortcutWatcherProcess.Dispose(); }
+                            catch { }
+
+                            shortcutWatcherProcess = null;
+                        }
+
+                        // Also clean up any other instances that might be running
+                        CleanupExistingShortcutWatcherProcesses();
+
+                        // Wait briefly before attempting to restart
+                        Task.Delay(2000).Wait();
+
+                        // Find the executable path reliably
+                        string exePath = "";
+                        string workingDir = "";
+
+                        try
+                        {
+                            exePath = Path.Combine(AppContext.BaseDirectory, "ShortcutWatcher.exe");
+                            workingDir = AppContext.BaseDirectory;
+
+                            if (!File.Exists(exePath))
+                            {
+                                // Try relative to the executing assembly
+                                string assemblyPath = System.Reflection.Assembly.GetExecutingAssembly().Location;
+                                string assemblyDir = Path.GetDirectoryName(assemblyPath);
+                                exePath = Path.Combine(assemblyDir, "ShortcutWatcher.exe");
+                                workingDir = assemblyDir;
+
+                                if (!File.Exists(exePath))
+                                {
+                                    // As a last resort, try to search in common locations
+                                    if (File.Exists("ShortcutWatcher.exe"))
+                                    {
+                                        exePath = Path.GetFullPath("ShortcutWatcher.exe");
+                                        workingDir = Path.GetDirectoryName(exePath);
+                                    }
+                                    else
+                                    {
+                                        throw new FileNotFoundException("Could not find ShortcutWatcher.exe");
+                                    }
+                                }
+                            }
+
+                            Debug.WriteLine($"Found ShortcutWatcher.exe at: {exePath}");
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"Error finding ShortcutWatcher.exe: {ex.Message}");
+                            return;
+                        }
+
+                        // Set up the process with more control
+                        var startInfo = new ProcessStartInfo
+                        {
+                            FileName = exePath,
+                            UseShellExecute = false,
+                            CreateNoWindow = true,
+                            WorkingDirectory = workingDir
+                        };
+
+                        Debug.WriteLine($"Restarting ShortcutWatcher.exe from {startInfo.WorkingDirectory}");
+
+                        try
+                        {
+                            // Start the process
+                            Process proc = Process.Start(startInfo);
+
+                            if (proc != null)
+                            {
+                                shortcutWatcherProcess = proc;
+                                shortcutWatcherProcess.EnableRaisingEvents = true;
+                                shortcutWatcherProcess.Exited += OnShortcutWatcherExited;
+
+                                Debug.WriteLine($"ShortcutWatcher restarted with PID: {shortcutWatcherProcess.Id}");
+
+                                // The pipe connection will be established by ListenForKeyPresses
+                                // which is continually running in the background
+                            }
+                            else
+                            {
+                                Debug.WriteLine("Failed to restart ShortcutWatcher - Process.Start returned null");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"Error starting ShortcutWatcher process: {ex.Message}");
+                        }
+                    }
+                    else
+                    {
+                        Debug.WriteLine("Maximum ShortcutWatcher restart attempts reached");
+                        // Consider notifying the user here that ShortcutWatcher failed to start
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Critical error in restart: {ex.Message}");
+                }
+            });
+        }
+
+
+
+        private void CleanupExistingShortcutWatcherProcesses()
+        {
+            try
+            {
+                // Get all processes named ShortcutWatcher (case-insensitive)
+                var existingProcesses = Process.GetProcesses()
+                    .Where(p => string.Equals(p.ProcessName, "ShortcutWatcher", StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+
+                if (existingProcesses.Count > 0)
+                {
+                    Debug.WriteLine($"Found {existingProcesses.Count} existing ShortcutWatcher processes");
+
+                    // First try to shut them down gracefully
+                    foreach (var process in existingProcesses)
+                    {
+                        try
+                        {
+                            // Try to send a shutdown signal
+                            SendShutdownSignalToSpecificProcess(process.Id);
+
+                            // Give it a moment to shut down gracefully
+                            if (!process.WaitForExit(1000))
+                            {
+                                Debug.WriteLine($"Process {process.Id} didn't exit gracefully, forcing termination");
+                                process.Kill();
+                            }
+                            else
+                            {
+                                Debug.WriteLine($"Process {process.Id} exited gracefully");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"Error shutting down process {process.Id}: {ex.Message}");
+
+                            // If graceful shutdown fails, force termination
+                            try
+                            {
+                                if (!process.HasExited)
+                                {
+                                    process.Kill();
+                                    Debug.WriteLine($"Forcibly terminated process {process.Id}");
+                                }
+                            }
+                            catch (Exception killEx)
+                            {
+                                Debug.WriteLine($"Failed to forcibly terminate process {process.Id}: {killEx.Message}");
+                            }
+                        }
+                        finally
+                        {
+                            process.Dispose();
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error during existing process cleanup: {ex.Message}");
+            }
+        }
+
+        private void SendShutdownSignalToSpecificProcess(int processId)
+        {
+            try
+            {
+                // Try to create a pipe specifically named for this process ID
+                // Try the default pipe first - this is the most likely to work
+                using (NamedPipeClientStream pipeClient = new NamedPipeClientStream(".", "ShotcutWatcherShutdown", PipeDirection.Out))
+                {
+                    // Short timeout for connection attempt
+                    pipeClient.Connect(500);
+
+                    if (pipeClient.IsConnected)
+                    {
+                        using (StreamWriter writer = new StreamWriter(pipeClient))
+                        {
+                            writer.WriteLine("SHUTDOWN");
+                            writer.Flush();
+                            Debug.WriteLine($"Sent shutdown signal to process {processId}");
+                        }
+                    }
+                }
+            }
+
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Failed to send shutdown signal to process {processId}: {ex.Message}");
+                // Just log the error - we'll fall back to Kill() if needed
+            }
+        }
+        private void StartShortcutWatcher()
+        {
+            // Run the potentially blocking operations on a background thread
+            Task.Run(() => {
+                try
+                {
+                    // First, check for any existing ShortcutWatcher processes
+                    CleanupExistingShortcutWatcherProcesses();
+
+                    // Set up the pipe server first to ensure it's ready
+                    Debug.WriteLine("Setting up pipe server...");
+                    try
+                    {
+                        // Always dispose and recreate the pipe server to ensure a clean state
+                        pipeServer?.Dispose();
+                        pipeServer = new NamedPipeServerStream("ShotcutWatcher", PipeDirection.In, 1);
+                        ListenForKeyPresses();
+                        Debug.WriteLine("Pipe server setup complete");
+                    }
+                    catch (Exception pipeEx)
+                    {
+                        Debug.WriteLine($"Error setting up pipe server: {pipeEx.Message}, will retry");
+
+                        // Retry after a short delay
+                        Task.Delay(1000).ContinueWith(_ => {
+                            try
+                            {
+                                pipeServer?.Dispose();
+                                pipeServer = new NamedPipeServerStream("ShotcutWatcher", PipeDirection.In, 1);
+                                ListenForKeyPresses();
+                                Debug.WriteLine("Pipe server setup retry successful");
+                            }
+                            catch (Exception retryEx)
+                            {
+                                Debug.WriteLine($"Retry failed: {retryEx.Message}");
+                            }
+                        });
+                    }
+
+                    // Find executable path with proper error handling
+                    string exePath = Path.Combine(AppContext.BaseDirectory, "ShortcutWatcher.exe");
+                    if (!File.Exists(exePath))
+                    {
+                        // Try relative to the executing assembly
+                        string assemblyPath = System.Reflection.Assembly.GetExecutingAssembly().Location;
+                        string assemblyDir = Path.GetDirectoryName(assemblyPath);
+                        exePath = Path.Combine(assemblyDir, "ShortcutWatcher.exe");
+
+                        if (!File.Exists(exePath))
+                        {
+                            // As a last resort, try to search in common locations
+                            if (File.Exists("ShortcutWatcher.exe"))
+                            {
+                                exePath = "ShortcutWatcher.exe";
+                            }
+                            else
+                            {
+                                throw new FileNotFoundException("Could not find ShortcutWatcher.exe");
+                            }
+                        }
+                    }
+
+                    // Set up the process
+                    var startInfo = new ProcessStartInfo
+                    {
+                        FileName = exePath,
+                        UseShellExecute = false,
+                        CreateNoWindow = true,
+                        WorkingDirectory = Path.GetDirectoryName(exePath)
+                    };
+
+                    Debug.WriteLine($"Starting ShortcutWatcher.exe from {startInfo.WorkingDirectory}");
+
+                    // Start the process
+                    shortcutWatcherProcess = Process.Start(startInfo);
+
+                    if (shortcutWatcherProcess != null)
+                    {
+                        // Configure the process
+                        shortcutWatcherProcess.EnableRaisingEvents = true;
+                        shortcutWatcherProcess.Exited += OnShortcutWatcherExited;
+
+                        // Set up a timer to verify pipe connection with a delay
+                        Debug.WriteLine("Setting up verification delay");
+                        Task.Delay(5000).ContinueWith(_ => VerifyShortcutWatcherRunning());
+
+                        // Start a watchdog timer to periodically check if the process is still running
+                        watchdogTimer = new System.Threading.Timer(WatchdogCallback, null, 15000, 30000);
+
+                        Debug.WriteLine($"ShortcutWatcher process started with PID: {shortcutWatcherProcess.Id}");
+
+                        // Mark as running
+                        isShortcutWatcherRunning = true;
+                    }
+                    else
+                    {
+                        Debug.WriteLine("Failed to start ShortcutWatcher.exe - Process.Start returned null");
+                        AttemptRestartIfNeeded();
+                    }
+                }
+                catch (Exception e)
+                {
+                    Debug.WriteLine($"Error starting ShortcutWatcher: {e.Message}");
+                    AttemptRestartIfNeeded();
+                }
+            });
+        }
+
         private void MainWindow_Closed(object sender, WindowEventArgs e)
         {
             try
             {
+                // Dispose the watchdog timer
+                watchdogTimer?.Dispose();
+                watchdogTimer = null;
+
                 _sleepPreventer?.Dispose();
 
+                // Send shutdown signal to ShortcutWatcher
                 SendShutdownSignalToShortcutWatcher();
+
+                // Give a chance for the process to exit gracefully
+                if (shortcutWatcherProcess != null && !shortcutWatcherProcess.HasExited)
+                {
+                    // Wait briefly for graceful shutdown
+                    if (!shortcutWatcherProcess.WaitForExit(2000))
+                    {
+                        // If it doesn't exit gracefully, force it to close
+                        try
+                        {
+                            shortcutWatcherProcess.Kill();
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"Error killing ShortcutWatcher: {ex}");
+                        }
+                    }
+                }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error disposing SleepPreventer: {ex}");
+                Debug.WriteLine($"Error during cleanup: {ex}");
             }
-
         }
 
         private void SendShutdownSignalToShortcutWatcher()
@@ -115,47 +688,139 @@ namespace TeacherToolbox
 
         private async void ListenForKeyPresses()
         {
-            await pipeServer.WaitForConnectionAsync();
-
-            using (StreamReader reader = new StreamReader(pipeServer))
+            while (true) // Continue listening indefinitely
             {
-                string key;
-                while ((key = await reader.ReadLineAsync()) != null)
+                try
                 {
-                    // If ALT + number key is pressed, create a timerWindow with the specified time
-                    if (key.StartsWith("D"))
+                    Debug.WriteLine("Waiting for ShortcutWatcher pipe connection...");
+
+                    // If pipe is null or was disconnected, recreate it
+                    if (pipeServer == null || !pipeServer.IsConnected)
                     {
-                        string time = key.Substring(1);
-                        if (int.TryParse(time, out int timeInt))
+                        try
                         {
-                            TimerWindow timerWindow;
+                            pipeServer?.Dispose();
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"Error disposing pipe: {ex.Message}");
+                        }
 
-                            // If the number is 0, start a 30 second timer.  Otherwise do it for that number of minutes
-                            if (timeInt == 0)
+                        pipeServer = new NamedPipeServerStream("ShotcutWatcher", PipeDirection.In, 1);
+                    }
+
+                    await pipeServer.WaitForConnectionAsync();
+                    Debug.WriteLine("ShortcutWatcher pipe connected");
+                    isShortcutWatcherRunning = true; // Mark as running when connected
+                    restartAttempts = 0; // Reset restart attempts on successful connection
+
+                    // Process messages until disconnection or error
+                    using (StreamReader reader = new StreamReader(pipeServer))
+                    {
+                        string message;
+                        while ((message = await reader.ReadLineAsync()) != null)
+                        {
+                            Debug.WriteLine($"Received from ShortcutWatcher: {message}");
+
+                            // Check for startup confirmation
+                            if (message.StartsWith("STARTUP:"))
                             {
-                                timerWindow = new TimerWindow(30);
-                            }
-                            else if (timeInt == 9)
-                            {
-                                timerWindow = new TimerWindow(0);
-                            }
-                            else
-                            {
-                                timerWindow = new TimerWindow(timeInt * 60);
+                                string pidString = message.Substring("STARTUP:".Length);
+                                if (int.TryParse(pidString, out int pid))
+                                {
+                                    Debug.WriteLine($"ShortcutWatcher started successfully with PID: {pid}");
+                                    isShortcutWatcherRunning = true;
+                                    restartAttempts = 0;
+                                }
+                                continue;
                             }
 
-                            timerWindow.Activate();
+                            // Check for alive signals
+                            if (message == "ALIVE")
+                            {
+                                Debug.WriteLine("Received alive signal from ShortcutWatcher");
+                                isShortcutWatcherRunning = true;
+                                continue;
+                            }
 
+                            // Process key presses
+                            ProcessKeyPress(message);
                         }
                     }
-                    else if (key == "F9")
-                    {
 
+                    // If we get here, the pipe was disconnected normally
+                    Debug.WriteLine("Pipe disconnected normally");
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Error in ListenForKeyPresses: {ex.Message}");
+                    isShortcutWatcherRunning = false; // Mark as not running on error
+
+                    // Check if ShortcutWatcher process is still running
+                    if (shortcutWatcherProcess == null || shortcutWatcherProcess.HasExited)
+                    {
+                        Debug.WriteLine("ShortcutWatcher process not running, attempting restart");
+                        AttemptRestartIfNeeded();
+                    }
+                    else
+                    {
+                        Debug.WriteLine("ShortcutWatcher process still running, recreating pipe only");
+                        try
+                        {
+                            // Dispose the old pipe
+                            pipeServer?.Dispose();
+                            pipeServer = null;
+                        }
+                        catch { /* Ignore errors during cleanup */ }
+                    }
+
+                    // Wait a bit before retrying
+                    await Task.Delay(1000);
+                }
+            }
+        }
+
+        // New method to process key presses
+        private void ProcessKeyPress(string message)
+        {
+            try
+            {
+                // If ALT + number key is pressed, create a timerWindow with the specified time
+                if (message.StartsWith("D"))
+                {
+                    string time = message.Substring(1);
+                    if (int.TryParse(time, out int timeInt))
+                    {
+                        TimerWindow timerWindow;
+
+                        // If the number is 0, start a 30 second timer.  Otherwise do it for that number of minutes
+                        if (timeInt == 0)
+                        {
+                            timerWindow = new TimerWindow(30);
+                        }
+                        else if (timeInt == 9)
+                        {
+                            timerWindow = new TimerWindow(0);
+                        }
+                        else
+                        {
+                            timerWindow = new TimerWindow(timeInt * 60);
+                        }
+
+                        // Activate on the UI thread
+                        this.DispatcherQueue.TryEnqueue(() => {
+                            timerWindow.Activate();
+                        });
+                    }
+                }
+                else if (message == "F9")
+                {
+                    // UI operations must be performed on the UI thread
+                    this.DispatcherQueue.TryEnqueue(() => {
                         // Grab focus and unminiize the window
                         this.Activate();
 
                         // Navigate to the RandomNameGenerator page if needed
-
                         if (ContentFrame.SourcePageType != typeof(RandomNameGenerator))
                         {
                             NavView.SelectedItem = NavView.MenuItems[1];
@@ -167,8 +832,12 @@ namespace TeacherToolbox
                         {
                             randomNameGenerator.GenerateName();
                         }
-                    }
+                    });
                 }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error processing key press {message}: {ex.Message}");
             }
         }
 
@@ -334,6 +1003,7 @@ namespace TeacherToolbox
                     new Windows.Graphics.RectInt32(48, 0, 552, 48)
                 });
         }
+
 
 
         public void UpdateTitleBarTheme()
