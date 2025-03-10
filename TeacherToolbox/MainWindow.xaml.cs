@@ -19,6 +19,7 @@ using Microsoft.UI.Xaml.Automation;
 using TeacherToolbox.Helpers;
 using Windows.UI;
 using System.Threading.Tasks;
+using System.Threading;
 
 
 
@@ -43,7 +44,9 @@ namespace TeacherToolbox
         private int restartAttempts = 0;
         private bool isShortcutWatcherRunning = false;
         private int pipeFailedChecks = 0;
-
+        private object pipeLock = new object();
+        private bool isPipeListenerRunning = false;
+        private SemaphoreSlim pipeSemaphore = new SemaphoreSlim(1, 1);        
         private void ContentFrame_NavigationFailed(object sender, NavigationFailedEventArgs e)
         {
             throw new Exception("Failed to load Page " + e.SourcePageType.FullName);
@@ -685,46 +688,85 @@ namespace TeacherToolbox
                 Debug.WriteLine($"Error sending shutdown signal: {ex.Message}");
             }
         }
-
         private async void ListenForKeyPresses()
         {
-            while (true) // Continue listening indefinitely
+            // Check if already running - use a simple boolean flag first
+            if (isPipeListenerRunning)
             {
-                try
-                {
-                    Debug.WriteLine("Waiting for ShortcutWatcher pipe connection...");
+                Debug.WriteLine("ListenForKeyPresses already running, ignoring duplicate call");
+                return;
+            }
 
-                    // If pipe is null or was disconnected, recreate it
-                    if (pipeServer == null || !pipeServer.IsConnected)
+            // Try to acquire the semaphore
+            bool semaphoreAcquired = false;
+            try
+            {
+                // Set the flag first to prevent other concurrent calls
+                isPipeListenerRunning = true;
+
+                // Try to acquire the semaphore with a timeout
+                semaphoreAcquired = await pipeSemaphore.WaitAsync(1000);
+
+                if (!semaphoreAcquired)
+                {
+                    Debug.WriteLine("Failed to acquire pipe semaphore, another operation might be in progress");
+                    isPipeListenerRunning = false;
+                    return;
+                }
+
+                Debug.WriteLine("Starting pipe listener loop");
+
+                // Main loop for pipe communication
+                while (true)
+                {
+                    NamedPipeServerStream localPipeServer = null;
+                    StreamReader reader = null;
+
+                    try
                     {
+                        // Always properly dispose the old pipe server first
                         try
                         {
-                            pipeServer?.Dispose();
+                            if (pipeServer != null)
+                            {
+                                Debug.WriteLine("Disposing old pipe server");
+                                pipeServer.Dispose();
+                                pipeServer = null;
+                            }
                         }
-                        catch (Exception ex)
+                        catch (Exception disposeEx)
                         {
-                            Debug.WriteLine($"Error disposing pipe: {ex.Message}");
+                            Debug.WriteLine($"Error disposing old pipe: {disposeEx.Message}");
                         }
 
-                        pipeServer = new NamedPipeServerStream("ShotcutWatcher", PipeDirection.In, 1);
-                    }
+                        // Create a new pipe server
+                        Debug.WriteLine("Creating new pipe server instance");
+                        pipeServer = new NamedPipeServerStream("ShotcutWatcher", PipeDirection.In, 1,
+                            PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
 
-                    await pipeServer.WaitForConnectionAsync();
-                    Debug.WriteLine("ShortcutWatcher pipe connected");
-                    isShortcutWatcherRunning = true; // Mark as running when connected
-                    restartAttempts = 0; // Reset restart attempts on successful connection
+                        // Keep a local reference to the pipe
+                        localPipeServer = pipeServer;
 
-                    // Process messages until disconnection or error
-                    using (StreamReader reader = new StreamReader(pipeServer))
-                    {
+                        Debug.WriteLine("Waiting for ShortcutWatcher pipe connection...");
+                        await localPipeServer.WaitForConnectionAsync();
+                        Debug.WriteLine("ShortcutWatcher pipe connected");
+
+                        // Once connected, mark as running
+                        isShortcutWatcherRunning = true;
+                        restartAttempts = 0;
+
+                        // Stream reader for this pipe
+                        reader = new StreamReader(localPipeServer);
+
                         string message;
                         while ((message = await reader.ReadLineAsync()) != null)
                         {
                             Debug.WriteLine($"Received from ShortcutWatcher: {message}");
 
-                            // Check for startup confirmation
+                            // Process messages
                             if (message.StartsWith("STARTUP:"))
                             {
+                                // Startup message
                                 string pidString = message.Substring("STARTUP:".Length);
                                 if (int.TryParse(pidString, out int pid))
                                 {
@@ -732,112 +774,141 @@ namespace TeacherToolbox
                                     isShortcutWatcherRunning = true;
                                     restartAttempts = 0;
                                 }
-                                continue;
                             }
-
-                            // Check for alive signals
-                            if (message == "ALIVE")
+                            else if (message == "ALIVE")
                             {
+                                // Heartbeat
                                 Debug.WriteLine("Received alive signal from ShortcutWatcher");
                                 isShortcutWatcherRunning = true;
-                                continue;
+                            }
+                            else
+                            {
+                                // Process key press
+                                ProcessKeyPress(message);
+                            }
+                        }
+
+                        // If we get here cleanly, the pipe was disconnected normally
+                        Debug.WriteLine("Pipe disconnected normally");
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"Error in ListenForKeyPresses: {ex.Message}");
+
+                        // Check process status and decide what to do
+                        bool processRunning = shortcutWatcherProcess != null && !shortcutWatcherProcess.HasExited;
+
+                        if (!processRunning)
+                        {
+                            Debug.WriteLine("ShortcutWatcher process not running, requesting restart");
+                            isShortcutWatcherRunning = false;
+
+                            // Release semaphore before potentially long operation
+                            if (semaphoreAcquired)
+                            {
+                                pipeSemaphore.Release();
+                                semaphoreAcquired = false;
                             }
 
-                            // Process key presses
-                            ProcessKeyPress(message);
+                            await RestartShortcutWatcherWithDelay();
+
+                            // Re-acquire semaphore
+                            semaphoreAcquired = await pipeSemaphore.WaitAsync(1000);
+                            if (!semaphoreAcquired)
+                            {
+                                Debug.WriteLine("Failed to re-acquire semaphore after restart");
+                                break;  // Exit the loop
+                            }
                         }
-                    }
-
-                    // If we get here, the pipe was disconnected normally
-                    Debug.WriteLine("Pipe disconnected normally");
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"Error in ListenForKeyPresses: {ex.Message}");
-                    isShortcutWatcherRunning = false; // Mark as not running on error
-
-                    // Check if ShortcutWatcher process is still running
-                    if (shortcutWatcherProcess == null || shortcutWatcherProcess.HasExited)
-                    {
-                        Debug.WriteLine("ShortcutWatcher process not running, attempting restart");
-                        AttemptRestartIfNeeded();
-                    }
-                    else
-                    {
-                        Debug.WriteLine("ShortcutWatcher process still running, recreating pipe only");
-                        try
+                        else if (ex is IOException && ex.Message.Contains("busy"))
                         {
-                            // Dispose the old pipe
-                            pipeServer?.Dispose();
-                            pipeServer = null;
-                        }
-                        catch { /* Ignore errors during cleanup */ }
-                    }
+                            Debug.WriteLine("Pipe is busy, forcing ShortcutWatcher restart");
 
-                    // Wait a bit before retrying
-                    await Task.Delay(1000);
-                }
-            }
-        }
+                            // Release semaphore before potentially long operation
+                            if (semaphoreAcquired)
+                            {
+                                pipeSemaphore.Release();
+                                semaphoreAcquired = false;
+                            }
 
-        // New method to process key presses
-        private void ProcessKeyPress(string message)
-        {
-            try
-            {
-                // If ALT + number key is pressed, create a timerWindow with the specified time
-                if (message.StartsWith("D"))
-                {
-                    string time = message.Substring(1);
-                    if (int.TryParse(time, out int timeInt))
-                    {
-                        TimerWindow timerWindow;
+                            await ForceRestartShortcutWatcher();
 
-                        // If the number is 0, start a 30 second timer.  Otherwise do it for that number of minutes
-                        if (timeInt == 0)
-                        {
-                            timerWindow = new TimerWindow(30);
-                        }
-                        else if (timeInt == 9)
-                        {
-                            timerWindow = new TimerWindow(0);
+                            // Re-acquire semaphore
+                            semaphoreAcquired = await pipeSemaphore.WaitAsync(1000);
+                            if (!semaphoreAcquired)
+                            {
+                                Debug.WriteLine("Failed to re-acquire semaphore after forced restart");
+                                break;  // Exit the loop
+                            }
                         }
                         else
                         {
-                            timerWindow = new TimerWindow(timeInt * 60);
-                        }
+                            Debug.WriteLine("ShortcutWatcher process still running, recreating pipe only");
 
-                        // Activate on the UI thread
-                        this.DispatcherQueue.TryEnqueue(() => {
-                            timerWindow.Activate();
-                        });
+                            // Clean up resources
+                            try
+                            {
+                                reader?.Dispose();
+                                reader = null;
+
+                                if (localPipeServer != null && localPipeServer != pipeServer)
+                                {
+                                    localPipeServer.Dispose();
+                                    localPipeServer = null;
+                                }
+                            }
+                            catch (Exception cleanupEx)
+                            {
+                                Debug.WriteLine($"Error during cleanup: {cleanupEx.Message}");
+                            }
+                        }
                     }
-                }
-                else if (message == "F9")
-                {
-                    // UI operations must be performed on the UI thread
-                    this.DispatcherQueue.TryEnqueue(() => {
-                        // Grab focus and unminiize the window
-                        this.Activate();
-
-                        // Navigate to the RandomNameGenerator page if needed
-                        if (ContentFrame.SourcePageType != typeof(RandomNameGenerator))
+                    finally
+                    {
+                        // Always clean up resources in finally block
+                        try
                         {
-                            NavView.SelectedItem = NavView.MenuItems[1];
-                            NavView_Navigate(typeof(RandomNameGenerator), new EntranceNavigationTransitionInfo());
+                            reader?.Dispose();
                         }
+                        catch { }
 
-                        // Call the GenerateName function of the RandomNameGenerator page
-                        if (ContentFrame.Content is RandomNameGenerator randomNameGenerator)
+                        try
                         {
-                            randomNameGenerator.GenerateName();
+                            if (localPipeServer != null && localPipeServer != pipeServer)
+                            {
+                                localPipeServer.Dispose();
+                            }
                         }
-                    });
+                        catch { }
+                    }
+
+                    // Wait a bit before retrying to avoid tight loops
+                    await Task.Delay(1000);
                 }
             }
-            catch (Exception ex)
+            finally
             {
-                Debug.WriteLine($"Error processing key press {message}: {ex.Message}");
+                // Always clean up in the finally block
+                isPipeListenerRunning = false;
+
+                // Only release if we acquired it
+                if (semaphoreAcquired)
+                {
+                    try
+                    {
+                        pipeSemaphore.Release();
+                    }
+                    catch (SemaphoreFullException)
+                    {
+                        Debug.WriteLine("Warning: Tried to release semaphore when it was already released");
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"Error releasing semaphore: {ex.Message}");
+                    }
+                }
+
+                Debug.WriteLine("ListenForKeyPresses exited");
             }
         }
 
@@ -1052,6 +1123,135 @@ namespace TeacherToolbox
                     titleBar.ButtonInactiveBackgroundColor = Color.FromArgb(255, 243, 243, 243);
                 }
             }
+        }
+
+        // Process key presses on the UI thread
+        private void ProcessKeyPress(string message)
+        {
+            try
+            {
+                // Ensure we run UI operations on the UI thread
+                this.DispatcherQueue.TryEnqueue(() => {
+                    try
+                    {
+                        // If ALT + number key is pressed, create a timerWindow with the specified time
+                        if (message.StartsWith("D"))
+                        {
+                            string time = message.Substring(1);
+                            if (int.TryParse(time, out int timeInt))
+                            {
+                                TimerWindow timerWindow;
+
+                                // If the number is 0, start a 30 second timer.  Otherwise do it for that number of minutes
+                                if (timeInt == 0)
+                                {
+                                    timerWindow = new TimerWindow(30);
+                                }
+                                else if (timeInt == 9)
+                                {
+                                    timerWindow = new TimerWindow(0);
+                                }
+                                else
+                                {
+                                    timerWindow = new TimerWindow(timeInt * 60);
+                                }
+
+                                timerWindow.Activate();
+                            }
+                        }
+                        else if (message == "F9")
+                        {
+                            // Grab focus and unminiize the window
+                            this.Activate();
+
+                            // Navigate to the RandomNameGenerator page if needed
+                            if (ContentFrame.SourcePageType != typeof(RandomNameGenerator))
+                            {
+                                NavView.SelectedItem = NavView.MenuItems[1];
+                                NavView_Navigate(typeof(RandomNameGenerator), new EntranceNavigationTransitionInfo());
+                            }
+
+                            // Call the GenerateName function of the RandomNameGenerator page
+                            if (ContentFrame.Content is RandomNameGenerator randomNameGenerator)
+                            {
+                                randomNameGenerator.GenerateName();
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"Error processing UI action: {ex.Message}");
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error dispatching key press {message}: {ex.Message}");
+            }
+        }
+
+        // Force restart with better semaphore handling
+        private async Task ForceRestartShortcutWatcher()
+        {
+            Debug.WriteLine("Force restarting ShortcutWatcher");
+
+            try
+            {
+                // Terminate any existing process
+                if (shortcutWatcherProcess != null)
+                {
+                    try
+                    {
+                        shortcutWatcherProcess.Exited -= OnShortcutWatcherExited;
+
+                        if (!shortcutWatcherProcess.HasExited)
+                        {
+                            shortcutWatcherProcess.Kill(true); // Force immediate termination
+                            shortcutWatcherProcess.WaitForExit(1000);
+                        }
+
+                        shortcutWatcherProcess.Dispose();
+                        shortcutWatcherProcess = null;
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"Error killing process: {ex.Message}");
+                    }
+                }
+
+                // Clean up any other instances
+                await Task.Run(() => CleanupExistingShortcutWatcherProcesses());
+
+                // Reset state
+                isShortcutWatcherRunning = false;
+                restartAttempts = 0;
+
+                // Request restart with a delay
+                await RestartShortcutWatcherWithDelay();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error during force restart: {ex.Message}");
+            }
+        }
+
+        private async Task RestartWithDelayAsync()
+        {
+            // Add a delay to allow resources to be cleaned up
+            await Task.Delay(2000);
+            AttemptRestartIfNeeded();
+        }
+
+        // Start restart with a delay to allow cleanup
+        private async Task RestartShortcutWatcherWithDelay()
+        {
+            Debug.WriteLine("Restarting ShortcutWatcher with delay");
+
+            // Add a delay to allow resources to be cleaned up
+            await Task.Delay(2000);
+
+            // Call the synchronous method to avoid compatibility issues
+            AttemptRestartIfNeeded();
         }
     }
 }
