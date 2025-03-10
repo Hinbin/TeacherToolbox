@@ -21,6 +21,7 @@ using Windows.System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using Microsoft.UI.Xaml.Data;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -61,6 +62,7 @@ namespace TeacherToolbox.Controls
         private int currentIntervalTotal;
         private int intervalNumber = 0;
 
+
         public TimerWindow(int seconds)
         {
 
@@ -68,32 +70,20 @@ namespace TeacherToolbox.Controls
             intervalsList = new ObservableCollection<IntervalTimeViewModel>();
 
             this.InitializeComponent();
-
-            // Set initial size after InitializeComponent
-            if (seconds == 0) // Custom timer
-            {
-                this.Height = 400;
-                this.Width = 300;
-            }
-            else if (seconds == -1) // Interval timer
-            {
-                this.Height = 400;
-                this.Width = 300;
-            }
-            else
-            {
-                this.Height = 400;
-                this.Width = 300;
-            }
-
-            // Only set opacity if content exists
-            if (this.Content != null)
-            {
-                this.Content.Opacity = 0;
-            }
-
+            InitializeUIElements();
             InitializeWindowAsync(seconds);
 
+
+        }
+
+        // Update the InitializeUIElements method to properly handle the containers
+        private void InitializeUIElements()
+        {
+            // Set default text for the timer
+            if (timerText != null)
+            {
+                timerText.Text = "00:00";
+            }
         }
 
 
@@ -155,6 +145,8 @@ namespace TeacherToolbox.Controls
                 presenter.IsAlwaysOnTop = true;
             }
         }
+
+
 
         private async Task InitializeResourcesAsync()
         {
@@ -662,71 +654,74 @@ namespace TeacherToolbox.Controls
             }
         }
 
+
+
         private void SetTimerText()
-{
-    int secondsToShow = Math.Abs(secondsLeft);
-
-    string timeText;
-    // Always use same format to ensure consistent width
-    if (secondsToShow > 3599)
-    {
-        int hours = secondsToShow / 3600;
-        int minutes = (secondsToShow % 3600) / 60;
-        int seconds = secondsToShow % 60;
-        timeText = $"{hours:D2}:{minutes:D2}:{seconds:D2}";
-    }
-    else if (secondsToShow > 59)
-    {
-        int minutes = secondsToShow / 60;
-        int seconds = secondsToShow % 60;
-        // Use padding for single-digit minutes to match 2-digit width
-        timeText = $"{minutes:D2}:{seconds:D2}";
-    }
-    else
-    {
-        // Pad seconds with spaces to create consistent width
-        timeText = $"{secondsToShow:D2}";
-    }
-
-    // Update main timer text
-    timerText.Text = timeText;
-
-    // Update interval info if applicable
-    if (intervals != null && intervalCount > 1 && secondsLeft >= 0)
-    {
-        intervalInfoText.Text = $"Interval {intervalNumber}/{intervalCount}";
-        intervalInfoText.Visibility = Visibility.Visible;
-    }
-    else
-    {
-        intervalInfoText.Text = "";
-        intervalInfoText.Visibility = Visibility.Collapsed;
-    }
-
-    // Set text color to red if we're in overtime
-    if (secondsLeft < 0)
-    {
-        timerText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red);
-        intervalInfoText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red);
-    }
-    else
-    {
-        // Use a resource that properly adapts to theme changes
-        var currentTheme = ((FrameworkElement)this.Content).ActualTheme;
-        if (currentTheme == ElementTheme.Dark)
         {
-            // Use white text in dark theme
-            timerText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.White);
-            intervalInfoText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.White);
+            int secondsToShow = Math.Abs(secondsLeft);
+            string timeText;
+
+            // Format based on duration
+            if (secondsToShow >= 3600)
+            {
+                // Hours format (HH:MM:SS)
+                int hours = secondsToShow / 3600;
+                int minutes = (secondsToShow % 3600) / 60;
+                int seconds = secondsToShow % 60;
+                timeText = $"{hours:D1}:{minutes:D2}:{seconds:D2}";
+            }
+            else if (secondsToShow >= 60)
+            {
+                // Minutes format (MM:SS)
+                int minutes = secondsToShow / 60;
+                int seconds = secondsToShow % 60;
+                timeText = $"{minutes:D1}:{seconds:D2}";
+            }
+            else
+            {
+                // Seconds only format (SS)
+                timeText = $"{secondsToShow:D1}";
+            }
+
+            // Update the timer text
+            timerText.Text = timeText;
+
+            // Set text color to red if we're in overtime
+            if (secondsLeft < 0)
+            {
+                timerText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red);
+                intervalInfoText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red);
+            }
+            else
+            {
+                // Use a resource that properly adapts to theme changes
+                var currentTheme = ((FrameworkElement)this.Content).ActualTheme;
+                if (currentTheme == ElementTheme.Dark)
+                {
+                    // Use white text in dark theme
+                    timerText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.White);
+                    intervalInfoText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.White);
+                }
+                else
+                {
+                    // Use dark text in light theme
+                    timerText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Black);
+                    intervalInfoText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Black);
+                }
+            }
+
+            // Update interval info if applicable
+            if (intervals != null && intervalCount > 1 && secondsLeft >= 0)
+            {
+                intervalInfoText.Text = $"Interval {intervalNumber}/{intervalCount}";
+                intervalInfoText.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                intervalInfoText.Text = "";
+                intervalInfoText.Visibility = Visibility.Collapsed;
+            }
         }
-        else
-        {
-            // Use dark text in light theme
-            timerText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Black);
-            intervalInfoText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Black);
-        }
-    }
-}
 
         bool TrySetAcrylicBackdrop(bool useAcrylicThin)
         {
@@ -1017,27 +1012,24 @@ namespace TeacherToolbox.Controls
         {
             lastPosition = newPosition;
         }
-
+        // Update the Grid_Tapped method for pause/resume with the simplified structure
         private void Grid_Tapped(object sender, TappedRoutedEventArgs e)
         {
             if (timer == null) return;
 
             // If the sender is a text block with the word start, return
-            if (e.OriginalSource is TextBlock textBlock)
+            if (e.OriginalSource is TextBlock textBlock && textBlock.Text == "Start")
             {
-                if (textBlock.Text == "Start")
-                {
-                    return;
-                }
+                return;
             }
 
             // Use the VisualTreeHelper to get the element that was tapped
             DependencyObject tappedElement = VisualTreeHelper.GetParent((DependencyObject)e.OriginalSource);
 
             // Check to see if the tapped Element is the start button
-            if (tappedElement != null)
+            if (tappedElement != null && tappedElement is Button)
             {
-                if (tappedElement is Button startButton) return;
+                return;
             }
 
             // Prevent pausing immediately after starting
@@ -1047,16 +1039,19 @@ namespace TeacherToolbox.Controls
             if (timer.IsEnabled)
             {
                 timer.Stop();
-                // Change the font to bold to indicate the timer is paused
+
+                // Update to indicate pause state
                 timerText.FontWeight = Microsoft.UI.Text.FontWeights.Thin;
                 timerGauge.TrailBrush = new SolidColorBrush(Microsoft.UI.Colors.DarkGray);
             }
             else
             {
                 timer.Start();
-                // Change the font back to normal
-                timerText.FontWeight = Microsoft.UI.Text.FontWeights.Normal;
-                // Change the colour of the trailbrush back to #5b3493
+
+                // Restore normal font weight
+                timerText.FontWeight = Microsoft.UI.Text.FontWeights.SemiBold;
+
+                // Change the colour of the trailbrush back
                 if (Application.Current.Resources.TryGetValue("darkPurpleBrush", out object darkPurpleBrush))
                 {
                     timerGauge.TrailBrush = darkPurpleBrush as SolidColorBrush;
@@ -1108,5 +1103,24 @@ namespace TeacherToolbox.Controls
         public int TotalSeconds => (Hours * 3600) + (Minutes * 60) + Seconds;
     }
 
+    public class ScaleFactorConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, string language)
+        {
+            if (value is double size && parameter is string factorString)
+            {
+                if (double.TryParse(factorString, out double factor))
+                {
+                    return size * factor;
+                }
+            }
+            return value;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, string language)
+        {
+            throw new NotImplementedException();
+        }
+    }
 }
 
