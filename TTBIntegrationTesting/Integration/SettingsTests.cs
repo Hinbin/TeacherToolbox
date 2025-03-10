@@ -6,6 +6,7 @@ using System.Threading;
 using TeacherToolbox;
 using TTBIntegrationTesting.Integration_Tests;
 using System.Linq;
+using FlaUI.Core.Tools;
 
 namespace TTBIntegrationTesting
 {
@@ -13,6 +14,9 @@ namespace TTBIntegrationTesting
     public class SettingsTests : TestBase
     {
         private AutomationElement? _settingsPage;
+
+        // Define animation timeout - specific to this test
+        private static readonly TimeSpan AnimationTimeout = TimeSpan.FromMilliseconds(500);
 
         [SetUp]
         public void SettingsSetUp()
@@ -30,6 +34,9 @@ namespace TTBIntegrationTesting
             var timerSoundComboBox = _settingsPage!.FindFirstDescendant(cf =>
                 cf.ByAutomationId("TimerSoundComboBox"));
 
+            // Scroll the element into view
+            ScrollElementIntoView(timerSoundComboBox);
+
             Assert.That(timerSoundComboBox, Is.Not.Null, "Timer sound combo box should exist");
             Assert.That(timerSoundComboBox?.ControlType, Is.EqualTo(ControlType.ComboBox),
                 "Timer sound selector should be a combo box");
@@ -38,8 +45,10 @@ namespace TTBIntegrationTesting
         [Test]
         public void TimerSound_HasDefaultOption()
         {
-            var timerSoundComboBox = _settingsPage!.FindFirstDescendant(cf =>
-                cf.ByAutomationId("TimerSoundComboBox"));
+            var timerSoundComboBox = FindComboBox("TimerSoundComboBox");
+
+            // Scroll the element into view
+            ScrollElementIntoView(timerSoundComboBox);
 
             // Get the selection pattern to check the selected item
             var selectionPattern = timerSoundComboBox.Patterns.Selection.Pattern;
@@ -47,14 +56,15 @@ namespace TTBIntegrationTesting
 
             Assert.That(selectedItem, Is.Not.Null, "Should have a default selection");
             Assert.That(selectedItem?.FirstOrDefault()?.Name, Is.Not.Empty, "Default selection should have a name");
-
         }
 
         [Test]
         public void TimerSound_CanExpandComboBox()
         {
-            var timerSoundComboBox = _settingsPage!.FindFirstDescendant(cf =>
-                cf.ByAutomationId("TimerSoundComboBox"));
+            var timerSoundComboBox = FindComboBox("TimerSoundComboBox");
+
+            // Scroll the element into view
+            ScrollElementIntoView(timerSoundComboBox);
 
             // Get the expand/collapse pattern
             var expandPattern = timerSoundComboBox.Patterns.ExpandCollapse.Pattern;
@@ -65,29 +75,35 @@ namespace TTBIntegrationTesting
 
             // Expand the combo box
             expandPattern.Expand();
-            Thread.Sleep(500); // Wait for animation
 
-            Assert.That(expandPattern.ExpandCollapseState, Is.EqualTo(ExpandCollapseState.Expanded),
+            // Wait for combo box to expand using base class helper
+            WaitUntilCondition(
+                () => expandPattern.ExpandCollapseState == ExpandCollapseState.Expanded,
                 "Combo box should be expanded after clicking");
         }
 
         [Test]
         public void TimerSound_CanSelectDifferentSound()
         {
-            var timerSoundComboBox = _settingsPage!.FindFirstDescendant(cf =>
-                cf.ByAutomationId("TimerSoundComboBox"));
+            var timerSoundComboBox = FindComboBox("TimerSoundComboBox");
+
+            // Scroll the element into view
+            ScrollElementIntoView(timerSoundComboBox);
 
             // Get initial selection
             var selectionPattern = timerSoundComboBox.Patterns.Selection.Pattern;
             var initialSelection = selectionPattern.Selection.ValueOrDefault?.FirstOrDefault()?.Name;
 
-            // Expand the combo box
+            // Expand the combo box and wait for it
             timerSoundComboBox.Patterns.ExpandCollapse.Pattern.Expand();
-            Thread.Sleep(500); // Wait for animation
 
-            // Find all items in the combo box
-            var items = timerSoundComboBox.FindAllDescendants(cf =>
-                cf.ByControlType(ControlType.ListItem));
+            // Wait for list items to be available after expansion using base class helper
+            var items = WaitUntilFound<AutomationElement[]>(
+                () => {
+                    var foundItems = timerSoundComboBox.FindAllDescendants(cf => cf.ByControlType(ControlType.ListItem));
+                    return foundItems.Length > 0 ? foundItems : null;
+                },
+                "Should find combo box items after expansion");
 
             Assert.That(items.Length, Is.GreaterThan(1), "Should have multiple sound options");
 
@@ -95,22 +111,28 @@ namespace TTBIntegrationTesting
             var differentItem = items.FirstOrDefault(item => item.Name != initialSelection);
             Assert.That(differentItem, Is.Not.Null, "Should find a different sound option");
 
+            // Scroll the dropdown item into view before clicking
+            ScrollElementIntoView(differentItem);
+
             // Click the different item
             differentItem?.Click();
-            Thread.Sleep(500); // Wait for selection to take effect
 
-            // Get new selection
-            var newSelection = selectionPattern.Selection.ValueOrDefault?.FirstOrDefault()?.Name;
-
-            Assert.That(newSelection, Is.Not.EqualTo(initialSelection),
+            // Wait for selection to change using base class helper
+            WaitUntilCondition(
+                () => {
+                    var newSelection = selectionPattern.Selection.ValueOrDefault?.FirstOrDefault()?.Name;
+                    return newSelection != initialSelection;
+                },
                 "Selected sound should be different after changing");
         }
 
         [Test]
         public void TimerSound_SelectionPersistsAfterReload()
         {
-            var timerSoundComboBox = _settingsPage!.FindFirstDescendant(cf =>
-                cf.ByAutomationId("TimerSoundComboBox"));
+            var timerSoundComboBox = FindComboBox("TimerSoundComboBox");
+
+            // Scroll the element into view
+            ScrollElementIntoView(timerSoundComboBox);
 
             // Get initial selection
             var selectionPattern = timerSoundComboBox.Patterns.Selection.Pattern;
@@ -118,38 +140,41 @@ namespace TTBIntegrationTesting
 
             // Change the selection
             timerSoundComboBox.Patterns.ExpandCollapse.Pattern.Expand();
-            Thread.Sleep(500);
 
-            var items = timerSoundComboBox.FindAllDescendants(cf =>
-                cf.ByControlType(ControlType.ListItem));
+            // Wait for items to appear using base class helper
+            var items = WaitUntilFound<AutomationElement[]>(
+                () => {
+                    var foundItems = timerSoundComboBox.FindAllDescendants(cf => cf.ByControlType(ControlType.ListItem));
+                    return foundItems.Length > 0 ? foundItems : null;
+                },
+                "Should find combo box items after expansion");
+
             var differentItem = items.FirstOrDefault(item => item.Name != initialSelection);
+
+            // Scroll the dropdown item into view before clicking
+            ScrollElementIntoView(differentItem);
+
             differentItem?.Click();
-            Thread.Sleep(500);
+
+            // Wait for selection to take effect and get the new selection using base class helper
+            WaitUntilCondition(
+                () => {
+                    var newSelection = selectionPattern.Selection.ValueOrDefault?.FirstOrDefault()?.Name;
+                    return newSelection != initialSelection;
+                },
+                "Selection should change after clicking new item");
 
             var selectedSound = selectionPattern.Selection.ValueOrDefault?.FirstOrDefault()?.Name;
 
             // Navigate away and back
-            var navigationView = MainWindow!.FindFirstDescendant(cf =>
-                cf.ByAutomationId("NavView"));
-            navigationView?.FindFirstChild(cf =>
-                cf.ByName("Open Navigation")).Click();
-
-            // Navigate to a different page and back
-            var otherNavItem = navigationView?.FindFirstDescendant(cf =>
-                cf.ByName("Random Name Generator"));
-            otherNavItem?.Click();
-            Thread.Sleep(500);
-
-            navigationView?.FindFirstChild(cf =>
-                cf.ByName("Open Navigation")).Click();
-            var settingsNavItem = navigationView?.FindFirstDescendant(cf =>
-                cf.ByName("Settings"));
-            settingsNavItem?.Click();
-            Thread.Sleep(500);
+            NavigateAwayAndBack();
 
             // Check if selection persisted
-            timerSoundComboBox = MainWindow!.FindFirstDescendant(cf =>
-                cf.ByAutomationId("TimerSoundComboBox"));
+            timerSoundComboBox = FindComboBox("TimerSoundComboBox");
+
+            // Scroll the element into view after navigation
+            ScrollElementIntoView(timerSoundComboBox);
+
             selectionPattern = timerSoundComboBox.Patterns.Selection.Pattern;
             var persistedSelection = selectionPattern.Selection.ValueOrDefault?.FirstOrDefault()?.Name;
 
@@ -160,8 +185,10 @@ namespace TTBIntegrationTesting
         [Test]
         public void ThemeComboBox_ComboBoxExists()
         {
-            var themeComboBox = _settingsPage!.FindFirstDescendant(cf =>
-                cf.ByAutomationId("ThemeComboBox"));
+            var themeComboBox = FindComboBox("ThemeComboBox");
+
+            // Scroll the element into view
+            ScrollElementIntoView(themeComboBox);
 
             Assert.That(themeComboBox, Is.Not.Null, "Theme combo box should exist");
             Assert.That(themeComboBox?.ControlType, Is.EqualTo(ControlType.ComboBox),
@@ -171,8 +198,10 @@ namespace TTBIntegrationTesting
         [Test]
         public void ThemeComboBox_HasDefaultOption()
         {
-            var themeComboBox = _settingsPage!.FindFirstDescendant(cf =>
-                cf.ByAutomationId("ThemeComboBox"));
+            var themeComboBox = FindComboBox("ThemeComboBox");
+
+            // Scroll the element into view
+            ScrollElementIntoView(themeComboBox);
 
             var selectionPattern = themeComboBox.Patterns.Selection.Pattern;
             var selectedItem = selectionPattern.Selection.ValueOrDefault;
@@ -185,24 +214,41 @@ namespace TTBIntegrationTesting
         [Test]
         public void ThemeComboBox_SelectionPersistsAfterReload()
         {
-            var themeComboBox = _settingsPage!.FindFirstDescendant(cf =>
-                cf.ByAutomationId("ThemeComboBox"));
+            var themeComboBox = FindComboBox("ThemeComboBox");
+
+            // Scroll the element into view
+            ScrollElementIntoView(themeComboBox);
 
             // Change the selection to "Dark"
             themeComboBox.Patterns.ExpandCollapse.Pattern.Expand();
-            Thread.Sleep(500);
 
-            var darkThemeOption = themeComboBox.FindFirstDescendant(cf =>
-                cf.ByName("Dark"));
+            // Wait for "Dark" option and click it using base class helper
+            var darkThemeOption = WaitUntilFound<AutomationElement>(
+                () => themeComboBox.FindFirstDescendant(cf => cf.ByName("Dark")),
+                "Should find Dark theme option");
+
+            // Scroll the dropdown item into view before clicking
+            ScrollElementIntoView(darkThemeOption);
+
             darkThemeOption?.Click();
-            Thread.Sleep(500);
+
+            // Verify selection changed using base class helper
+            WaitUntilCondition(
+                () => {
+                    var selection = themeComboBox.Patterns.Selection.Pattern.Selection.ValueOrDefault?.FirstOrDefault()?.Name;
+                    return selection == "Dark";
+                },
+                "Dark theme should be selected");
 
             // Navigate away and back
             NavigateAwayAndBack();
 
             // Verify the selection persisted
-            themeComboBox = MainWindow!.FindFirstDescendant(cf =>
-                cf.ByAutomationId("ThemeComboBox"));
+            themeComboBox = FindComboBox("ThemeComboBox");
+
+            // Scroll the element into view after navigation
+            ScrollElementIntoView(themeComboBox);
+
             var selectionPattern = themeComboBox.Patterns.Selection.Pattern;
             var persistedSelection = selectionPattern.Selection.ValueOrDefault?.FirstOrDefault()?.Name;
 
@@ -216,6 +262,9 @@ namespace TTBIntegrationTesting
             var testButton = _settingsPage!.FindFirstDescendant(cf =>
                 cf.ByAutomationId("TimerSoundButton"));
 
+            // Scroll the element into view
+            ScrollElementIntoView(testButton);
+
             Assert.That(testButton, Is.Not.Null, "Timer sound test button should exist");
             Assert.That(testButton?.ControlType, Is.EqualTo(ControlType.Button),
                 "Timer sound test control should be a button");
@@ -227,34 +276,125 @@ namespace TTBIntegrationTesting
             var testButton = _settingsPage!.FindFirstDescendant(cf =>
                 cf.ByAutomationId("TimerSoundButton"));
 
+            // Scroll the element into view
+            ScrollElementIntoView(testButton);
+
             Assert.That(testButton?.IsEnabled, Is.True, "Timer sound test button should be enabled");
 
             testButton?.Click();
-            Thread.Sleep(1000); // Wait for potential sound playback
+            // Wait a moment for potential UI response (we can't verify sound)
+            Thread.Sleep(300);
 
             // Note: We can't verify the sound played, but we can verify the button is clickable
             Assert.That(testButton?.IsEnabled, Is.True, "Button should remain enabled after click");
         }
 
+        // Helper method to find a combo box by automation ID
+        private AutomationElement FindComboBox(string automationId)
+        {
+            return WaitUntilFound<AutomationElement>(
+                () => _settingsPage!.FindFirstDescendant(cf => cf.ByAutomationId(automationId)),
+                $"Should find combo box with automation ID '{automationId}'");
+        }
+
+        // Helper method to scroll an element into view using ScrollItemPattern
+        private void ScrollElementIntoView(AutomationElement? element)
+        {
+            if (element == null)
+                return;
+
+            try
+            {
+                // Try to use the ScrollItemPattern if available
+                if (element.Patterns.ScrollItem.IsSupported)
+                {
+                    element.Patterns.ScrollItem.Pattern.ScrollIntoView();
+
+                    // Wait briefly for the scroll animation to complete
+                    Thread.Sleep((int)AnimationTimeout.TotalMilliseconds);
+                }
+                // If ScrollItemPattern is not supported, try scrolling the parent container
+                else
+                {
+                    // Find a scrollable parent
+                    var scrollParent = FindScrollableParent(element);
+                    if (scrollParent != null && scrollParent.Patterns.Scroll.IsSupported)
+                    {
+                        // Try to ensure element is visible by scrolling to it
+                        var scrollPattern = scrollParent.Patterns.Scroll.Pattern;
+
+                        // This is a basic approach - scroll down until element is visible
+                        // More sophisticated handling may be needed for complex UIs
+                        while (!IsElementInView(scrollParent, element) &&
+                               scrollPattern.VerticalScrollPercent < 100)
+                        {
+                            scrollPattern.Scroll(ScrollAmount.NoAmount, ScrollAmount.SmallIncrement);
+                            Thread.Sleep(50); // Small pause to let UI update
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log but continue - scrolling issues shouldn't fail tests
+                Console.WriteLine($"Warning: Could not scroll element into view: {ex.Message}");
+            }
+        }
+
+        // Helper method to find a scrollable parent container
+        private AutomationElement? FindScrollableParent(AutomationElement element)
+        {
+            var current = element.Parent;
+            while (current != null)
+            {
+                if (current.Patterns.Scroll.IsSupported)
+                {
+                    return current;
+                }
+                current = current.Parent;
+            }
+            return null;
+        }
+
+        // Helper method to check if an element is in the visible part of its scrollable container
+        private bool IsElementInView(AutomationElement container, AutomationElement element)
+        {
+            try
+            {
+                // Get bounding rectangles
+                var containerRect = container.BoundingRectangle;
+                var elementRect = element.BoundingRectangle;
+
+                // Check if element is within the container's visible area
+                return elementRect.Top >= containerRect.Top &&
+                       elementRect.Bottom <= containerRect.Bottom;
+            }
+            catch
+            {
+                // If there's an error checking, assume it's not in view
+                return false;
+            }
+        }
+
         private void NavigateAwayAndBack()
         {
-            var navigationView = MainWindow!.FindFirstDescendant(cf =>
-                cf.ByAutomationId("NavView"));
-            navigationView?.FindFirstChild(cf =>
-                cf.ByName("Open Navigation")).Click();
+            // Navigate to Random Name Generator
+            EnsureNavigationIsOpen();
+            NavigateToPage("Random Name Generator");
 
-            var otherNavItem = navigationView?.FindFirstDescendant(cf =>
-                cf.ByName("Random Name Generator"));
-            otherNavItem?.Click();
-            Thread.Sleep(500);
+            // Wait for navigation to complete using base class helper
+            WaitUntilFound<AutomationElement>(
+                () => MainWindow!.FindFirstDescendant(cf => cf.ByAutomationId("RandomNameGenerator")),
+                "Should navigate to Random Name Generator page");
 
-            navigationView?.FindFirstChild(cf =>
-                cf.ByName("Open Navigation")).Click();
-            var settingsNavItem = navigationView?.FindFirstDescendant(cf =>
-                cf.ByName("Settings"));
-            settingsNavItem?.Click();
-            Thread.Sleep(500);
+            // Navigate back to Settings
+            EnsureNavigationIsOpen();
+            NavigateToPage("Settings");
+
+            // Update the reference to the settings page using base class helper
+            _settingsPage = WaitUntilFound<AutomationElement>(
+                () => MainWindow!.FindFirstDescendant(cf => cf.ByAutomationId("SettingsPage")),
+                "Should navigate back to Settings page");
         }
     }
-
 }

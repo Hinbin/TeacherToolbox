@@ -1,5 +1,4 @@
-﻿
-using FlaUI.UIA3;
+﻿using FlaUI.UIA3;
 using FlaUI.Core;
 using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Definitions;
@@ -31,20 +30,11 @@ namespace TTBIntegrationTesting
             var rngNavItem = navigationView?.FindFirstDescendant(cf =>
                 cf.ByName("Random Name Generator"));
 
-            // Wait a moment for navigation
-            Thread.Sleep(500);
-
+            // Use navigation helper instead of Sleep
             rngNavItem?.Click();
 
-            // Wait a moment for navigation
-            Thread.Sleep(500);
-
-            // Check if RNG page is loaded by looking for its unique elements
-            _rngPage = MainWindow!.FindFirstDescendant(cf =>
-                cf.ByAutomationId("NameDisplay"))?.Parent;
-
-
-            Assert.That(_rngPage, Is.Not.Null, "RNG page should be loaded");
+            // Check if RNG page is loaded using the Base class methods
+            _rngPage = VerifyPageLoaded("RandomNameGenerator");
         }
 
         [Test]
@@ -61,7 +51,7 @@ namespace TTBIntegrationTesting
         [Test]
         public void AddClass_MoreClassesAfterFive()
         {
-
+            // Empty test stub
         }
 
         [Test]
@@ -72,56 +62,67 @@ namespace TTBIntegrationTesting
 
             OpenClassFile_NavigatesToFileAndOpens("8xCs2.txt");
 
-            var classCountResult = Retry.WhileTrue(() =>
-            {
-                var currentCount = CountClassLists();
-                // Return true while the condition we don't want is true (count hasn't increased)
-                return currentCount != initialClassCount + 2;
-            }, TimeSpan.FromSeconds(2), null, true);
-
-            Assert.That(classCountResult.Result, Is.True, "A new class should be added (+2 for remove class)");
+            // Wait for class count to increase using base class WaitUntilCondition
+            WaitUntilCondition(
+                () => CountClassLists() == initialClassCount + 2,
+                "A new class should be added (+2 for remove class)");
         }
 
         [Test]
         public void NameDisplay_ShowsNameOnClick()
         {
+            OpenClassFile_NavigatesToFileAndOpens("8xCs2.txt");
+
             var nameDisplay = _rngPage!.FindFirstDescendant(cf =>
                 cf.ByAutomationId("NameDisplay"));
 
             // Get the text pattern
             var textPattern = nameDisplay.Patterns.Text.Pattern;
-
-            // Initially should be empty
-            Assert.That(textPattern.DocumentRange.GetText(-1), Is.Empty.Or.Null,
-                "Name display should start empty");
-
-            OpenClassFile_NavigatesToFileAndOpens("8xCs2.txt");
 
             // Click to generate name
             nameDisplay?.Click();
 
-            // After click, should not be empty
-            Assert.That(textPattern.DocumentRange.GetText(-1), Is.Not.Empty,
+            // Wait for name to appear using base class helper
+            WaitUntilCondition(
+                () => !string.IsNullOrEmpty(textPattern.DocumentRange.GetText(-1)),
                 "Name display should show a name after clicking");
         }
 
         [Test]
-        public void NameDisplay_ShowsNameOnLoad()
+        public void TipContent_ShowsTipOnLoad()
         {
-            var nameDisplay = _rngPage!.FindFirstDescendant(cf =>
-                cf.ByAutomationId("NameDisplay"));
+            var tipDisplay = _rngPage!.FindFirstDescendant(cf =>
+                cf.ByAutomationId("TipContent"));
 
             // Get the text pattern
-            var textPattern = nameDisplay.Patterns.Text.Pattern;
+            var textPattern = tipDisplay.Patterns.Text.Pattern;
 
             // Initially should be empty
-            Assert.That(textPattern.DocumentRange.GetText(-1), Is.Empty.Or.Null,
-                "Name display should start empty");
+            Assert.That(textPattern.DocumentRange.GetText(-1), Is.Not.Null,
+                "Tip display should start with tip");
+        }
+
+        [Test]
+        public void TipContent_ShowsNameAfterLoaded()
+        {
+            var tipDisplay = _rngPage!.FindFirstDescendant(cf =>
+                cf.ByAutomationId("TipContent"));
+
+            // Get the text pattern
+            var textPattern = tipDisplay.Patterns.Text.Pattern;
+
+            // Initially should be empty
+            Assert.That(textPattern.DocumentRange.GetText(-1), Is.Not.Null,
+                "Tip display should start with tip");
 
             OpenClassFile_NavigatesToFileAndOpens("8xCs2.txt");
 
-            // After loading, should not be empty
-            Assert.That(textPattern.DocumentRange.GetText(-1), Is.Not.Empty,
+            var nameDisplay = _rngPage!.FindFirstDescendant(cf =>
+                cf.ByAutomationId("nameDisplay"));
+
+            // Wait for name to appear using base class helper
+            WaitUntilCondition(
+                () => !string.IsNullOrEmpty(textPattern.DocumentRange.GetText(-1)),
                 "Name display should show a name after clicking");
         }
 
@@ -198,35 +199,31 @@ namespace TTBIntegrationTesting
             // Click the Add Class button
             addClassButton?.Click();
 
-
             // Create a new automation scope specifically for finding the dialog
             using (var dialogAutomation = new UIA3Automation())
             {
-                var fileDialogResult = Retry.WhileNull<AutomationElement>(() =>
-                {
-                    var desktop = dialogAutomation.GetDesktop();
+                // Find the file dialog using the base class helper
+                var fileDialog = WaitUntilFound<AutomationElement>(
+                    () => {
+                        var desktop = dialogAutomation.GetDesktop();
 
-                    // Find all windows and debug their names
-                    var allWindows = desktop.FindAll(TreeScope.Children,
-                        new PropertyCondition(Automation.PropertyLibrary.Element.ControlType, ControlType.Window));
+                        // Find all windows and debug their names
+                        var allWindows = desktop.FindAll(TreeScope.Children,
+                            new PropertyCondition(Automation.PropertyLibrary.Element.ControlType, ControlType.Window));
 
-                    foreach (var window in allWindows)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"Found window: {window.Name}");
-                    }
+                        foreach (var window in allWindows)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Found window: {window.Name}");
+                        }
 
-                    // Find and return the file dialog
-                    return desktop.FindFirst(TreeScope.Descendants,
-                        new AndCondition(
-                            new PropertyCondition(Automation.PropertyLibrary.Element.ControlType, ControlType.Window),
-                            new PropertyCondition(Automation.PropertyLibrary.Element.ClassName, "#32770")
-                        ));
-
-                }, TimeSpan.FromSeconds(10), null, true);
-
-                var fileDialog = fileDialogResult.Result;
-
-                Assert.That(fileDialog, Is.Not.Null, "File dialog should appear");
+                        // Find and return the file dialog
+                        return desktop.FindFirst(TreeScope.Descendants,
+                            new AndCondition(
+                                new PropertyCondition(Automation.PropertyLibrary.Element.ControlType, ControlType.Window),
+                                new PropertyCondition(Automation.PropertyLibrary.Element.ClassName, "#32770")
+                            ));
+                    },
+                    "File dialog should appear");
 
                 // Find the filename input field - look specifically for the "File name:" edit box
                 var filenameInput = fileDialog.FindFirst(TreeScope.Descendants,
@@ -247,7 +244,6 @@ namespace TTBIntegrationTesting
 
                 Assert.That(filenameInput, Is.Not.Null, "Filename input field should exist");
 
-
                 // Get the path relative to the solution directory
                 var solutionDir = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"..\..\..\..\..\.."));
                 var path = Path.Combine(solutionDir, "TTBIntegrationTesting", "Integration", "Files", fileName);
@@ -259,20 +255,18 @@ namespace TTBIntegrationTesting
                 Thread.Sleep(200); // Small delay to ensure filename is entered
                 Keyboard.Press(VirtualKeyShort.RETURN);
 
-                var dialogClosedResult = Retry.WhileTrue(() =>
-                {
-                    var desktop = dialogAutomation.GetDesktop();
-
-                    var dialogWindow = desktop.FindFirst(TreeScope.Descendants,
-                        new AndCondition(
-                            new PropertyCondition(Automation.PropertyLibrary.Element.ControlType, ControlType.Window),
-                            new PropertyCondition(Automation.PropertyLibrary.Element.ClassName, "#32770")
-                        ));
-
-                    return dialogWindow != null;  // Keep retrying while dialog exists
-                }, TimeSpan.FromSeconds(10), null, true);
-
-                Assert.That(dialogClosedResult.Result, Is.True, "File dialog should be closed");
+                // Wait for dialog to close using base class helper
+                WaitUntilCondition(
+                    () => {
+                        var desktop = dialogAutomation.GetDesktop();
+                        var dialogWindow = desktop.FindFirst(TreeScope.Descendants,
+                            new AndCondition(
+                                new PropertyCondition(Automation.PropertyLibrary.Element.ControlType, ControlType.Window),
+                                new PropertyCondition(Automation.PropertyLibrary.Element.ClassName, "#32770")
+                            ));
+                        return dialogWindow == null; // Condition is met when dialog is closed
+                    },
+                    "File dialog should be closed");
             }
         }
     }

@@ -649,7 +649,7 @@ namespace TeacherToolbox
                 if (shortcutWatcherProcess != null && !shortcutWatcherProcess.HasExited)
                 {
                     // Wait briefly for graceful shutdown
-                    if (!shortcutWatcherProcess.WaitForExit(2000))
+                    if (!shortcutWatcherProcess.WaitForExit(500))
                     {
                         // If it doesn't exit gracefully, force it to close
                         try

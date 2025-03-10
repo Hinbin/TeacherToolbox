@@ -47,7 +47,8 @@ namespace TTBIntegrationTesting
                 "Random Name Generator",
                 "Timer",
                 "Screen Ruler",
-                "Exam Clock"
+                "Exam Clock",
+                "Settings"
             };
 
             var menuItemNames = menuItems.Select(item => item.Name).ToList();

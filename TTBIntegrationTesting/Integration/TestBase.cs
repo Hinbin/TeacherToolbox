@@ -13,7 +13,19 @@ public class TestBase
     protected UIA3Automation? Automation { get; private set; }
     protected Window? MainWindow { get; private set; }
     protected AutomationElement? NavigationView;
+    
+    
+    // Define global timeout settings
+    private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan DialogTimeout = TimeSpan.FromSeconds(10);
 
+
+    public TestBase()
+    {
+        // Configure default retry settings
+        Retry.DefaultTimeout = DefaultTimeout;
+        Retry.DefaultInterval = TimeSpan.FromMilliseconds(100);
+    }
     // Array of files to delete during setup
     private readonly string[] filesToDelete = new[]
     {
@@ -206,5 +218,20 @@ public class TestBase
         Assert.That(pageElement, Is.Not.Null, $"{pageId} page should be loaded");
 
         return pageElement;
+    }
+
+    // Helper method for waiting until an element is found
+    protected T WaitUntilFound<T>(Func<T> findFunc, string errorMessage, TimeSpan? timeout = null) where T : class
+    {
+        var result = Retry.WhileNull(findFunc, timeout ?? DefaultTimeout, null, true);
+        Assert.That(result.Result, Is.Not.Null, errorMessage);
+        return result.Result;
+    }
+
+    // Helper method for waiting until a condition is met
+    protected void WaitUntilCondition(Func<bool> conditionFunc, string errorMessage, TimeSpan? timeout = null)
+    {
+        var result = Retry.WhileTrue(() => !conditionFunc(), timeout ?? DefaultTimeout, null, true);
+        Assert.That(result.Result, Is.True, errorMessage);
     }
 }
