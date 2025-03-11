@@ -20,6 +20,7 @@ using Windows.Globalization;
 using Microsoft.UI.Xaml.Navigation;
 using System.Diagnostics;
 using TeacherToolbox.Helpers;
+using TeacherToolbox.Services;
 
 namespace TeacherToolbox.Controls;
 
@@ -95,7 +96,7 @@ public sealed partial class Clock : AutomatedPage
 
     public ImageSource BackgroundImage { get; set; }
 
-    public LocalSettings localSettings;
+    public ISettingsService localSettingsService;
 
     private SleepPreventer _sleepPreventer;
     private bool _isPreventingSleep = false;
@@ -238,14 +239,14 @@ public sealed partial class Clock : AutomatedPage
 
         _timer.Start();
 
-        localSettings = await LocalSettings.GetSharedInstanceAsync();
-        centreTextBox.Text = localSettings.CentreText;
+        localSettingsService = await LocalSettingsService.GetSharedInstanceAsync();
+        centreTextBox.Text = localSettingsService.GetCentreText();
 
         // Inside your Clock_Loaded method, after other initialization:
-        if (!localSettings.HasShownClockInstructions)
+        if (!localSettingsService.GetHasShownClockInstructions())
         {
             ClockInstructionTip.IsOpen = true;
-            localSettings.HasShownClockInstructions = true;
+            localSettingsService.SetHasShownClockInstructions(true);
         }
 
     }
@@ -587,7 +588,7 @@ public sealed partial class Clock : AutomatedPage
 
     private void centreTextBox_TextChanged(object sender, TextChangedEventArgs e)
     {
-        localSettings.CentreText = centreTextBox.Text;
+        localSettingsService.SetCentreText(centreTextBox.Text);
     }
 
 }

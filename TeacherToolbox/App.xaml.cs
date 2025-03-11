@@ -4,7 +4,7 @@ using System.ComponentModel;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using TeacherToolbox.Helpers;
-using TeacherToolbox.Model;
+using TeacherToolbox.Services;
 using System.Diagnostics;
 
 // To learn more about WinUI, the WinUI project structure,
@@ -60,7 +60,7 @@ namespace TeacherToolbox
             try
             {
                 // Load saved settings
-                var localSettings = await LocalSettings.GetSharedInstanceAsync();
+                var localSettings = await LocalSettingsService.GetSharedInstanceAsync();
                 var savedThemeIndex = localSettings.GetValueOrDefault(ThemeKey, 0);
 
                 // Convert index to ElementTheme

@@ -22,6 +22,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using Microsoft.UI.Xaml.Data;
+using TeacherToolbox.Services;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -41,7 +42,7 @@ namespace TeacherToolbox.Controls
         private ObservableCollection<IntervalTimeViewModel> intervalsList;
 
         private WindowDragHelper dragHelper;
-        public LocalSettings localSettings;
+        public ISettingsService localSettings;
         private DispatcherTimer resizeEndTimer;
 
         // To allow for a draggable window
@@ -153,7 +154,7 @@ namespace TeacherToolbox.Controls
             try
             {
                 // Use a local variable for sound loading to avoid creating multiple LocalSettings instances
-                var soundSettings = await LocalSettings.GetSharedInstanceAsync();
+                var soundSettings = await LocalSettingsService.GetSharedInstanceAsync();
                 int soundIndex = soundSettings.GetValueOrDefault(SoundSettings.SoundKey, 0);
                 string soundFileName = SoundSettings.GetSoundFileName(soundIndex);
                 string soundPath = Path.Combine(AppContext.BaseDirectory, "Assets", soundFileName);
@@ -182,11 +183,11 @@ namespace TeacherToolbox.Controls
                 }
 
                 // Set up drag helper
-                var settings = TeacherToolbox.Model.LocalSettings.GetSharedInstanceSync();
+                var settings = LocalSettingsService.GetSharedInstanceSync();
                 dragHelper = new WindowDragHelper(this, settings);
 
                 // Get the shared instance
-                localSettings = await LocalSettings.GetSharedInstanceAsync();
+                localSettings = await LocalSettingsService.GetSharedInstanceAsync();
                 Console.WriteLine("Using shared LocalSettings instance in TimerWindow");
 
                 // Initialize display manager
@@ -200,7 +201,7 @@ namespace TeacherToolbox.Controls
                 // Create minimal setup to avoid null references
                 if (localSettings == null)
                 {
-                    localSettings = await LocalSettings.GetSharedInstanceAsync();
+                    localSettings = await LocalSettingsService.GetSharedInstanceAsync();
                 }
 
                 if (displayManager == null)
@@ -215,16 +216,16 @@ namespace TeacherToolbox.Controls
         private async Task FinalizeWindowSetupAsync(int seconds)
         {
             // Handle window positioning first
-            if (localSettings?.LastTimerWindowPosition != null)
+            if (localSettings?.GetLastTimerWindowPosition() != null)
             {
-                if (localSettings.LastTimerWindowPosition.Width > 10 && localSettings.LastTimerWindowPosition.Height > 10)
+                if (localSettings.GetLastTimerWindowPosition().Width > 10 && localSettings.GetLastTimerWindowPosition().Height > 10)
                 {
-                    this.Height = localSettings.LastTimerWindowPosition.Height;
-                    this.Width = localSettings.LastTimerWindowPosition.Width;
+                    this.Height = localSettings.GetLastTimerWindowPosition().Height;
+                    this.Width = localSettings.GetLastTimerWindowPosition().Width;
                 }
 
-                PointInt32 lastPosition = new PointInt32(localSettings.LastTimerWindowPosition.X, localSettings.LastTimerWindowPosition.Y);
-                ulong lastDisplayIdValue = localSettings.LastTimerWindowPosition.DisplayID;
+                PointInt32 lastPosition = new PointInt32(localSettings.GetLastTimerWindowPosition().X, localSettings.GetLastTimerWindowPosition().Y);
+                ulong lastDisplayIdValue = localSettings.GetLastTimerWindowPosition().DisplayID;
 
                 var allDisplayAreas = displayManager?.DisplayAreas;
                 if (allDisplayAreas?.Any(da => da.DisplayId.Value == lastDisplayIdValue) == true)
@@ -271,7 +272,7 @@ namespace TeacherToolbox.Controls
             if (localSettings == null)
             {
                 Debug.WriteLine("LocalSettings is null, creating it now");
-                localSettings = await LocalSettings.GetSharedInstanceAsync();
+                localSettings = await LocalSettingsService.GetSharedInstanceAsync();
             }
 
             // Determine whether this is an interval timer or custom timer
@@ -417,7 +418,7 @@ namespace TeacherToolbox.Controls
         {
             try
             {
-                var settings = await LocalSettings.GetSharedInstanceAsync();
+                var settings = await LocalSettingsService.GetSharedInstanceAsync();
                 int soundIndex = settings.GetValueOrDefault(SoundSettings.SoundKey, 0);
                 string soundFileName = SoundSettings.GetSoundFileName(soundIndex);
                 string soundPath = Path.Combine(AppContext.BaseDirectory, "Assets", soundFileName);
@@ -454,8 +455,8 @@ namespace TeacherToolbox.Controls
 
         private async Task InitializeWindowPositionAsync()
         {
-            PointInt32 lastPosition = new PointInt32(localSettings.LastTimerWindowPosition.X, localSettings.LastTimerWindowPosition.Y);
-            ulong lastDisplayIdValue = localSettings.LastTimerWindowPosition.DisplayID;
+            PointInt32 lastPosition = new PointInt32(localSettings.GetLastTimerWindowPosition().X, localSettings.GetLastTimerWindowPosition().Y);
+            ulong lastDisplayIdValue = localSettings.GetLastTimerWindowPosition().DisplayID;
 
             var allDisplayAreas = displayManager.DisplayAreas;
             if (allDisplayAreas.Any(da => da.DisplayId.Value == lastDisplayIdValue))
@@ -467,10 +468,10 @@ namespace TeacherToolbox.Controls
                 this.CenterOnScreen();
             }
 
-            if (localSettings.LastTimerWindowPosition.Width > 10 && localSettings.LastTimerWindowPosition.Height > 10)
+            if (localSettings.GetLastTimerWindowPosition().Width > 10 && localSettings.GetLastTimerWindowPosition().Height > 10)
             {
-                this.Height = localSettings.LastTimerWindowPosition.Height;
-                this.Width = localSettings.LastTimerWindowPosition.Width;
+                this.Height = localSettings.GetLastTimerWindowPosition().Height;
+                this.Width = localSettings.GetLastTimerWindowPosition().Width;
             }
             else
             {
@@ -846,7 +847,7 @@ namespace TeacherToolbox.Controls
         {
             dragHelper.PointerReleased(sender, e);
 
-            localSettings.LastTimerWindowPosition = GetCurrentWindowInformation();
+            localSettings.SetLastTimerWindowPosition(GetCurrentWindowInformation());
         }
 
         private void TimerWindow_SizeChanged(object sender, WindowSizeChangedEventArgs e)
@@ -866,7 +867,7 @@ namespace TeacherToolbox.Controls
                 // Perform actions here after resizing has stopped
                 if (localSettings != null)
                 {
-                    localSettings.LastTimerWindowPosition = GetCurrentWindowInformation();
+                    localSettings.SetLastTimerWindowPosition(GetCurrentWindowInformation());
                 }
             }
         }
@@ -962,7 +963,7 @@ namespace TeacherToolbox.Controls
                 if (localSettings == null)
                 {
                     Debug.WriteLine("LocalSettings is null, creating it now");
-                    localSettings = await LocalSettings.GetSharedInstanceAsync();
+                    localSettings = await LocalSettingsService.GetSharedInstanceAsync();
                 }
 
                 // Determine whether this is an interval timer or custom timer

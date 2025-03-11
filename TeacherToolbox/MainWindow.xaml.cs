@@ -20,6 +20,7 @@ using TeacherToolbox.Helpers;
 using Windows.UI;
 using System.Threading.Tasks;
 using System.Threading;
+using TeacherToolbox.Services;
 
 
 
@@ -73,7 +74,7 @@ namespace TeacherToolbox
 
             this.SetIsAlwaysOnTop(true);
 
-            var settings = TeacherToolbox.Model.LocalSettings.GetSharedInstanceSync();
+            var settings = LocalSettingsService.GetSharedInstanceSync();
             dragHelper = new WindowDragHelper(this, settings);
 
             try

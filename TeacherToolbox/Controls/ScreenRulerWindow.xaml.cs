@@ -1,23 +1,11 @@
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Controls.Primitives;
-using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Input;
-using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Navigation;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Runtime.InteropServices.WindowsRuntime;
 using TeacherToolbox.Helpers;
-using Windows.Foundation;
-using Windows.Foundation.Collections;
 using WinUIEx;
 using Windows.Graphics;
-using Windows.Graphics.Printing3D;
-using Microsoft.UI.Xaml.Automation;
+using TeacherToolbox.Services;
+
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -57,7 +45,7 @@ namespace TeacherToolbox.Controls
             this.IsResizable = false;
             this.SystemBackdrop = blurredBackdrop;
 
-            var settings = TeacherToolbox.Model.LocalSettings.GetSharedInstanceSync();
+            var settings = LocalSettingsService.GetSharedInstanceSync();
             dragHelper = new WindowDragHelper(this, settings, true);
 
             screenRulerPage = fromPage;

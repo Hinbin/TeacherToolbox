@@ -5,8 +5,14 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:local="using:TeacherToolbox.Controls"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:viewmodels="using:TeacherToolbox.ViewModels"
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
     mc:Ignorable="d">
+
+    <!--  Design-time DataContext  -->
+    <d:Page.DataContext>
+        <viewmodels:SettingsViewModel />
+    </d:Page.DataContext>
 
     <Page.Resources>
         <!--  Spacing between cards  -->
@@ -37,7 +43,7 @@
                     <StackPanel Spacing="8">
                         <Button
                             x:Name="FeedbackButton"
-                            Click="FeedbackButton_Click"
+                            Command="{Binding SendFeedbackCommand}"
                             Content="Send Feedback" />
                     </StackPanel>
                 </local:ExpanderItem.ItemContent>
@@ -63,12 +69,9 @@
                         <ComboBox
                             x:Name="TimerSoundComboBox"
                             MinWidth="120"
-                            SelectionChanged="TimerSound_SelectionChanged">
-                            <ComboBoxItem Content="Default" />
-                            <ComboBoxItem Content="Chime" />
-                            <ComboBoxItem Content="Buzz" />
-                            <ComboBoxItem Content="Horn" />
-                        </ComboBox>
+                            DisplayMemberPath="Name"
+                            ItemsSource="{Binding SoundOptions}"
+                            SelectedIndex="{Binding SelectedTimerSoundIndex, Mode=TwoWay}" />
                     </local:ExpanderItem.ItemContent>
                 </local:ExpanderItem>
                 <local:ExpanderItem Header="Test Timer Sound" Subheader="Press the button to test the sound when the timer is finished">
@@ -76,7 +79,7 @@
                         <Button
                             x:Name="TimerSoundButton"
                             Margin="0,24,0,0"
-                            Click="TimerSoundButton_Clicked"
+                            Command="{Binding TestSoundCommand}"
                             Content="Test Sound" />
                     </local:ExpanderItem.ItemContent>
                 </local:ExpanderItem>
@@ -85,7 +88,7 @@
                         <ComboBox
                             x:Name="TimerFinishBehaviorComboBox"
                             MinWidth="120"
-                            SelectionChanged="TimerFinishBehavior_SelectionChanged">
+                            SelectedIndex="{Binding SelectedTimerFinishBehaviorIndex, Mode=TwoWay}">
                             <ComboBoxItem Content="Close timer" />
                             <ComboBoxItem Content="Count up" />
                             <ComboBoxItem Content="Stay at zero" />
@@ -118,7 +121,7 @@
                         <ComboBox
                             x:Name="ThemeComboBox"
                             MinWidth="120"
-                            SelectionChanged="ThemeComboBox_SelectionChanged">
+                            SelectedIndex="{Binding SelectedThemeIndex, Mode=TwoWay}">
                             <ComboBoxItem Content="Use system setting" />
                             <ComboBoxItem Content="Light" />
                             <ComboBoxItem Content="Dark" />
