@@ -4,41 +4,51 @@ using FlaUI.Core.Definitions;
 using FlaUI.Core.Conditions;
 using System.Threading;
 using TeacherToolbox;
-using TTBIntegrationTesting.Integration_Tests;
+using NUnit.Framework;
+using System.Linq;
+using FlaUI.Core.Tools;
 
-namespace TTBIntegrationTesting
+namespace TeacherToolbox.IntegrationTests.IntegrationTests
 {
     [TestFixture]
     public class NavigationTests : TestBase
     {
-
-        // Helper for screen ruler specific verification
+        // Helper for screen ruler specific verification with waiting
         private void VerifyScreenRulerWindow()
         {
-            var automation = new UIA3Automation();
-            var rulerRect = automation.GetDesktop().FindFirstDescendant(cf =>
-                cf.ByName("Screen Ruler Rectangle"));
+            using (var automation = new UIA3Automation())
+            {
+                // Wait for ruler rectangle to appear
+                var rulerRect = WaitUntilFound<AutomationElement>(
+                    () => automation.GetDesktop().FindFirstDescendant(cf => cf.ByName("Screen Ruler Rectangle")),
+                    "Screen Ruler Rectangle should be present");
 
-            Assert.That(rulerRect, Is.Not.Null, "Screen Ruler Rectangle should be present");
-
-            var rulerWindow = rulerRect.Parent?.Parent;
-            Assert.That(rulerWindow, Is.Not.Null, "Screen Ruler window should be loaded");
+                // Verify ruler window (parent of parent)
+                var rulerWindow = rulerRect.Parent?.Parent;
+                Assert.That(rulerWindow, Is.Not.Null, "Screen Ruler window should be loaded");
+            }
         }
-
 
         [SetUp]
         public void NavigationSetUp()
         {
-            Assert.That(NavigationView, Is.Not.Null, "NavigationPane should be present");
+            // Wait for navigation view to be available
+            WaitUntilFound<AutomationElement>(
+                () => NavigationPane,
+                "NavigationPane should be present");
+
             EnsureNavigationIsOpen();
         }
 
         [Test]
         public void NavigationMenu_ContainsAllExpectedItems()
         {
-            var menuItemsHost = NavigationView!.FindFirstDescendant(cf =>
-                cf.ByAutomationId("MenuItemsHost"));
+            // Wait for menu items host to be available
+            var menuItemsHost = WaitUntilFound<AutomationElement>(
+                () => NavigationPane!.FindFirstDescendant(cf => cf.ByAutomationId("MenuItemsHost")),
+                "Menu items host should be present");
 
+            // Get all menu items
             var menuItems = menuItemsHost.FindAllChildren(cf =>
                 cf.ByControlType(ControlType.ListItem));
 
@@ -66,17 +76,20 @@ namespace TTBIntegrationTesting
             NavigateToPage("Timer");
             var timerPage = VerifyPageLoaded("Timer");
 
-            // Additional verification
-            var timerControls = timerPage.FindAllDescendants(cf =>
-                cf.ByControlType(ControlType.Button));
-            Assert.That(timerControls, Is.Not.Empty, "Timer page should contain control buttons");
+            // Wait for timer controls using helper
+            var timerControls = WaitUntilFound<AutomationElement[]>(
+                () => {
+                    var controls = timerPage.FindAllDescendants(cf => cf.ByControlType(ControlType.Button));
+                    return controls.Length > 0 ? controls : null;
+                },
+                "Timer page should contain control buttons");
         }
 
         [Test]
         public void NavigateToScreenRuler_LoadsRulerPage()
         {
             NavigateToPage("Screen Ruler");
-            var screenRulerPage = VerifyPageLoaded("ScreenRulerPage");
+            VerifyPageLoaded("ScreenRulerPage");
         }
 
         [Test]
@@ -93,18 +106,17 @@ namespace TTBIntegrationTesting
             NavigateToPage("Exam Clock");
             var clockPage = VerifyPageLoaded("Clock");
 
-            // We know from existing tests that Clock is a reliable indicator
-            var clockDisplay = clockPage.FindFirstDescendant(cf =>
-                cf.ByName("ExamClock"));
-            Assert.That(clockDisplay, Is.Not.Null, "Clock display should be present");
-
+            // Wait for clock display using helper
+            var clockDisplay = WaitUntilFound<AutomationElement>(
+                () => clockPage.FindFirstDescendant(cf => cf.ByName("ExamClock")),
+                "Clock display should be present");
         }
 
         [Test]
         public void NavigateToRNG_LoadsRNGPage()
         {
             NavigateToPage("Random Name Generator");
-            var clockPage = VerifyPageLoaded("RandomNameGenerator");
+            VerifyPageLoaded("RandomNameGenerator");
         }
 
         [Test]
@@ -123,37 +135,42 @@ namespace TTBIntegrationTesting
             // Navigate through all standard pages
             foreach (var (pageName, pageId) in navigationOrder)
             {
+                // Ensure navigation is visible before each navigation
+                EnsureNavigationIsOpen();
+
+                // Navigate to the page
                 NavigateToPage(pageName);
+
+                // Verify the page is loaded
                 VerifyPageLoaded(pageId);
             }
         }
 
         [Test]
-        public void NavigationView_CanTogglePane()
+        public void NavigationPane_CanTogglePane()
         {
             // Close the navigation pane
             ClickNavigationButton("Close Navigation");
 
-            // Verify pane is closed
-            var openNavButton = NavigationView!.FindFirstChild(cf =>
-                cf.ByName("Open Navigation"));
-            Assert.That(openNavButton, Is.Not.Null, "Navigation pane should be closeable");
+            // Wait for the open button to appear using helper
+            var openNavButton = WaitUntilFound<AutomationElement>(
+                () => NavigationPane!.FindFirstChild(cf => cf.ByName("Open Navigation")),
+                "Navigation pane should be closeable");
 
             // Open the navigation pane
-            ClickNavigationButton("Open Navigation");
+            openNavButton.Click();
 
-            // Verify pane is open
-            var closeNavButton = NavigationView!.FindFirstChild(cf =>
-                cf.ByName("Close Navigation"));
-            Assert.That(closeNavButton, Is.Not.Null, "Navigation pane should be openable");
+            // Wait for the close button to appear using helper
+            var closeNavButton = WaitUntilFound<AutomationElement>(
+                () => NavigationPane!.FindFirstChild(cf => cf.ByName("Close Navigation")),
+                "Navigation pane should be openable");
         }
 
         [Test]
         public void NavigateToSettings_LoadsSettingsPage()
         {
             NavigateToPage("Settings");
-            var screenRulerPage = VerifyPageLoaded("SettingsPage");
+            VerifyPageLoaded("SettingsPage");
         }
-
     }
 }

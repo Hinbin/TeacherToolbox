@@ -1,7 +1,8 @@
-﻿
-using FlaUI.Core.AutomationElements;
+﻿using FlaUI.Core.AutomationElements;
+using NUnit.Framework;
+using System.Linq;
 
-namespace TTBIntegrationTesting.Integration_Tests;
+namespace TeacherToolbox.IntegrationTests.IntegrationTests;
 
 [TestFixture]
 public class TimerTests : TestBase

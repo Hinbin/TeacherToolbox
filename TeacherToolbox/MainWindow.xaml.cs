@@ -1087,7 +1087,7 @@ namespace TeacherToolbox
 
                 if (isDarkTheme)
                 {
-                    // Remove the background color completely to let the NavigationView show through
+                    // Remove the background color completely to let the NavigationPane show through
                     titleBar.BackgroundColor = null;
                     titleBar.InactiveBackgroundColor = null;
                     titleBar.ButtonBackgroundColor = null;

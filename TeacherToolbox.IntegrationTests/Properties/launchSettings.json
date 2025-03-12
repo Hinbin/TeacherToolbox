@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "TeacherToolbox.IntegrationTests (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "TeacherToolbox.IntegrationTests (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

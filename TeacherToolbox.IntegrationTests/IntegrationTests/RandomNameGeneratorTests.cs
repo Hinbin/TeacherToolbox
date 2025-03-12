@@ -3,14 +3,20 @@ using FlaUI.Core;
 using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Definitions;
 using FlaUI.Core.Input;
-using TTBIntegrationTesting.Integration_Tests;
 using FlaUI.Core.WindowsAPI;
-using System.Diagnostics;
 using FlaUI.Core.Conditions;
 using FlaUI.Core.Tools;
 using FlaUI.Core.Exceptions;
+using NUnit.Framework;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading;
+using System.Linq;
+using System.Reflection;
+using Newtonsoft.Json.Linq;
 
-namespace TTBIntegrationTesting
+namespace TeacherToolbox.IntegrationTests.IntegrationTests
 {
     [TestFixture]
     public class RandomNameGeneratorTests : TestBase
@@ -20,7 +26,7 @@ namespace TTBIntegrationTesting
         [SetUp]
         public void RNGSetUp()
         {
-            // Navigate to RNG using NavigationView
+            // Navigate to RNG using NavigationPane
             var navigationView = MainWindow!.FindFirstDescendant(cf =>
                 cf.ByAutomationId("NavView"));
 
@@ -245,8 +251,10 @@ namespace TTBIntegrationTesting
                 Assert.That(filenameInput, Is.Not.Null, "Filename input field should exist");
 
                 // Get the path relative to the solution directory
-                var solutionDir = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"..\..\..\..\..\.."));
-                var path = Path.Combine(solutionDir, "TTBIntegrationTesting", "Integration", "Files", fileName);
+                var solutionDir = Path.GetFullPath(Path.Combine(
+                    Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location),
+                    @"..\..\..\..\..\.."));
+                var path = Path.Combine(solutionDir, "TeacherToolbox.IntegrationTests", "Files", fileName);
 
                 filenameInput.Focus();
                 Keyboard.Type(path);

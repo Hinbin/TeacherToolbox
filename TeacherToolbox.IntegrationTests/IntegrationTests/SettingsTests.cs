@@ -1,14 +1,14 @@
-﻿using FlaUI.UIA3;
+﻿using System;
+using System.Threading;
+using System.Linq;
+using NUnit.Framework;
+using FlaUI.UIA3;
 using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Definitions;
 using FlaUI.Core.Conditions;
-using System.Threading;
-using TeacherToolbox;
-using TTBIntegrationTesting.Integration_Tests;
-using System.Linq;
 using FlaUI.Core.Tools;
 
-namespace TTBIntegrationTesting
+namespace TeacherToolbox.IntegrationTests.IntegrationTests
 {
     [TestFixture]
     public class SettingsTests : TestBase
@@ -198,14 +198,50 @@ namespace TTBIntegrationTesting
         [Test]
         public void ThemeComboBox_HasDefaultOption()
         {
+            // Find the theme combo box
             var themeComboBox = FindComboBox("ThemeComboBox");
 
-            // Scroll the element into view
+            // Scroll the element into view if needed
             ScrollElementIntoView(themeComboBox);
 
+            // Get the current selection
             var selectionPattern = themeComboBox.Patterns.Selection.Pattern;
-            var selectedItem = selectionPattern.Selection.ValueOrDefault;
+            var currentSelection = selectionPattern.Selection.ValueOrDefault?.FirstOrDefault()?.Name;
 
+            // Check if "Use system setting" is already selected
+            if (currentSelection != "Use system setting")
+            {
+                // Not selected, so we need to open the combo box and select it
+                Console.WriteLine("'Use system setting' not currently selected. Current setting: " + currentSelection);
+
+                // Expand the combo box
+                var expandPattern = themeComboBox.Patterns.ExpandCollapse.Pattern;
+                expandPattern.Expand();
+
+                // Wait for the combo box to expand
+                WaitUntilCondition(
+                    () => expandPattern.ExpandCollapseState == ExpandCollapseState.Expanded,
+                    "Theme combo box should expand");
+
+                // Find the "Use system setting" option
+                var systemSettingOption = WaitUntilFound<AutomationElement>(
+                    () => themeComboBox.FindFirstDescendant(cf => cf.ByName("Use system setting")),
+                    "Use system setting option should be available");
+
+                // Click the option
+                systemSettingOption.Click();
+
+                // Wait for selection to update
+                WaitUntilCondition(
+                    () => {
+                        var newSelection = selectionPattern.Selection.ValueOrDefault?.FirstOrDefault()?.Name;
+                        return newSelection == "Use system setting";
+                    },
+                    "Use system setting should be selected");
+            }
+
+            // Verify the selection is now "Use system setting"
+            var selectedItem = selectionPattern.Selection.ValueOrDefault;
             Assert.That(selectedItem, Is.Not.Null, "Should have a default theme selection");
             Assert.That(selectedItem?.FirstOrDefault()?.Name, Is.EqualTo("Use system setting"),
                 "Default theme should be 'Use system setting'");

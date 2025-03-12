@@ -18,12 +18,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="Integration\NewFolder\**" />
-    <EmbeddedResource Remove="Integration\NewFolder\**" />
-    <None Remove="Integration\NewFolder\**" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="Appium.WebDriver" Version="7.0.0" />
     <PackageReference Include="coverlet.collector" Version="6.0.3">
       <PrivateAssets>all</PrivateAssets>
@@ -32,6 +26,7 @@
     <PackageReference Include="FlaUI.Core" Version="4.0.0" />
     <PackageReference Include="FlaUI.UIA3" Version="4.0.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageReference Include="Moq" Version="4.20.72" />
     <PackageReference Include="NUnit" Version="4.3.2" />
     <PackageReference Include="NUnit.Analyzers" Version="4.5.0">
       <PrivateAssets>all</PrivateAssets>
