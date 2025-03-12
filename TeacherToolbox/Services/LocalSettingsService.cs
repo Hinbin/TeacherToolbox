@@ -41,6 +41,8 @@ namespace TeacherToolbox.Services
         private static readonly object _initLock = new object();
         private bool hasShownClockInstructions;
 
+        protected virtual string FilePath => filePath;
+
         #region Singleton Implementation
 
         public LocalSettingsService()
