@@ -196,7 +196,8 @@
                                             BorderThickness="1"
                                             FontSize="12"
                                             Text="{Binding Hours, Mode=TwoWay}"
-                                            TextAlignment="Center" />
+                                            TextAlignment="Center"
+                                            TextChanged="TimeTextBox_TextChanged" />
 
                                         <TextBlock
                                             Grid.Column="1"
@@ -217,7 +218,8 @@
                                             BorderThickness="1"
                                             FontSize="12"
                                             Text="{Binding Minutes, Mode=TwoWay}"
-                                            TextAlignment="Center" />
+                                            TextAlignment="Center"
+                                            TextChanged="TimeTextBox_TextChanged" />
 
                                         <TextBlock
                                             Grid.Column="3"
@@ -238,7 +240,8 @@
                                             BorderThickness="1"
                                             FontSize="12"
                                             Text="{Binding Seconds, Mode=TwoWay}"
-                                            TextAlignment="Center" />
+                                            TextAlignment="Center"
+                                            TextChanged="TimeTextBox_TextChanged" />
                                     </Grid>
 
                                     <!--  Remove Button  -->
