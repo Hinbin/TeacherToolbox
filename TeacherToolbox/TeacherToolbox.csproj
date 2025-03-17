@@ -30,6 +30,13 @@
     <Content Include="Assets\**\*.*" />    </ItemGroup>
 
   <ItemGroup>
+    <Compile Remove="Views\**" />
+    <EmbeddedResource Remove="Views\**" />
+    <None Remove="Views\**" />
+    <Page Remove="Views\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Appium.WebDriver" Version="7.0.0" />
     <PackageReference Include="AsyncFixer" Version="1.6.0">
       <PrivateAssets>all</PrivateAssets>
@@ -167,9 +174,6 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Views\" />
-  </ItemGroup>
 
   <!-- 
     Defining the "HasPackageAndPublishMenuAddedByProject" property here allows the Solution 
@@ -179,4 +183,7 @@
   <PropertyGroup Condition="'$(DisableHasPackageAndPublishMenuAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
     <HasPackageAndPublishMenu>true</HasPackageAndPublishMenu>
   </PropertyGroup>
+  <ItemGroup>
+    <PRIResource Remove="Views\**" />
+  </ItemGroup>
 </Project>

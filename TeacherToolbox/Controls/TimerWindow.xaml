@@ -93,133 +93,188 @@
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <!--  Intervals List  -->
-                <ListView
-                    x:Name="intervalsListView"
-                    Grid.Row="0"
-                    Margin="4,8,4,4"
-                    HorizontalAlignment="Stretch"
-                    VerticalAlignment="Stretch"
-                    IsItemClickEnabled="False"
-                    SelectionMode="None">
-                    <ListView.ItemContainerStyle>
-                        <Style TargetType="ListViewItem">
-                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                            <Setter Property="Padding" Value="0" />
-                            <Setter Property="Margin" Value="0,4" />
-                            <Setter Property="Background" Value="Transparent" />
-                        </Style>
-                    </ListView.ItemContainerStyle>
-                    <ListView.ItemTemplate>
-                        <DataTemplate>
-                            <Grid
-                                Padding="8"
-                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                CornerRadius="8">
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto" />
-                                </Grid.RowDefinitions>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
+                <!--  Intervals List with Header Labels  -->
+                <Grid Grid.Row="0" Margin="4,4,4,2">
+                    <!--  Column Headers  -->
+                    <Grid
+                        Height="16"
+                        Margin="30,0,20,0"
+                        VerticalAlignment="Top">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
 
-                                <TextBlock
-                                    Grid.Column="0"
-                                    Margin="0,0,8,0"
+                        <TextBlock
+                            Grid.Column="0"
+                            HorizontalAlignment="Center"
+                            FontSize="10"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Text="h" />
+
+                        <TextBlock
+                            Grid.Column="2"
+                            HorizontalAlignment="Center"
+                            FontSize="10"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Text="m" />
+
+                        <TextBlock
+                            Grid.Column="4"
+                            HorizontalAlignment="Center"
+                            FontSize="10"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Text="s" />
+                    </Grid>
+
+                    <!--  Intervals ListView  -->
+                    <ListView
+                        x:Name="intervalsListView"
+                        Margin="0,16,0,0"
+                        HorizontalAlignment="Stretch"
+                        VerticalAlignment="Center"
+                        IsItemClickEnabled="False"
+                        SelectionMode="None">
+                        <ListView.ItemContainerStyle>
+                            <Style TargetType="ListViewItem">
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                <Setter Property="VerticalContentAlignment" Value="Center" />
+                                <Setter Property="Padding" Value="0" />
+                                <Setter Property="Margin" Value="0,1" />
+                                <!--  Reduced from 4 to 1  -->
+                                <Setter Property="MinHeight" Value="28" />
+                                <!--  Ensure consistent height  -->
+                                <Setter Property="Background" Value="Transparent" />
+                            </Style>
+                        </ListView.ItemContainerStyle>
+                        <ListView.ItemTemplate>
+                            <DataTemplate>
+                                <Grid
+                                    Padding="2"
                                     VerticalAlignment="Center"
-                                    FontSize="22"
-                                    FontWeight="Bold"
-                                    Text="{Binding IntervalNumber}" />
-
-                                <Grid Grid.Column="1" HorizontalAlignment="Stretch">
+                                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                    CornerRadius="4">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
 
-                                    <!--  Hours  -->
-                                    <TextBox
+                                    <!--  Interval Number  -->
+                                    <TextBlock
                                         Grid.Column="0"
-                                        MinWidth="60"
-                                        HorizontalAlignment="Stretch"
-                                        FontSize="22"
-                                        PlaceholderText="h"
-                                        Text="{Binding Hours, Mode=TwoWay}"
-                                        TextAlignment="Center" />
+                                        Margin="2,0,4,0"
+                                        VerticalAlignment="Center"
+                                        FontSize="12"
+                                        FontWeight="SemiBold"
+                                        Text="{Binding IntervalNumber}" />
 
-                                    <TextBlock
+                                    <!--  Time Fields without labels  -->
+                                    <Grid
                                         Grid.Column="1"
-                                        Margin="4,0"
-                                        VerticalAlignment="Center"
-                                        FontSize="22"
-                                        FontWeight="Bold"
-                                        Text=":" />
+                                        HorizontalAlignment="Stretch"
+                                        VerticalAlignment="Center">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
 
-                                    <!--  Minutes  -->
-                                    <TextBox
+                                        <!--  Hours  -->
+                                        <TextBox
+                                            Grid.Column="0"
+                                            MinHeight="22"
+                                            Padding="2,0"
+                                            HorizontalAlignment="Stretch"
+                                            VerticalAlignment="Center"
+                                            VerticalContentAlignment="Center"
+                                            BorderThickness="1"
+                                            FontSize="12"
+                                            Text="{Binding Hours, Mode=TwoWay}"
+                                            TextAlignment="Center" />
+
+                                        <TextBlock
+                                            Grid.Column="1"
+                                            Margin="1,0"
+                                            VerticalAlignment="Center"
+                                            FontSize="12"
+                                            FontWeight="Bold"
+                                            Text=":" />
+
+                                        <!--  Minutes  -->
+                                        <TextBox
+                                            Grid.Column="2"
+                                            MinHeight="22"
+                                            Padding="2,0"
+                                            HorizontalAlignment="Stretch"
+                                            VerticalAlignment="Center"
+                                            VerticalContentAlignment="Center"
+                                            BorderThickness="1"
+                                            FontSize="12"
+                                            Text="{Binding Minutes, Mode=TwoWay}"
+                                            TextAlignment="Center" />
+
+                                        <TextBlock
+                                            Grid.Column="3"
+                                            Margin="1,0"
+                                            VerticalAlignment="Center"
+                                            FontSize="12"
+                                            FontWeight="Bold"
+                                            Text=":" />
+
+                                        <!--  Seconds  -->
+                                        <TextBox
+                                            Grid.Column="4"
+                                            MinHeight="22"
+                                            Padding="2,0"
+                                            HorizontalAlignment="Stretch"
+                                            VerticalAlignment="Center"
+                                            VerticalContentAlignment="Center"
+                                            BorderThickness="1"
+                                            FontSize="12"
+                                            Text="{Binding Seconds, Mode=TwoWay}"
+                                            TextAlignment="Center" />
+                                    </Grid>
+
+                                    <!--  Remove Button  -->
+                                    <Button
                                         Grid.Column="2"
-                                        MinWidth="60"
-                                        HorizontalAlignment="Stretch"
-                                        FontSize="22"
-                                        PlaceholderText="m"
-                                        Text="{Binding Minutes, Mode=TwoWay}"
-                                        TextAlignment="Center" />
-
-                                    <TextBlock
-                                        Grid.Column="3"
-                                        Margin="4,0"
+                                        Width="20"
+                                        Height="20"
+                                        Margin="2,0,0,0"
+                                        Padding="0"
                                         VerticalAlignment="Center"
-                                        FontSize="22"
-                                        FontWeight="Bold"
-                                        Text=":" />
-
-                                    <!--  Seconds  -->
-                                    <TextBox
-                                        Grid.Column="4"
-                                        MinWidth="60"
-                                        HorizontalAlignment="Stretch"
-                                        FontSize="22"
-                                        PlaceholderText="s"
-                                        Text="{Binding Seconds, Mode=TwoWay}"
-                                        TextAlignment="Center" />
+                                        Click="RemoveInterval_Click"
+                                        Visibility="{Binding ShowRemoveButton, Converter={StaticResource BoolToVisibilityConverter}}">
+                                        <FontIcon FontSize="8" Glyph="&#xE711;" />
+                                    </Button>
                                 </Grid>
-
-                                <Button
-                                    Grid.Column="2"
-                                    Width="36"
-                                    Height="36"
-                                    Margin="8,0,0,0"
-                                    VerticalAlignment="Center"
-                                    Click="RemoveInterval_Click"
-                                    Visibility="{Binding ShowRemoveButton, Converter={StaticResource BoolToVisibilityConverter}}">
-                                    <FontIcon FontSize="16" Glyph="&#xE711;" />
-                                </Button>
-                            </Grid>
-                        </DataTemplate>
-                    </ListView.ItemTemplate>
-                </ListView>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                </Grid>
 
                 <!--  Action Buttons  -->
-                <StackPanel Grid.Row="1" Margin="4,2,4,8">
+                <StackPanel Grid.Row="1" Margin="4,2,4,4">
                     <Button
                         x:Name="addIntervalButton"
-                        Height="44"
-                        Margin="0,4,0,8"
+                        Height="32"
+                        Margin="0,2,0,4"
                         HorizontalAlignment="Stretch"
                         Click="AddIntervalButton_Click"
                         Style="{StaticResource AccentButtonStyle}">
                         <StackPanel Orientation="Horizontal">
                             <FontIcon
-                                Margin="0,0,8,0"
-                                FontSize="16"
+                                Margin="0,0,4,0"
+                                FontSize="10"
                                 Glyph="&#xE710;" />
                             <TextBlock
-                                FontSize="16"
+                                FontSize="12"
                                 FontWeight="SemiBold"
                                 Text="Add Interval" />
                         </StackPanel>
@@ -227,12 +282,12 @@
 
                     <Button
                         x:Name="startButton"
-                        Height="50"
+                        Height="40"
                         HorizontalAlignment="Stretch"
                         Click="StartButton_Click"
                         Style="{StaticResource AccentButtonStyle}">
                         <TextBlock
-                            FontSize="20"
+                            FontSize="14"
                             FontWeight="SemiBold"
                             Text="Start Timer" />
                     </Button>

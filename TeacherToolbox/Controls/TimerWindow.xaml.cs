@@ -997,6 +997,68 @@ namespace TeacherToolbox.Controls
             }
         }
 
+        // Add this method to the TimerWindow.xaml.cs file
+        private void TimeTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            var textBox = sender as TextBox;
+            if (textBox == null) return;
+
+            // Get the data context (should be IntervalTimeViewModel)
+            var viewModel = textBox.DataContext as IntervalTimeViewModel;
+            if (viewModel == null) return;
+
+            // Get the binding property name
+            var bindingExpression = textBox.GetBindingExpression(TextBox.TextProperty);
+            if (bindingExpression == null) return;
+
+            string propertyName = bindingExpression.ParentBinding.Path.Path;
+
+            // If the text is empty, set the corresponding property to 0
+            if (string.IsNullOrEmpty(textBox.Text))
+            {
+                switch (propertyName)
+                {
+                    case "Hours":
+                        viewModel.Hours = 0;
+                        break;
+                    case "Minutes":
+                        viewModel.Minutes = 0;
+                        break;
+                    case "Seconds":
+                        viewModel.Seconds = 0;
+                        break;
+                }
+            }
+            else
+            {
+                // If not empty, validate that it's a valid number and within range
+                if (int.TryParse(textBox.Text, out int value))
+                {
+                    bool isValid = false;
+
+                    if (propertyName == "Hours" && value >= 0 && value < 24)
+                    {
+                        isValid = true;
+                    }
+                    else if ((propertyName == "Minutes" || propertyName == "Seconds") && value >= 0 && value < 60)
+                    {
+                        isValid = true;
+                    }
+
+                    if (!isValid)
+                    {
+                        // Invalid value - set to 0
+                        textBox.Text = "0";
+                    }
+                }
+                else if (!string.IsNullOrEmpty(textBox.Text))
+                {
+                    // Not a valid number - set to 0
+                    textBox.Text = "0";
+                }
+            }
+        }
+
 
         private void Grid_PointerPressed(object sender, PointerRoutedEventArgs e)
         {
