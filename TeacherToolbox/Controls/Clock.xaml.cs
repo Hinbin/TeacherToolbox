@@ -553,7 +553,7 @@ public sealed partial class Clock : AutomatedPage
     private SolidColorBrush GetNextColourBrush()
     {
         string[] hexCodeArray = { "#FF0072B2", "#FFCC79A7", "#FFF0E442", "#FF009E73", "#FF785EF0",
-                                      "#FFD55E00", "#FF56B4E9" , "#FF000000", "#FFDC267F", "#FF117733"};
+                                      "#FFD55E00", "#FF56B4E9" , ThemeHelper.IsDarkTheme()? "#FFFFFFFF" : "#FF000000" , "#FFDC267F", "#FF117733"};
 
 
         // Go through hexCodeArray and see if a colour is already taken in the RadialGauge list
