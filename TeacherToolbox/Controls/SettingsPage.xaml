@@ -32,13 +32,17 @@
                 Text="Settings" />
 
             <!--  Feedback section  -->
-            <local:ExpanderItem Header="Feedback" Subheader="Report bugs and suggest improvements by clicking on this button">
+            <local:ExpanderItem Header="Feedback" Subheader="Report bugs and suggest improvements by clicking on these buttons">
                 <local:ExpanderItem.ItemContent>
                     <StackPanel Spacing="8">
                         <Button
                             x:Name="FeedbackButton"
                             Click="FeedbackButton_Click"
                             Content="Send Feedback" />
+                        <Button
+                            x:Name="ViewFeedbackButton"
+                            Click="ViewFeedbackButton_Click"
+                            Content="View Feedback" />
                     </StackPanel>
                 </local:ExpanderItem.ItemContent>
             </local:ExpanderItem>

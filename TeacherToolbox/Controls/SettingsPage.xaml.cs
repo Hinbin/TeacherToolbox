@@ -149,7 +149,14 @@ public sealed partial class SettingsPage : AutomatedPage
     private async void FeedbackButton_Click(object sender, RoutedEventArgs e)
     {
         // Use the default system browser to open the feedback URL
-        var uri = new Uri("https://teachertoolbox.canny.io/feature-requests/");
+        var uri = new Uri("https://docs.google.com/forms/d/e/1FAIpQLScAKZmB6CN7jBhIiZ7E25Vn_80yPTEUWBTNV4ZMJQEeXrF42g/viewform");
+        await Windows.System.Launcher.LaunchUriAsync(uri);
+    }
+
+    private async void ViewFeedbackButton_Click(object sender, RoutedEventArgs e)
+    {
+        // Use the default system browser to open the feedback URL
+        var uri = new Uri("https://docs.google.com/spreadsheets/d/1fdZeVxytN2yPmk5jKqhIFK6_U_6s66v6A4w2uh_SBxA/edit?gid=0#gid=0");
         await Windows.System.Launcher.LaunchUriAsync(uri);
     }
 
