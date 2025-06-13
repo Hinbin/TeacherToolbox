@@ -139,12 +139,15 @@ namespace TeacherToolbox.Tests.ViewModels
         [Test]
         public void UpdateAppTheme_SystemTheme_SetsElementThemeDefault()
         {
-            // Arrange
-            ElementTheme capturedTheme = ElementTheme.Dark; // Start with a different value
-            _viewModel.ThemeChanged += (theme) => { capturedTheme = theme; };
+            // Arrange - start with a different theme value
+            _mockSettingsService.Setup(s => s.GetTheme()).Returns(1); // Light theme
+            var viewModel = new SettingsViewModel(_mockSettingsService.Object);
+
+            ElementTheme capturedTheme = ElementTheme.Dark;
+            viewModel.ThemeChanged += (theme) => { capturedTheme = theme; };
 
             // Act
-            _viewModel.SelectedThemeIndex = 0; // System
+            viewModel.SelectedThemeIndex = 0; // Change to System
 
             // Assert
             Assert.That(capturedTheme, Is.EqualTo(ElementTheme.Default));

@@ -20,12 +20,12 @@ namespace TeacherToolbox.Tests.Services
         [SetUp]
         public void Setup()
         {
-            // Create a temporary directory for test settings
+            // Reset singleton state before each test
+            LocalSettingsService.ResetForTesting();
+
             string tempDir = Path.Combine(Path.GetTempPath(), "TeacherToolboxTests", Guid.NewGuid().ToString());
             Directory.CreateDirectory(tempDir);
             _testFilePath = Path.Combine(tempDir, "test_settings.json");
-
-            // Create a test instance of LocalSettingsService with the test file path
             _settingsService = new TestLocalSettingsService(_testFilePath);
         }
 

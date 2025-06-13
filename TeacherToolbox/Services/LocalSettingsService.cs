@@ -57,6 +57,10 @@ namespace TeacherToolbox.Services
 
             Directory.CreateDirectory(Path.GetDirectoryName(filePath));
         }
+        internal static void ResetForTesting()
+        {
+            _sharedInstance = null;
+        }
 
         /// <summary>
         /// Gets the shared instance of the settings service
@@ -179,17 +183,17 @@ namespace TeacherToolbox.Services
                     string json = JsonSerializer.Serialize(settingsToSave, options);
 
                     // Use a temporary file to prevent corruption
-                    string tempPath = filePath + ".tmp";
+                    string tempPath = FilePath + ".tmp";
                     File.WriteAllText(tempPath, json);
 
                     // If the write was successful, replace the original file
                     if (File.Exists(tempPath))
                     {
-                        if (File.Exists(filePath))
+                        if (File.Exists(FilePath))
                         {
-                            File.Delete(filePath);
+                            File.Delete(FilePath);
                         }
-                        File.Move(tempPath, filePath);
+                        File.Move(tempPath, FilePath);
                         Debug.WriteLine("Settings saved successfully");
                     }
                 }
@@ -206,9 +210,9 @@ namespace TeacherToolbox.Services
         {
             try
             {
-                if (File.Exists(filePath))
+                if (File.Exists(FilePath))
                 {
-                    string json = await File.ReadAllTextAsync(filePath);
+                    string json = await File.ReadAllTextAsync(FilePath);
                     var options = new JsonSerializerOptions
                     {
                         PropertyNameCaseInsensitive = true
@@ -303,9 +307,9 @@ namespace TeacherToolbox.Services
         {
             try
             {
-                if (File.Exists(filePath))
+                if (File.Exists(FilePath))
                 {
-                    string json = File.ReadAllText(filePath);
+                    string json = File.ReadAllText(FilePath);
                     var options = new JsonSerializerOptions
                     {
                         PropertyNameCaseInsensitive = true
