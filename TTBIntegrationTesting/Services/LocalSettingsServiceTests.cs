@@ -180,7 +180,7 @@ namespace TeacherToolbox.Tests.Services
             var result = _settingsService.GetLastWindowPosition();
 
             // Assert
-            Assert.That(result, Is.Not.Null);
+            Assert.That(result.IsEmpty, Is.False);
             Assert.That(result.X, Is.EqualTo(0));
             Assert.That(result.Y, Is.EqualTo(0));
             Assert.That(result.Width, Is.EqualTo(0));
@@ -198,7 +198,7 @@ namespace TeacherToolbox.Tests.Services
             var result = _settingsService.GetLastWindowPosition();
 
             // Assert
-            Assert.That(result, Is.Not.Null);
+            Assert.That(result.IsEmpty, Is.False);
             Assert.That(result.X, Is.EqualTo(position.X));
             Assert.That(result.Y, Is.EqualTo(position.Y));
             Assert.That(result.Width, Is.EqualTo(position.Width));
@@ -217,7 +217,7 @@ namespace TeacherToolbox.Tests.Services
             var result = _settingsService.GetLastTimerWindowPosition();
 
             // Assert
-            Assert.That(result, Is.Not.Null);
+            Assert.That(result.IsEmpty, Is.False);
             Assert.That(result.X, Is.EqualTo(position.X));
             Assert.That(result.Y, Is.EqualTo(position.Y));
             Assert.That(result.Width, Is.EqualTo(position.Width));

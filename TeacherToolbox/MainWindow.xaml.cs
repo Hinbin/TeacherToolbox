@@ -21,6 +21,7 @@ using Windows.UI;
 using System.Threading.Tasks;
 using System.Threading;
 using TeacherToolbox.Services;
+using Windows.ApplicationModel.VoiceCommands;
 
 
 
@@ -88,6 +89,7 @@ namespace TeacherToolbox
             }
 
             this.Closed += MainWindow_Closed;
+            this.SizeChanged += MainWindow_SizeChanged;
         }
 
         private void OnShortcutWatcherExited(object sender, EventArgs e)
@@ -633,6 +635,11 @@ namespace TeacherToolbox
             });
         }
 
+        private void MainWindow_SizeChanged(object sender, WindowSizeChangedEventArgs e)
+        {
+            SetRegionsForCustomTitleBar();
+        }
+
         private void MainWindow_Closed(object sender, WindowEventArgs e)
         {
             try
@@ -1066,17 +1073,60 @@ namespace TeacherToolbox
 
         private void SetRegionsForCustomTitleBar()
         {
-            InputNonClientPointerSource nonClientInputSrc =
-            InputNonClientPointerSource.GetForWindowId(this.AppWindow.Id);
-            // Make everything apart from the navigation burger button region non-client
-            nonClientInputSrc.SetRegionRects(NonClientRegionKind.Caption,
-                new Windows.Graphics.RectInt32[]
+            try
+            {
+                InputNonClientPointerSource nonClientInputSrc =
+                    InputNonClientPointerSource.GetForWindowId(this.AppWindow.Id);
+
+                // Get the title bar height
+                int titleBarHeight = this.AppWindow.TitleBar.Height;
+                if (titleBarHeight == 0)
                 {
-                    new Windows.Graphics.RectInt32(48, 0, 552, 48)
-                });
+                    // Fallback to typical title bar height if not available
+                    titleBarHeight = 32;
+                }
+
+                // Get window dimensions
+                var windowSize = this.AppWindow.Size;
+
+                // Set empty caption regions to disable title bar dragging
+                nonClientInputSrc.SetRegionRects(NonClientRegionKind.Caption,
+                    new Windows.Graphics.RectInt32[] { });
+
+                // Calculate the window control buttons area (typically ~168px wide for all three buttons)
+                int controlButtonsWidth = 168;
+                int contentAreaWidth = windowSize.Width - controlButtonsWidth;
+
+                // Only set passthrough for the content area, excluding the window control buttons
+                if (contentAreaWidth > 0)
+                {
+                    var passthroughRect = new Windows.Graphics.RectInt32
+                    {
+                        X = 0,
+                        Y = 0,
+                        Width = contentAreaWidth,
+                        Height = titleBarHeight
+                    };
+
+                    nonClientInputSrc.SetRegionRects(NonClientRegionKind.Passthrough,
+                        new Windows.Graphics.RectInt32[] { passthroughRect });
+
+                    Debug.WriteLine($"Title bar regions set - Passthrough area: {passthroughRect.Width}x{passthroughRect.Height}, Control buttons preserved");
+                }
+                else
+                {
+                    // Window too narrow, don't set passthrough to avoid breaking control buttons
+                    nonClientInputSrc.SetRegionRects(NonClientRegionKind.Passthrough,
+                        new Windows.Graphics.RectInt32[] { });
+
+                    Debug.WriteLine("Window too narrow, no passthrough regions set");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error setting title bar regions: {ex.Message}");
+            }
         }
-
-
 
         public void UpdateTitleBarTheme()
         {

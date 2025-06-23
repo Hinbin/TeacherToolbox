@@ -21,6 +21,7 @@ using Microsoft.UI.Xaml.Navigation;
 using System.Diagnostics;
 using TeacherToolbox.Helpers;
 using TeacherToolbox.Services;
+using Microsoft.UI.Xaml.Automation;
 
 namespace TeacherToolbox.Controls;
 
@@ -317,7 +318,7 @@ public sealed partial class Clock : AutomatedPage
         }
         selectedGauge = null;
         return selectedGauge;
-    }
+    }    
 
     private void Clock_Pointer_Pressed(object sender, PointerRoutedEventArgs e)
     {
@@ -340,7 +341,7 @@ public sealed partial class Clock : AutomatedPage
 
         // On a right mouse click or touch event
         if (e.GetCurrentPoint((UIElement)sender).Properties.IsRightButtonPressed)
-        {
+    {
             // If a gauge exists at this position, remove it
             if (selectedGauge != null) RemoveGauge(canvas);
         }
@@ -374,6 +375,9 @@ public sealed partial class Clock : AutomatedPage
 
             Name = "Gauge" + gaugeCount
         };
+        
+        string gaugeName = newGauge.Name;
+        AutomationProperties.SetAutomationId(newGauge, gaugeName);
 
         if (radialLevel == (int)RadialLevel.Inner)
         {
@@ -383,7 +387,7 @@ public sealed partial class Clock : AutomatedPage
             newGauge.SetValue(Canvas.LeftProperty, 0);
             newGauge.SetValue(Canvas.TopProperty, 0);
             newGauge.SetValue(Canvas.ZIndexProperty, 1);
-            newGauge.ScalePadding = 5;
+            newGauge.ScalePadding = 5;            
 
         }
         else
@@ -442,7 +446,7 @@ public sealed partial class Clock : AutomatedPage
         canvas.ReleasePointerCapture(e.Pointer);
 
         selectedGauge = null;
-    }
+        }
 
     private void Clock_Pointer_Exited(object sender, PointerRoutedEventArgs e)
     {

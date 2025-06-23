@@ -42,6 +42,8 @@
                 x:Name="Container"
                 Width="200"
                 Height="200"
+                AutomationProperties.AutomationId="ClockCanvas"
+                AutomationProperties.Name="Clock Face Canvas"
                 Background="Transparent"
                 PointerCanceled="Clock_Pointer_Exited"
                 PointerExited="Clock_Pointer_Exited"
