@@ -49,7 +49,7 @@ namespace TeacherToolbox.Services
         {
             centreText = "Centre";
             lastWindowPosition = new WindowPosition(0, 0, 0, 0, 0);
-            lastTimerWindowPosition = new WindowPosition(0, 0, 0, 0, 0);
+            lastTimerWindowPosition = new WindowPosition(0, 0, 200, 200, 0);
             settings = new Dictionary<string, object>();
             savedIntervalConfigs = new List<SavedIntervalConfig>();
             savedCustomTimerConfigs = new List<SavedIntervalConfig>();
@@ -247,7 +247,7 @@ namespace TeacherToolbox.Services
                                     }
                                     catch
                                     {
-                                        lastTimerWindowPosition = new WindowPosition(0, 0, 0, 0, 0);
+                                        lastTimerWindowPosition = new WindowPosition(0, 0, 200, 200, 0);
                                     }
                                     break;
                                 case IntervalConfigsKey:
@@ -344,7 +344,7 @@ namespace TeacherToolbox.Services
                                     }
                                     catch
                                     {
-                                        lastTimerWindowPosition = new WindowPosition(0, 0, 0, 0, 0);
+                                        lastTimerWindowPosition = new WindowPosition(0, 0, 200, 200, 0);
                                     }
                                     break;
                                 case IntervalConfigsKey:

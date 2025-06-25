@@ -204,6 +204,7 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
 
             // Click the Add Class button
             addClassButton?.Click();
+            Wait.UntilInputIsProcessed(); // Ensure UI updates
 
             // Create a new automation scope specifically for finding the dialog
             using (var dialogAutomation = new UIA3Automation())
@@ -230,6 +231,8 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
                             ));
                     },
                     "File dialog should appear");
+
+                Wait.UntilResponsive(fileDialog);
 
                 // Find the filename input field - look specifically for the "File name:" edit box
                 var filenameInput = fileDialog.FindFirst(TreeScope.Descendants,

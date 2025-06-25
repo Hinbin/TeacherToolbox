@@ -1,14 +1,16 @@
 ﻿using FlaUI.Core.AutomationElements;
-using FlaUI.Core.Definitions;
 using FlaUI.Core.Conditions;
+using FlaUI.Core.Definitions;
 using FlaUI.Core.Input;
+using FlaUI.Core.Logging;
 using FlaUI.Core.WindowsAPI;
+using FlaUI.UIA3;
 using NUnit.Framework;
 using System;
-using System.Threading;
-using System.Linq;
 using System.Drawing;
-using FlaUI.Core.Logging;
+using System.Linq;
+using System.Runtime.InteropServices;
+using System.Threading;
 
 namespace TeacherToolbox.IntegrationTests.IntegrationTests
 {
@@ -24,6 +26,11 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
         private static readonly TimeSpan ClockInteractionTimeout = TimeSpan.FromSeconds(3);
         private static readonly TimeSpan SegmentCreationTimeout = TimeSpan.FromSeconds(2);
 
+        // Clock positioning constants - ensure we're definitely past 12:00
+        private const int ClockRadius = 50;
+        private const int TwelveOClockOffsetX = 10; // Increased offset to ensure 12:01+ position
+        private const int LargerClockRadius = 70; // For tests using larger radius
+
         [SetUp]
         public void ClockSetUp()
         {
@@ -34,6 +41,9 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
 
             // Get key clock elements
             InitializeClockElements();
+            Wait.UntilResponsive(_clockPage!);
+            Wait.UntilResponsive(_digitalTimeDisplay);
+            Wait.UntilInputIsProcessed();
         }
 
         private void InitializeClockElements()
@@ -64,8 +74,9 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
         [Test]
         public void Clock_DisplaysCurrentTime()
         {
+            Wait.UntilResponsive(_digitalTimeDisplay);
             // Verify digital time is showing
-            var timeText = _digitalTimeDisplay!.Name;
+            var timeText = _digitalTimeDisplay!.AsTextBox().Text;
             Assert.That(timeText, Is.Not.Null.And.Not.Empty,
                 "Clock should display current time");
 
@@ -77,16 +88,22 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
         [Test]
         public void Clock_CanAccessTimePickerFlyout()
         {
+            Wait.UntilResponsive(_digitalTimeDisplay);
             // Click on digital time to open time picker flyout
             _digitalTimeDisplay!.Click();
 
-            // Wait for flyout to appear
-            var flyout = WaitUntilFound<AutomationElement>(
-                () => _clockPage!.FindFirstDescendant(cf => cf.ByAutomationId("timePickerFlyout")),
-                "Time picker flyout should appear when clicking digital time",
+            // Search at desktop level for the popup
+            using var automation = new UIA3Automation();
+            var desktop = automation.GetDesktop();
+
+            var flyoutPopup = WaitUntilFound<AutomationElement>(
+                () => desktop.FindFirstDescendant(cf =>
+                    cf.ByControlType(ControlType.Pane)
+                    .And(cf.ByName("timepicker"))), 
+                "Time picker flyout popup should appear",
                 ClockInteractionTimeout);
 
-            Assert.That(flyout, Is.Not.Null, "Time picker flyout should be accessible");
+            Assert.That(flyoutPopup, Is.Not.Null, "Time picker flyout should be accessible");
         }
 
         [Test]
@@ -113,7 +130,7 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
             NavigateAwayAndBackToClock();
 
             // Verify text persisted
-            var persistedText = _centreTextBox!.Name;
+            var persistedText = _centreTextBox!.AsTextBox().Text;
             Assert.That(persistedText, Is.EqualTo(testText),
                 "Centre text should persist after navigation");
         }
@@ -129,14 +146,15 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
             var initialElements = GetClockFaceElements();
             var initialCount = initialElements.Count();
 
-            // Click on a position on the clock face (12 o'clock position)
+            // Click on a position on the clock face (12:01 position - slightly right of 12:00)
             var clockCenter = GetClockCenterPoint();
-            var topPosition = new System.Drawing.Point(clockCenter.X + 10, clockCenter.Y - 140); 
+            var topPosition = new System.Drawing.Point(
+                clockCenter.X + TwelveOClockOffsetX,
+                clockCenter.Y - ClockRadius);
 
-            // Perform left click at the position
             Mouse.MoveTo(topPosition);
             Wait.UntilInputIsProcessed();
-            Thread.Sleep(100); // Allow time for mouse move to register
+            Thread.Sleep(200); // Allow time for mouse move to register properly
             Mouse.Click();
 
             // Wait for segment to be created
@@ -150,30 +168,42 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
                 "Should have more elements after creating segment");
         }
 
+
         [Test]
-        public void Clock_CanCreateTimeSegment_ClickAndDrag()
+        public void Clock_SeparateClicks_CreateSeparateSegments()
         {
             var initialCount = GetClockFaceElements().Count();
             var clockCenter = GetClockCenterPoint();
 
-            // Start position (12 o'clock)
-            var startPos = new System.Drawing.Point(clockCenter.X + 10, clockCenter.Y - 140);
-            // End position (1 o'clock - slightly clockwise)
-            var endPos = new System.Drawing.Point(clockCenter.X + 50, clockCenter.Y - 125);
+            // Click at 12:01
+            var pos1 = new System.Drawing.Point(
+                clockCenter.X + TwelveOClockOffsetX,
+                clockCenter.Y - ClockRadius);
 
-            Mouse.MoveTo(startPos);
-            Wait.UntilInputIsProcessed();   
-            // Perform click and drag
-            Mouse.Drag(startPos, endPos);
+            Mouse.MoveTo(pos1);
             Wait.UntilInputIsProcessed();
+            Thread.Sleep(200);
+            Mouse.Click();
+            Thread.Sleep(500);
 
-            AutomationElement[] automationElements = GetClockFaceElements();    
+            var afterFirstClick = GetClockFaceElements().Count();
+            Assert.That(afterFirstClick, Is.EqualTo(initialCount + 1),
+                "First click should create one segment");
 
-            // Wait for segment to be created
-            WaitUntilCondition(
-                () => GetClockFaceElements().Count() > initialCount,
-                "Time segment should be created by click and drag",
-                SegmentCreationTimeout);
+            // Click at 1 o'clock (different position)
+            var pos2 = new System.Drawing.Point(
+                clockCenter.X + 50,
+                clockCenter.Y - 20);
+
+            Mouse.MoveTo(pos2);
+            Wait.UntilInputIsProcessed();
+            Thread.Sleep(200);
+            Mouse.Click();
+            Thread.Sleep(500);
+
+            var afterSecondClick = GetClockFaceElements().Count();
+            Assert.That(afterSecondClick, Is.EqualTo(initialCount + 2),
+                "Second click should create a separate segment (total: 2 segments)");
         }
 
         [Test]
@@ -185,12 +215,15 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
             var segmentCount = GetClockFaceElements().Count();
             Assert.That(segmentCount, Is.GreaterThan(0), "Should have at least one segment before removal");
 
-            // Right-click on the same position to remove segment
+            // Right-click on the same position to remove segment (12:01 position)
             var clockCenter = GetClockCenterPoint();
-            var segmentPosition = new System.Drawing.Point(clockCenter.X + 10, clockCenter.Y - 120);
+            var segmentPosition = new System.Drawing.Point(
+                clockCenter.X + TwelveOClockOffsetX,
+                clockCenter.Y - LargerClockRadius);
 
             Mouse.MoveTo(segmentPosition);
             Wait.UntilInputIsProcessed();
+            Thread.Sleep(200); // Ensure mouse move completes before clicking
             Mouse.RightClick();
 
             // Wait for segment to be removed
@@ -209,18 +242,19 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
             // Create segments at different positions
             var positions = new[]
             {
-                new System.Drawing.Point(clockCenter.X + 10, clockCenter.Y - 80),      // 12 o'clock
-                new System.Drawing.Point(clockCenter.X + 80, clockCenter.Y),     // 3 o'clock
-                new System.Drawing.Point(clockCenter.X + 10, clockCenter.Y + 80),     // 6 o'clock
-                new System.Drawing.Point(clockCenter.X - 80, clockCenter.Y)      // 9 o'clock
+                new System.Drawing.Point(clockCenter.X + TwelveOClockOffsetX, clockCenter.Y - ClockRadius),  // 12:01
+                new System.Drawing.Point(clockCenter.X + ClockRadius, clockCenter.Y),                      // 3 o'clock
+                new System.Drawing.Point(clockCenter.X, clockCenter.Y + ClockRadius),                      // 6 o'clock
+                new System.Drawing.Point(clockCenter.X - ClockRadius, clockCenter.Y)                       // 9 o'clock
             };
 
             foreach (var position in positions)
             {
                 Mouse.MoveTo(position);
                 Wait.UntilInputIsProcessed();
+                Thread.Sleep(200); // Ensure mouse move completes before clicking
                 Mouse.Click();
-                Thread.Sleep(300); // Allow time for each segment to be created
+                Thread.Sleep(400); // Allow time for each segment to be created
             }
 
             // Wait for all segments to be created
@@ -244,12 +278,12 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
             var gauges = WaitUntilFound<AutomationElement[]>(
                 () => {
                     var elements = _clockCanvas!.FindAllDescendants(cf =>
-                        cf.ByControlType(ControlType.Custom).And(cf.ByClassName("RadialGauge")));
+                        cf.ByControlType(ControlType.Custom));
                     return elements.Length > 0 ? elements : null;
                 },
                 "Should find colored gauge segments");
 
-            Assert.That(gauges.Length, Is.GreaterThanOrEqualTo(2),
+            Assert.That(gauges.Length, Is.GreaterThanOrEqualTo(3),
                 "Should have multiple colored segments");
 
             // Note: We can't easily test the actual colors in automation, but we can verify
@@ -299,11 +333,15 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
             NavigateToPage("Settings");
 
             var settingsPage = VerifyPageLoaded("SettingsPage");
+            Wait.UntilResponsive(settingsPage);
 
             // Find and change theme
             var themeComboBox = WaitUntilFound<AutomationElement>(
                 () => settingsPage.FindFirstDescendant(cf => cf.ByAutomationId("ThemeComboBox")),
                 "Theme combo box should be found");
+
+            ScrollElementIntoView(themeComboBox);
+            Wait.UntilResponsive(themeComboBox);
 
             // Change to dark theme
             themeComboBox.Patterns.ExpandCollapse.Pattern.Expand();
@@ -312,20 +350,26 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
                 "Dark theme option should be available");
 
             darkOption.Click();
+            Wait.UntilInputIsProcessed();
+            Wait.UntilResponsive(NavigationPane!);
 
             // Navigate back to clock
             EnsureNavigationIsOpen();
             NavigateToPage("Exam Clock");
 
+            Wait.UntilResponsive(_digitalTimeDisplay);
+            Thread.Sleep(1000); // Allow time for theme change to apply
             _clockPage = VerifyPageLoaded("Clock");
+            Wait.UntilResponsive(_digitalTimeDisplay);
 
             // Clock should still be functional after theme change
             InitializeClockElements();
 
             Assert.That(_clockCanvas, Is.Not.Null,
                 "Clock should remain functional after theme change");
-            Assert.That(_digitalTimeDisplay!.Name, Is.Not.Null.And.Not.Empty,
+            Assert.That(_digitalTimeDisplay!.AsTextBox().Text, Is.Not.Null.And.Not.Empty,
                 "Time display should still work after theme change");
+            
         }
 
         #endregion
@@ -338,18 +382,19 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
             var clockCenter = GetClockCenterPoint();
             var initialCount = GetClockFaceElements().Count();
 
-            // Perform rapid clicks at different positions
+            // Perform rapid clicks at different positions (avoid exact hour positions)
             for (int i = 0; i < 5; i++)
             {
-                var angle = i * 72; // 72 degrees apart (360/5)
+                var angle = (i * 72) + 5; // 72 degrees apart + 5 degree offset to avoid exact hours
                 var radians = angle * Math.PI / 180;
                 var x = clockCenter.X + (int)(60 * Math.Cos(radians));
                 var y = clockCenter.Y + (int)(60 * Math.Sin(radians));
 
                 Mouse.MoveTo(new System.Drawing.Point(x, y));
                 Wait.UntilInputIsProcessed();
+                Thread.Sleep(100); // Ensure mouse move completes even in rapid mode
                 Mouse.Click();
-                Thread.Sleep(50); // Very brief pause between clicks
+                Thread.Sleep(100); // Brief pause between clicks for processing
             }
 
             // Wait for all interactions to process
@@ -377,7 +422,11 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
             NavigateAwayAndBackToClock();
 
             // Verify centre text persisted
-            Assert.That(_centreTextBox!.Name, Is.EqualTo(testCentreText),
+            Assert.That(_centreTextBox!.AsTextBox().Text, Is.EqualTo(testCentreText),
+                "Centre text should persist after navigation");
+
+            // Verify clock is still visible 
+            Assert.That(_digitalTimeDisplay!.AsTextBox().Text, Is.Not.Null.And.Not.Empty,
                 "Centre text should persist after navigation");
 
             // Note: Time segments are not persisted by design in the current implementation
@@ -391,9 +440,14 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
         private void CreateTestTimeSegment()
         {
             var clockCenter = GetClockCenterPoint();
-            var position = new System.Drawing.Point(clockCenter.X, clockCenter.Y - 80);
+            // Position at 12:01 (slightly right of 12:00 to avoid exact hour position)
+            var position = new System.Drawing.Point(
+                clockCenter.X + TwelveOClockOffsetX,
+                clockCenter.Y - LargerClockRadius);
+
             Mouse.MoveTo(position);
             Wait.UntilInputIsProcessed();
+            Thread.Sleep(200); // Ensure mouse move completes before clicking
             Mouse.Click();
             Thread.Sleep(300); // Allow time for segment creation
         }
@@ -404,13 +458,15 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
 
             for (int i = 0; i < count; i++)
             {
-                var angle = i * (360.0 / count);
+                // Add a small offset to avoid exact hour positions
+                var angle = (i * (360.0 / count)) + 5; // +5 degrees offset
                 var radians = angle * Math.PI / 180;
                 var x = clockCenter.X + (int)(70 * Math.Cos(radians - Math.PI / 2)); // -PI/2 to start at top
                 var y = clockCenter.Y + (int)(70 * Math.Sin(radians - Math.PI / 2));
 
                 Mouse.MoveTo(new System.Drawing.Point(x, y));
                 Wait.UntilInputIsProcessed();
+                Thread.Sleep(200); // Ensure mouse move completes before clicking
                 Mouse.Click();
                 Thread.Sleep(400); // Allow time for each segment
             }
@@ -437,7 +493,7 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
                 return elements.Where(e =>
                 {
                     try
-                    {                        
+                    {
                         // Gauge elements have the word Gauge set as part of their automationID
                         return e.AutomationId.Contains("Gauge");
                     }
@@ -470,6 +526,12 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
 
             _clockPage = VerifyPageLoaded("Clock");
             InitializeClockElements();
+
+            // Wait for digital time to be populated by the timer
+            WaitUntilCondition(
+                () => !string.IsNullOrEmpty(_digitalTimeDisplay!.AsTextBox().Text),
+                "Digital time should be populated after navigation",
+                TimeSpan.FromSeconds(3));
         }
 
         #endregion

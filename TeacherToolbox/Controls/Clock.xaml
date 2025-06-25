@@ -43,7 +43,7 @@
                 Width="200"
                 Height="200"
                 AutomationProperties.AutomationId="ClockCanvas"
-                AutomationProperties.Name="Clock Face Canvas"
+                AutomationProperties.Name="Clock Canvas"
                 Background="Transparent"
                 PointerCanceled="Clock_Pointer_Exited"
                 PointerExited="Clock_Pointer_Exited"
@@ -55,7 +55,8 @@
                     Canvas.Left="0"
                     Canvas.Top="0"
                     Width="200"
-                    Height="200" />
+                    Height="200"
+                    IsHitTestVisible="False" />
             </Canvas>
 
         </Viewbox>
@@ -64,6 +65,7 @@
             <TextBox
                 x:Name="centreTextBox"
                 Padding="4"
+                AutomationProperties.AutomationId="centreTextBox"
                 FontWeight="Bold"
                 Header="Centre Number"
                 TextAlignment="Center"
@@ -77,7 +79,10 @@
             Tapped="Digital_Time_Tapped">
             <TextBlock x:Name="digitalTimeTextBlock" VerticalAlignment="Top" />
             <FlyoutBase.AttachedFlyout>
-                <TimePickerFlyout x:Name="timePickerFlyout" ClockIdentifier="12HourClock" />
+                <TimePickerFlyout
+                    x:Name="timePickerFlyout"
+                    AutomationProperties.AutomationId="timePickerFlyout"
+                    ClockIdentifier="12HourClock" />
             </FlyoutBase.AttachedFlyout>
         </Viewbox>
 

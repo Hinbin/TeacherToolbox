@@ -160,6 +160,8 @@ public sealed partial class Clock : AutomatedPage
     {
         now = DateTime.Now;
 
+        digitalTimeTextBlock.Text = now.ToString("h:mm tt");
+
         Face.Fill = FaceColor;
 
         // Get the containerVisual for the canvas in WinUI3
@@ -318,7 +320,7 @@ public sealed partial class Clock : AutomatedPage
         }
         selectedGauge = null;
         return selectedGauge;
-    }    
+    }
 
     private void Clock_Pointer_Pressed(object sender, PointerRoutedEventArgs e)
     {
@@ -337,11 +339,11 @@ public sealed partial class Clock : AutomatedPage
         if (e.GetCurrentPoint((UIElement)sender).Properties.IsLeftButtonPressed)
         {
             if (selectedGauge == null) AddGauge(timeSelected);
-        }
+            }
 
         // On a right mouse click or touch event
         if (e.GetCurrentPoint((UIElement)sender).Properties.IsRightButtonPressed)
-    {
+        {
             // If a gauge exists at this position, remove it
             if (selectedGauge != null) RemoveGauge(canvas);
         }
@@ -446,7 +448,7 @@ public sealed partial class Clock : AutomatedPage
         canvas.ReleasePointerCapture(e.Pointer);
 
         selectedGauge = null;
-        }
+    }
 
     private void Clock_Pointer_Exited(object sender, PointerRoutedEventArgs e)
     {
@@ -489,17 +491,17 @@ public sealed partial class Clock : AutomatedPage
                 {
                     // If in the next slice, fill the slice
                     if (newFiveMinuteInterval == endFiveMinuteInterval)
-                    {
+                {
                         timeSlice.Duration += 5;
                     } // Check to see if the hour boundary has been crossed backwards 
                     else if (newFiveMinuteInterval == startFiveMinuteInterval + 11)
                     {
                         timeSlice.StartMinute = (timeSlice.StartMinute + 55) % 60;
                         timeSlice.Duration += 5;
-                    }
                 }
+            }
                 else if (newFiveMinuteInterval < startFiveMinuteInterval)
-                {
+            {
                     // If in the previous slice, fill the slice
                     if (newFiveMinuteInterval == startFiveMinuteInterval - 1)
                     {
@@ -509,8 +511,8 @@ public sealed partial class Clock : AutomatedPage
                     else if (newFiveMinuteInterval == endFiveMinuteInterval - 12)
                     {
                         timeSlice.Duration += 5;
-                    }
-                }
+            }
+        }
 
                 startFiveMinuteInterval = timeSlice.StartMinute / 5;
                 endFiveMinuteInterval = (timeSlice.StartMinute + timeSlice.Duration) / 5;

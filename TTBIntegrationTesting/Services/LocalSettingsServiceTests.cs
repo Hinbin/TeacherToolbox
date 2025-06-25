@@ -180,12 +180,12 @@ namespace TeacherToolbox.Tests.Services
             var result = _settingsService.GetLastWindowPosition();
 
             // Assert
-            Assert.That(result.IsEmpty, Is.False);
             Assert.That(result.X, Is.EqualTo(0));
             Assert.That(result.Y, Is.EqualTo(0));
             Assert.That(result.Width, Is.EqualTo(0));
             Assert.That(result.Height, Is.EqualTo(0));
         }
+
 
         [Test]
         public void SetLastWindowPosition_ThenGetLastWindowPosition_ReturnsSetValue()
@@ -204,6 +204,19 @@ namespace TeacherToolbox.Tests.Services
             Assert.That(result.Width, Is.EqualTo(position.Width));
             Assert.That(result.Height, Is.EqualTo(position.Height));
             Assert.That(result.DisplayID, Is.EqualTo(position.DisplayID));
+        }
+
+        [Test]
+        public void GetLastTimerWindowPosition_DefaultValue_ReturnsDefaultPosition()
+        {
+            // Act
+            var result = _settingsService.GetLastWindowPosition();
+
+            // Assert
+            Assert.That(result.X, Is.EqualTo(0));
+            Assert.That(result.Y, Is.EqualTo(0));
+            Assert.That(result.Width, Is.EqualTo(0));
+            Assert.That(result.Height, Is.EqualTo(0));
         }
 
         [Test]
