@@ -9,7 +9,7 @@
     <UseWinUI>true</UseWinUI>
     <EnableMsixTooling>true</EnableMsixTooling>
     <PlatformTarget>x86</PlatformTarget>
-    <RuntimeIdentifier>win10-x86</RuntimeIdentifier>
+    <RuntimeIdentifier>win10-x86</RuntimeIdentifier>    
   </PropertyGroup>
 
   <ItemGroup>

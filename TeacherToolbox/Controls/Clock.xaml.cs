@@ -8,593 +8,542 @@ using Microsoft.UI.Xaml.Hosting;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
+using Microsoft.UI.Xaml.Navigation;
+using Microsoft.UI.Xaml.Shapes;
 using System;
 using System.Collections.Generic;
-using System.Numerics;
-using Windows.Foundation;
 using System.IO;
-using WinUIEx;
-using Microsoft.UI.Xaml.Shapes;
-using TeacherToolbox.Model;
-using Windows.Globalization;
-using Microsoft.UI.Xaml.Navigation;
-using System.Diagnostics;
+using System.Linq;
+using System.Numerics;
+using System.Threading.Tasks;
 using TeacherToolbox.Helpers;
+using TeacherToolbox.Model;
 using TeacherToolbox.Services;
-using Microsoft.UI.Xaml.Automation;
+using TeacherToolbox.ViewModels;
+using Windows.Foundation;
 
-namespace TeacherToolbox.Controls;
-
-// To learn more about WinUI, the WinUI project structure,
-// and more about our project templates, see: http://aka.ms/winui-project-info.
-
-enum RadialLevel
+namespace TeacherToolbox.Controls
 {
-    Inner,
-    Outer
-}
-
-public class TimeSlice
-{
-    public int StartMinute { get; set; }
-    public int Duration { get; set; }
-    public int RadialLevel { get; set; }
-    public string Name { get; set; }
-
-
-    public TimeSlice(int startMinute, int duration, int radialLevel, string name)
+    public sealed partial class Clock : AutomatedPage
     {
-        this.StartMinute = startMinute;
-        this.Duration = duration;
-        this.RadialLevel = radialLevel;
-        this.Name = name;
-    }
+        // View-specific fields for Composition API
+        private Compositor _compositor;
+        private ContainerVisual _root;
+        private SpriteVisual _hourhand;
+        private SpriteVisual _minutehand;
+        private SpriteVisual _secondhand;
+        private CompositionScopedBatch _batch;
 
-    public TimeSlice()
-    {
-    }
+        // ViewModel and visual elements
+        public ClockViewModel ViewModel { get; private set; }
+        private readonly Dictionary<string, RadialGauge> _gauges = new Dictionary<string, RadialGauge>();
+        private string _selectedGaugeName;
+        private int _selectedGaugeRadialLevel = -1; // Track the radial level of selected gauge
 
-    public bool IsWithinTimeSlice(int minute, int radialLevel)
-    {
-        if (this.RadialLevel != radialLevel) return false;
-
-        if (minute >= StartMinute && minute < StartMinute + Duration)
+        // Color palette for gauges
+        private readonly string[] _colorPalette = new[]
         {
-            return true;
-        } // check forward accross the hour boundary
-        else if (StartMinute + Duration > 60 && minute < StartMinute && minute + 60 < StartMinute + Duration)
+            "#FF0072B2", "#FFCC79A7", "#FFF0E442", "#FF009E73", "#FF785EF0",
+            "#FFD55E00", "#FF56B4E9", "#FF000000", "#FFDC267F", "#FF117733"
+        };
+
+        public Clock()
         {
-            return true;
+            this.InitializeComponent();
+            this.Loaded += Clock_Loaded;
         }
 
-        return false;
-    }
-
-}
-public sealed partial class Clock : AutomatedPage
-{
-    private Compositor _compositor;
-    private ContainerVisual _root;
-
-    private SpriteVisual _hourhand;
-    private SpriteVisual _minutehand;
-    private SpriteVisual _secondhand;
-    private CompositionScopedBatch _batch;
-
-    private readonly DispatcherTimer _timer = new();
-
-    private DateTime now;
-
-    private TimeSpan offset = TimeSpan.Zero;
-
-    // Private 2d array to hold the values for the gauges, 60 minutes and 2 radial levels
-    private string selectedGauge;
-    private int gaugeCount = 0;
-
-    // A C# list to hold the radial gauges
-    private readonly List<RadialGauge> radialGaugeList = new();
-    private readonly List<TimeSlice> timeSlices = new();
-
-    public ImageSource BackgroundImage { get; set; }
-
-    public ISettingsService localSettingsService;
-
-    private SleepPreventer _sleepPreventer;
-    private bool _isPreventingSleep = false;
-    CompositionColorBrush handColourBrush;
-
-
-    public Clock()
-    {
-        this.InitializeComponent();
-
-        this.Loaded += Clock_Loaded;
-
-        _timer.Interval = TimeSpan.FromMilliseconds(200);
-        _timer.Tick += Timer_Tick;
-        timePickerFlyout.TimePicked += TimePickerFlyout_TimePicked;
-    }    
-
-    public bool ShowTicks { get; set; } = false;
-
-    public Brush FaceColor { get; set; } = new SolidColorBrush(Colors.Transparent);
-
-    // Override navigated to 
-    protected override void OnNavigatedTo(NavigationEventArgs e)
-    {
-        base.OnNavigatedTo(e);
-        Debug.WriteLine("Clock page OnNavigatedTo");
-        if (e.Parameter is SleepPreventer sleepPreventer)
+        protected override async void OnNavigatedTo(NavigationEventArgs e)
         {
-            _sleepPreventer = sleepPreventer;
-            Debug.WriteLine("Got SleepPreventer from navigation parameter");
-            _sleepPreventer.PreventSleep();
-            _isPreventingSleep = true;
+            base.OnNavigatedTo(e);
+
+            // Get SleepPreventer from navigation parameter if available
+            SleepPreventer sleepPreventer = e.Parameter as SleepPreventer;
+
+            // Get settings service
+            var settingsService = await LocalSettingsService.GetSharedInstanceAsync();
+
+            // Create ViewModel with injected dependencies
+            ViewModel = new ClockViewModel(settingsService, sleepPreventer);
+            this.DataContext = ViewModel;
+
+            // Subscribe to ViewModel events
+            ViewModel.TimeSliceAdded += OnTimeSliceAdded;
+            ViewModel.TimeSliceRemoved += OnTimeSliceRemoved;
+            ViewModel.RequestShowInstructions += OnRequestShowInstructions;
+            ViewModel.PropertyChanged += OnViewModelPropertyChanged;
+
+            // Initialize bindings
+            Bindings.Update();
         }
-        else
+
+        protected override void OnNavigatedFrom(NavigationEventArgs e)
         {
-            Debug.WriteLine("No SleepPreventer in navigation parameter!");
-        }
-    }
+            base.OnNavigatedFrom(e);
 
-    private void TimePickerFlyout_TimePicked(TimePickerFlyout sender, TimePickedEventArgs args)
-    {
-
-        // Get the difference between the current time and the new time ignoring seconds
-        offset = DateTime.Today.Add(args.NewTime).Subtract(DateTime.Now);
-
-        // Get the current number of seconds of the minute and add it to the offset
-        offset = offset.Add(TimeSpan.FromSeconds(now.Second));
-
-        // Round the offset to the nearest minute
-
-        if (offset.Seconds > 30)
-        {
-            offset = offset.Add(TimeSpan.FromMinutes(1));
-        }
-        offset = new TimeSpan(offset.Hours, offset.Minutes, 0);
-
-    }
-
-    private async void Clock_Loaded(object sender, RoutedEventArgs e)
-    {
-        now = DateTime.Now;
-
-        digitalTimeTextBlock.Text = now.ToString("h:mm tt");
-
-        Face.Fill = FaceColor;
-
-        // Get the containerVisual for the canvas in WinUI3
-
-        _root = ElementCompositionPreview.GetElementVisual(Container) as ContainerVisual;
-        _compositor = _root.Compositor;
-
-        var isDarkTheme = ThemeHelper.IsDarkTheme();
-        string imagePath = "";
-
-        if (isDarkTheme)
-        {
-            //Load clock settings
-            imagePath = System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "Clock_Face_Inverse.png");
-            handColourBrush = _compositor.CreateColorBrush(Colors.White);
-        }
-        else
-        {
-            imagePath = System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "Clock_Face.png");
-            handColourBrush = _compositor.CreateColorBrush(Colors.Black);
-        }
-        BackgroundImage = new BitmapImage(new Uri(imagePath));
-
-        // Hour Ticks
-        if (ShowTicks)
-        {
-            SpriteVisual tick;
-            for (int i = 0; i < 12; i++)
+            // Unsubscribe from events
+            if (ViewModel != null)
             {
-                tick = _compositor.CreateSpriteVisual();
-                tick.Size = new Vector2(4.0f, 20.0f);
-                tick.Brush = _compositor.CreateColorBrush(Colors.Silver);
-                tick.Offset = new Vector3(98.0f, 0.0f, 0);
-                tick.CenterPoint = new Vector3(2.0f, 100.0f, 0);
-                tick.RotationAngleInDegrees = i * 30;
-                _root.Children.InsertAtTop(tick);
+                ViewModel.TimeSliceAdded -= OnTimeSliceAdded;
+                ViewModel.TimeSliceRemoved -= OnTimeSliceRemoved;
+                ViewModel.RequestShowInstructions -= OnRequestShowInstructions;
+                ViewModel.PropertyChanged -= OnViewModelPropertyChanged;
+                ViewModel.Dispose();
             }
         }
 
-        // Second Hand
-        _secondhand = _compositor.CreateSpriteVisual();
-        _secondhand.Size = new Vector2(2.0f, 100.0f);
-        _secondhand.Brush = _compositor.CreateColorBrush(Colors.Red);
-        _secondhand.CenterPoint = new Vector3(1.0f, 80.0f, 0);
-        _secondhand.Offset = new Vector3(99.0f, 20.0f, 0);
-        _root.Children.InsertAtTop(_secondhand);
-        _secondhand.RotationAngleInDegrees = (float)(int)DateTime.Now.TimeOfDay.TotalSeconds * 6;
-
-        // Hour Hand
-        _hourhand = _compositor.CreateSpriteVisual();
-        _hourhand.Size = new Vector2(4.0f, 70.0f);
-        _hourhand.Brush = handColourBrush;
-        _hourhand.CenterPoint = new Vector3(2.0f, 50.0f, 0);
-        _hourhand.Offset = new Vector3(98.0f, 50.0f, 0);
-        _root.Children.InsertAtTop(_hourhand);
-
-        // Minute Hand
-        _minutehand = _compositor.CreateSpriteVisual();
-        _minutehand.Size = new Vector2(4.0f, 100.0f);
-        _minutehand.Brush = handColourBrush;
-        _minutehand.CenterPoint = new Vector3(2.0f, 80.0f, 0);
-        _minutehand.Offset = new Vector3(98.0f, 20.0f, 0);
-        _root.Children.InsertAtTop(_minutehand);
-
-        SetHoursAndMinutes();
-
-        // Add XAML element.
-        if (BackgroundImage != null)
+        private async void Clock_Loaded(object sender, RoutedEventArgs e)
         {
-            var xaml = new Image
+            // Initialize Composition visuals
+            InitializeCompositionVisuals();
+
+            // Load clock background image based on theme
+            LoadClockBackgroundImage();
+
+            // Show instructions if needed
+            if (ViewModel != null && !ViewModel.HasShownClockInstructions())
             {
-                Source = BackgroundImage,
-                Height = 200,
-                Width = 200
-            };
-            Container.Children.Add(xaml);
+                ClockInstructionTip.IsOpen = true;
+                ViewModel.SetHasShownClockInstructions(true);
+            }
         }
 
-        _timer.Start();
-
-        localSettingsService = await LocalSettingsService.GetSharedInstanceAsync();
-        centreTextBox.Text = localSettingsService.GetCentreText();
-
-        // Inside your Clock_Loaded method, after other initialization:
-        if (!localSettingsService.GetHasShownClockInstructions())
+        private void InitializeCompositionVisuals()
         {
-            ClockInstructionTip.IsOpen = true;
-            localSettingsService.SetHasShownClockInstructions(true);
+            _root = ElementCompositionPreview.GetElementVisual(Container) as ContainerVisual;
+            _compositor = _root.Compositor;
+
+            // Create clock hands using Composition API
+            CreateClockHands();
+
+            // Subscribe to theme changes
+            ((FrameworkElement)this.Content).ActualThemeChanged += OnThemeChanged;
         }
 
-    }
-
-    private void Timer_Tick(object sender, object e)
-    {
-        DateTime checkTime = DateTime.Now;
-
-        digitalTimeTextBlock.Text = now.ToString("h:mm tt");
-
-        // Check to see if we have a new second
-        if (now.Second != checkTime.Second)
+        private void CreateClockHands()
         {
+            var handColorBrush = _compositor.CreateColorBrush(
+                ViewModel?.HandColorBrush?.Color ?? (ThemeHelper.IsDarkTheme() ? Colors.White : Colors.Black));
 
-            // Add offset on to current time
-            now = DateTime.Now.Add(offset);
+            // Second Hand
+            _secondhand = _compositor.CreateSpriteVisual();
+            _secondhand.Size = new Vector2(2.0f, 100.0f);
+            _secondhand.Brush = _compositor.CreateColorBrush(Colors.Red);
+            _secondhand.CenterPoint = new Vector3(1.0f, 80.0f, 0);
+            _secondhand.Offset = new Vector3(99.0f, 20.0f, 0);
+            // Set initial second hand position
+            _secondhand.RotationAngleInDegrees = (float)(ViewModel?.SecondHandAngle ?? 0);
+            _root.Children.InsertAtTop(_secondhand);
+
+            // Hour Hand
+            _hourhand = _compositor.CreateSpriteVisual();
+            _hourhand.Size = new Vector2(4.0f, 70.0f);
+            _hourhand.Brush = handColorBrush;
+            _hourhand.CenterPoint = new Vector3(2.0f, 50.0f, 0);
+            _hourhand.Offset = new Vector3(98.0f, 50.0f, 0);
+            _root.Children.InsertAtTop(_hourhand);
+
+            // Minute Hand
+            _minutehand = _compositor.CreateSpriteVisual();
+            _minutehand.Size = new Vector2(4.0f, 100.0f);
+            _minutehand.Brush = handColorBrush;
+            _minutehand.CenterPoint = new Vector3(2.0f, 80.0f, 0);
+            _minutehand.Offset = new Vector3(98.0f, 20.0f, 0);
+            _root.Children.InsertAtTop(_minutehand);
+
+            // Update all hand positions
+            UpdateClockHandPositions();
+        }
+
+        private void LoadClockBackgroundImage()
+        {
+            var isDarkTheme = ThemeHelper.IsDarkTheme();
+            string imagePath = System.IO.Path.Combine(
+                AppContext.BaseDirectory,
+                "Assets",
+                isDarkTheme ? "Clock_Face_Inverse.png" : "Clock_Face.png");
+
+            if (File.Exists(imagePath))
+            {
+                ClockBackgroundImage.Source = new BitmapImage(new Uri(imagePath));
+            }
+        }
+
+        private void OnViewModelPropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            switch (e.PropertyName)
+            {
+                case nameof(ClockViewModel.SecondHandAngle):
+                    AnimateSecondHand();
+                    break;
+                case nameof(ClockViewModel.HourHandAngle):
+                case nameof(ClockViewModel.MinuteHandAngle):
+                    UpdateClockHandPositions();
+                    break;
+                case nameof(ClockViewModel.HandColorBrush):
+                    UpdateHandColors();
+                    break;
+            }
+        }
+
+        private void AnimateSecondHand()
+        {
+            if (_secondhand == null || ViewModel == null) return;
 
             _batch = _compositor.CreateScopedBatch(CompositionBatchTypes.Animation);
             var animation = _compositor.CreateScalarKeyFrameAnimation();
-            var seconds = (float)(int)now.TimeOfDay.TotalSeconds - 1;
 
-            // This works:
-            animation.InsertKeyFrame(0.00f, seconds * 6);
-            animation.InsertKeyFrame(1.00f, (seconds + 1) * 6);
+            var currentAngle = ViewModel.SecondHandAngle;
+            var previousAngle = currentAngle - 6; // Previous second position
 
+            animation.InsertKeyFrame(0.00f, (float)previousAngle);
+            animation.InsertKeyFrame(1.00f, (float)currentAngle);
             animation.Duration = TimeSpan.FromMilliseconds(900);
+
             _secondhand.StartAnimation(nameof(_secondhand.RotationAngleInDegrees), animation);
+
             _batch.End();
-            _batch.Completed += Batch_Completed;
-
+            _batch.Completed += (s, args) => UpdateClockHandPositions();
         }
-    }
 
-    /// <summary>
-    /// Fired at the end of the secondhand animation. 
-    /// </summary>
-    private void Batch_Completed(object sender, CompositionBatchCompletedEventArgs args)
-    {
-        _batch.Completed -= Batch_Completed;
-
-        SetHoursAndMinutes();
-    }
-
-    private void SetHoursAndMinutes()
-    {
-        _hourhand.RotationAngleInDegrees = (float)now.TimeOfDay.TotalHours * 30;
-        _minutehand.RotationAngleInDegrees = now.Minute * 6;
-        // Add on second intervals to the minute hand
-        _minutehand.RotationAngleInDegrees += (float)now.Second * 0.1f;
-    }
-
-    private void Digital_Time_Tapped(object sender, TappedRoutedEventArgs e)
-    {
-        FlyoutBase.ShowAttachedFlyout((FrameworkElement)sender);
-    }
-
-    private string CheckIfGaugeAtPosition(int minute, int radialLevel)
-    {
-        // Call the isWithinTimeSlice function to see if a gauge is already there
-        // for all gauges in the array.  If a gauge is already there, select it, otherwise create a new gauge
-        for (int i = 0; i < timeSlices.Count; i++)
+        private void UpdateClockHandPositions()
         {
-            if (timeSlices[i].IsWithinTimeSlice(minute, radialLevel))
+            if (ViewModel == null) return;
+
+            _hourhand?.StopAnimation(nameof(_hourhand.RotationAngleInDegrees));
+            _minutehand?.StopAnimation(nameof(_minutehand.RotationAngleInDegrees));
+
+            if (_hourhand != null)
+                _hourhand.RotationAngleInDegrees = (float)ViewModel.HourHandAngle;
+            if (_minutehand != null)
+                _minutehand.RotationAngleInDegrees = (float)ViewModel.MinuteHandAngle;
+
+            // Set second hand position only if it's not currently being animated
+            // This ensures correct initial positioning while preserving animations
+            if (_secondhand != null && _batch == null)
+                _secondhand.RotationAngleInDegrees = (float)ViewModel.SecondHandAngle;
+        }
+
+        private void UpdateHandColors()
+        {
+            if (ViewModel?.HandColorBrush == null) return;
+
+            var handColorBrush = _compositor.CreateColorBrush(ViewModel.HandColorBrush.Color);
+            if (_hourhand != null)
+                _hourhand.Brush = handColorBrush;
+            if (_minutehand != null)
+                _minutehand.Brush = handColorBrush;
+        }
+
+        private void OnThemeChanged(FrameworkElement sender, object args)
+        {
+            ViewModel?.OnThemeChanged();
+            LoadClockBackgroundImage();
+            UpdateHandColors();
+        }
+
+        #region Event Handlers
+
+        private void TimePickerFlyout_TimePicked(TimePickerFlyout sender, TimePickedEventArgs args)
+        {
+            ViewModel?.TimePickedCommand.Execute(args);
+        }
+
+        private void Digital_Time_Tapped(object sender, TappedRoutedEventArgs e)
+        {
+            FlyoutBase.ShowAttachedFlyout((FrameworkElement)sender);
+        }
+
+        private void Clock_Pointer_Pressed(object sender, PointerRoutedEventArgs e)
+        {
+            var canvas = (Canvas)sender;
+            canvas.CapturePointer(e.Pointer);
+
+            var point = e.GetCurrentPoint(canvas).Position;
+            var timeSelected = GetTimeFromPoint(point);
+
+            var existingSlice = ViewModel?.FindTimeSliceAtPosition(timeSelected[0], timeSelected[1]);
+            _selectedGaugeName = existingSlice?.Name;
+            _selectedGaugeRadialLevel = existingSlice?.RadialLevel ?? timeSelected[1];
+
+            if (e.GetCurrentPoint(canvas).Properties.IsLeftButtonPressed)
             {
-                selectedGauge = timeSlices[i].Name;
-                return selectedGauge;
+                if (_selectedGaugeName == null)
+                {
+                    // Create new gauge and immediately select it for potential extension
+                    ViewModel?.AddGaugeCommand.Execute(point);
+
+                    // Find the newly created time slice and set it as selected
+                    var newSlice = ViewModel?.FindTimeSliceAtPosition(timeSelected[0], timeSelected[1]);
+                    if (newSlice != null)
+                    {
+                        _selectedGaugeName = newSlice.Name;
+                        _selectedGaugeRadialLevel = newSlice.RadialLevel;
+                    }
+                }
             }
-        }
-        selectedGauge = null;
-        return selectedGauge;
-    }
-
-    private void Clock_Pointer_Pressed(object sender, PointerRoutedEventArgs e)
-    {
-        // Capture pointer
-        var canvas = (Canvas)sender;
-        canvas.CapturePointer(e.Pointer);
-
-        // Get the x and y co-ordinate of where the clock was clicked
-        var point = e.GetCurrentPoint((UIElement)sender).Position;
-
-        // Get the minutes from the angle
-        var timeSelected = GetMinutesFromCoordinate(point);
-        CheckIfGaugeAtPosition(timeSelected[0], timeSelected[1]);
-
-        // On a left mouse click or touch event
-        if (e.GetCurrentPoint((UIElement)sender).Properties.IsLeftButtonPressed)
-        {
-            if (selectedGauge == null) AddGauge(timeSelected);
+            else if (e.GetCurrentPoint(canvas).Properties.IsRightButtonPressed)
+            {
+                if (_selectedGaugeName != null)
+                {
+                    ViewModel?.RemoveGaugeCommand.Execute(_selectedGaugeName);
+                    _selectedGaugeName = null;
+                    _selectedGaugeRadialLevel = -1;
+                }
             }
 
-        // On a right mouse click or touch event
-        if (e.GetCurrentPoint((UIElement)sender).Properties.IsRightButtonPressed)
-        {
-            // If a gauge exists at this position, remove it
-            if (selectedGauge != null) RemoveGauge(canvas);
+            e.Handled = true;
         }
 
-        // Mark the event as handled so it does not bubble up to the parent
-        e.Handled = true;
-    }
-
-    private void RemoveGauge(Canvas canvas)
-    {
-        // Find the gauge with the selectedGauge name and remove it from the canvas
-        canvas.Children.Remove(radialGaugeList.Find(x => x.Name == selectedGauge));
-        radialGaugeList.RemoveAll(x => x.Name == selectedGauge);
-        timeSlices.RemoveAll(x => x.Name == selectedGauge);
-        selectedGauge = null;
-
-        if (timeSlices.Count == 0) gaugeCount = 0;  // Reset this to 0 to reset colours
-    }
-
-    private void AddGauge(int[] timeSelected)
-    {
-        int radialLevel = timeSelected[1];
-
-        // Work out the 5 minute interval the minute is in, rounded down to the nearest 5 minutes
-        int fiveMinuteInterval = timeSelected[0] / 5;
-
-        // Programatically create a WinUI3 Community toolbox radial gauge to radialGaugeList 
-        RadialGauge newGauge = new()
-        {
-            // if radialLevel is 0, set the gauge to 200x200, else set it to 100x100
-
-            Name = "Gauge" + gaugeCount
-        };
-        
-        string gaugeName = newGauge.Name;
-        AutomationProperties.SetAutomationId(newGauge, gaugeName);
-
-        if (radialLevel == (int)RadialLevel.Inner)
-        {
-            newGauge.Width = 200;
-            newGauge.Height = 200;
-            // Set the position of the new gauge
-            newGauge.SetValue(Canvas.LeftProperty, 0);
-            newGauge.SetValue(Canvas.TopProperty, 0);
-            newGauge.SetValue(Canvas.ZIndexProperty, 1);
-            newGauge.ScalePadding = 5;            
-
-        }
-        else
-        {
-            newGauge.Width = 140;
-            newGauge.Height = 140;
-            // Set the position of the new gauge
-            newGauge.SetValue(Canvas.LeftProperty, 30);
-            newGauge.SetValue(Canvas.TopProperty, 30);
-            newGauge.SetValue(Canvas.ZIndexProperty, 2);
-        }
-
-        newGauge.IsInteractive = false;
-        newGauge.NeedleLength = 95;
-
-        // set the minangle to the start of the 5 minute interval
-        newGauge.MinAngle = fiveMinuteInterval * 30;
-        // set the maxangle to the end of the 5 minute interval
-        newGauge.MaxAngle = (fiveMinuteInterval + 1) * 30;
-
-        newGauge.ValueStringFormat = "'";
-        newGauge.TickSpacing = 0;
-
-        newGauge.ScaleWidth = 40;
-        newGauge.ScaleBrush = new SolidColorBrush(Colors.Transparent);
-
-        // Make the trail a randomised colour with 50% opacity
-        newGauge.TrailBrush = GetNextColourBrush();
-        newGauge.TrailBrush.Opacity = 0.65;
-        newGauge.Minimum = 0;
-        newGauge.Maximum = 1;
-        newGauge.Value = 1;
-
-        newGauge.NeedleWidth = 0;
-
-        // Add the new gauge to the canvas
-        Container.Children.Add(newGauge);
-
-        // Set the selectedGauge to the last gauge added
-        selectedGauge = "Gauge" + gaugeCount;
-        gaugeCount++;
-
-        // Add the new gauge to the radialGaugeList
-        radialGaugeList.Add(newGauge);
-
-        newGauge.Name = selectedGauge;
-
-        // Add the new gauge to the timeSlices list
-        timeSlices.Add(new TimeSlice(fiveMinuteInterval * 5, 5, radialLevel, selectedGauge));
-    }
-
-    private void Clock_Pointer_Released(object sender, PointerRoutedEventArgs e)
-    {
-        // Release pointer
-        var canvas = (Canvas)sender;
-        canvas.ReleasePointerCapture(e.Pointer);
-
-        selectedGauge = null;
-    }
-
-    private void Clock_Pointer_Exited(object sender, PointerRoutedEventArgs e)
-    {
-        // Only release pointer capture if the mouse button is not down
-        if (!e.GetCurrentPoint((UIElement)sender).Properties.IsLeftButtonPressed)
+        private void Clock_Pointer_Released(object sender, PointerRoutedEventArgs e)
         {
             var canvas = (Canvas)sender;
             canvas.ReleasePointerCapture(e.Pointer);
-            selectedGauge = null;
+            _selectedGaugeName = null;
+            _selectedGaugeRadialLevel = -1;
         }
-    }
 
-    private void Clock_Pointer_Moved(object sender, PointerRoutedEventArgs e)
-    {
-        e.Handled = true;
-        // Check if the pointer is captured
-        if (e.Pointer.IsInContact)
+        private void Clock_Pointer_Exited(object sender, PointerRoutedEventArgs e)
         {
-            // Get the x and y co-ordinate of where the clock was clicked
-            var point = e.GetCurrentPoint((UIElement)sender).Position;
-
-            // Get the minutes from the angle
-            var timeSelected = GetMinutesFromCoordinate(point);
-
-            // If a gauge has been selected, call the function to change the range of minutes it is set to
-            if (selectedGauge != null)
+            if (!e.GetCurrentPoint((UIElement)sender).Properties.IsLeftButtonPressed)
             {
-                // Check the time selected already contains a time slice, if so, return
-                if (timeSlices.Find(x => x.IsWithinTimeSlice(timeSelected[0], timeSelected[1])) != null) return;
+                var canvas = (Canvas)sender;
+                canvas.ReleasePointerCapture(e.Pointer);
+                _selectedGaugeName = null;
+                _selectedGaugeRadialLevel = -1;
+            }
+        }
 
-                // Find the timeSlice in the timeSlices list by reference
-                TimeSlice timeSlice = timeSlices.Find(x => x.Name == selectedGauge);
+        private void Clock_Pointer_Moved(object sender, PointerRoutedEventArgs e)
+        {
+            e.Handled = true;
 
-                // Get the startMinute and endMinute in the 5 minute interval
-                int startFiveMinuteInterval = timeSlice.StartMinute / 5;
-                int endFiveMinuteInterval = (timeSlice.StartMinute + timeSlice.Duration) / 5;
-                int newFiveMinuteInterval = timeSelected[0] / 5;
+            if (!e.Pointer.IsInContact || string.IsNullOrEmpty(_selectedGaugeName))
+                return;
 
-                if (newFiveMinuteInterval >= endFiveMinuteInterval)
+            var point = e.GetCurrentPoint((UIElement)sender).Position;
+            var timeSelected = GetTimeFromPoint(point);
+
+            // Check if we're still in the same radial level as the selected gauge
+            if (timeSelected[1] != _selectedGaugeRadialLevel)
+            {
+                // Radial level changed during drag - stop extending
+                return;
+            }
+
+            ViewModel?.ExtendTimeSlice(_selectedGaugeName, timeSelected[0], timeSelected[1]);
+
+            // Update the visual gauge
+            if (_gauges.TryGetValue(_selectedGaugeName, out var gauge))
+            {
+                var slice = ViewModel.TimeSlices.FirstOrDefault(s => s.Name == _selectedGaugeName);
+                if (slice != null)
                 {
-                    // If in the next slice, fill the slice
-                    if (newFiveMinuteInterval == endFiveMinuteInterval)
-                {
-                        timeSlice.Duration += 5;
-                    } // Check to see if the hour boundary has been crossed backwards 
-                    else if (newFiveMinuteInterval == startFiveMinuteInterval + 11)
-                    {
-                        timeSlice.StartMinute = (timeSlice.StartMinute + 55) % 60;
-                        timeSlice.Duration += 5;
+                    UpdateGaugeFromSlice(gauge, slice);
                 }
             }
-                else if (newFiveMinuteInterval < startFiveMinuteInterval)
+        }
+
+        #endregion
+
+        #region Time Slice Visual Management
+
+        private void OnTimeSliceAdded(object sender, TimeSlice slice)
+        {
+            CreateGaugeForSlice(slice);
+        }
+
+        private void OnTimeSliceRemoved(object sender, TimeSlice slice)
+        {
+            RemoveGaugeForSlice(slice);
+        }
+
+        private void CreateGaugeForSlice(TimeSlice slice)
+        {
+            var gauge = new RadialGauge
             {
-                    // If in the previous slice, fill the slice
-                    if (newFiveMinuteInterval == startFiveMinuteInterval - 1)
-                    {
-                        timeSlice.StartMinute = newFiveMinuteInterval * 5;
-                        timeSlice.Duration += 5;
-                    }  // Check to see if the hour boundary has been crossed forwards 
-                    else if (newFiveMinuteInterval == endFiveMinuteInterval - 12)
-                    {
-                        timeSlice.Duration += 5;
-            }
-        }
+                Name = slice.Name,
+                IsInteractive = false,
+                NeedleLength = 95,
+                ValueStringFormat = "'",
+                TickSpacing = 0,
+                ScaleWidth = 40,
+                ScaleBrush = new SolidColorBrush(Colors.Transparent),
+                TrailBrush = GetNextColorBrush(),
+                Minimum = 0,
+                Maximum = 1,
+                Value = 1,
+                NeedleWidth = 0
+            };
 
-                startFiveMinuteInterval = timeSlice.StartMinute / 5;
-                endFiveMinuteInterval = (timeSlice.StartMinute + timeSlice.Duration) / 5;
+            // Set opacity
+            gauge.TrailBrush.Opacity = 0.65;
 
-                // Find the gauge in the radialGaugeList and update the minAngle and maxAngle
-                RadialGauge radialGauge = radialGaugeList.Find(x => x.Name == selectedGauge);
-                radialGauge.MinAngle = startFiveMinuteInterval * 30;
-                radialGauge.MaxAngle = (endFiveMinuteInterval) * 30;
-            }
-        }
-    }
-
-
-    private static int[] GetMinutesFromCoordinate(Point point)
-    {
-        int radialLevel;
-        // Get the x and y co-ordinate of where the clock was clicked from the PointerEventHandler
-
-        // Get the angle in degrees of the point clicked if x =100 and y=100 is the center of the clock.  0 degrees is 12 o'clock
-        var angle = Math.Atan2(point.Y - 100, point.X - 100) * (180 / Math.PI);
-
-        // Convert the angle to a positive value
-        angle = 180 + angle;
-
-        // Get the minutes from the angle
-        var minutes = (int)(angle / 6);
-
-        // Currently the angle 0 is 9 o'clock so we need to convert it to 12 o'clock and use mod 60 to get the minutes
-        minutes = (minutes + 45) % 60;
-
-        // The inner circle has a diameter of 140 and the outer circle a diameter of 200 - check to see if the mouse click is within the inner circle
-        if (Math.Sqrt(Math.Pow(point.X - 100, 2) + Math.Pow(point.Y - 100, 2)) < 55)
-        {
-            radialLevel = (int)RadialLevel.Outer;
-        }
-        else
-        {
-            radialLevel = (int)RadialLevel.Inner;
-        }
-
-        return new int[] { minutes, radialLevel };
-
-    }
-
-    private SolidColorBrush GetNextColourBrush()
-    {
-        string[] hexCodeArray = { "#FF0072B2", "#FFCC79A7", "#FFF0E442", "#FF009E73", "#FF785EF0",
-                                      "#FFD55E00", "#FF56B4E9" , "#FF000000", "#FFDC267F", "#FF117733"};
-
-
-        // Go through hexCodeArray and see if a colour is already taken in the RadialGauge list
-        for (int i = 0; i < hexCodeArray.Length; i++)
-        {
-            if (radialGaugeList.Find(x => ((SolidColorBrush)x.TrailBrush).Color.ToString() == hexCodeArray[i]) == null)
+            // Configure based on radial level
+            if (slice.RadialLevel == (int)RadialLevel.Inner)
             {
+                gauge.Width = 200;
+                gauge.Height = 200;
+                gauge.SetValue(Canvas.LeftProperty, 0);
+                gauge.SetValue(Canvas.TopProperty, 0);
+                gauge.SetValue(Canvas.ZIndexProperty, 1);
+                gauge.ScalePadding = 5;
+            }
+            else
+            {
+                gauge.Width = 140;
+                gauge.Height = 140;
+                gauge.SetValue(Canvas.LeftProperty, 30);
+                gauge.SetValue(Canvas.TopProperty, 30);
+                gauge.SetValue(Canvas.ZIndexProperty, 2);
+            }
 
-                return new SolidColorBrush(ColorHelper.FromArgb(
-                     Convert.ToByte(hexCodeArray[i].Substring(1, 2), 16),
-                    Convert.ToByte(hexCodeArray[i].Substring(3, 2), 16),
-                    Convert.ToByte(hexCodeArray[i].Substring(5, 2), 16),
-                    Convert.ToByte(hexCodeArray[i].Substring(7, 2), 16)
-                    ));
+            UpdateGaugeFromSlice(gauge, slice);
+
+            // Add to canvas and dictionary
+            Container.Children.Add(gauge);
+            _gauges[slice.Name] = gauge;
+        }
+
+        private void RemoveGaugeForSlice(TimeSlice slice)
+        {
+            if (_gauges.TryGetValue(slice.Name, out var gauge))
+            {
+                Container.Children.Remove(gauge);
+                _gauges.Remove(slice.Name);
             }
         }
 
+        private void UpdateGaugeFromSlice(RadialGauge gauge, TimeSlice slice)
+        {
+            int startInterval = slice.StartMinute / 5;
+            int endInterval = (slice.StartMinute + slice.Duration) / 5;
 
-        // Generate a random colour
-        Random random = new();
-        // Generate random argb values
-        byte a = (byte)random.Next(0, 255);
-        byte r = (byte)random.Next(0, 255);
-        byte g = (byte)random.Next(0, 255);
-        byte b = (byte)random.Next(0, 255);
+            gauge.MinAngle = startInterval * 30;
+            gauge.MaxAngle = endInterval * 30;
+        }
 
-        return new SolidColorBrush(ColorHelper.FromArgb(a, r, g, b));
+        private SolidColorBrush GetNextColorBrush()
+        {
+            // Try to find the first unused color from the palette
+            foreach (var hexCode in _colorPalette)
+            {
+                bool colorInUse = false;
 
+                // Check if any existing gauge is using this color
+                foreach (var gauge in _gauges.Values)
+                {
+                    if (gauge.TrailBrush is SolidColorBrush brush)
+                    {
+                        var brushColor = brush.Color;
+                        var paletteColor = ColorHelper.FromArgb(
+                            Convert.ToByte(hexCode.Substring(1, 2), 16),
+                            Convert.ToByte(hexCode.Substring(3, 2), 16),
+                            Convert.ToByte(hexCode.Substring(5, 2), 16),
+                            Convert.ToByte(hexCode.Substring(7, 2), 16));
 
+                        if (brushColor.A == paletteColor.A &&
+                            brushColor.R == paletteColor.R &&
+                            brushColor.G == paletteColor.G &&
+                            brushColor.B == paletteColor.B)
+                        {
+                            colorInUse = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!colorInUse)
+                {
+                    return new SolidColorBrush(ColorHelper.FromArgb(
+                        Convert.ToByte(hexCode.Substring(1, 2), 16),
+                        Convert.ToByte(hexCode.Substring(3, 2), 16),
+                        Convert.ToByte(hexCode.Substring(5, 2), 16),
+                        Convert.ToByte(hexCode.Substring(7, 2), 16)));
+                }
+            }
+
+            // If all palette colors are used, generate a random color that contrasts with the theme
+            Random random = new Random();
+            bool isDarkTheme = ThemeHelper.IsDarkTheme();
+
+            if (isDarkTheme)
+            {
+                // For dark theme, generate lighter colors
+                int minValue = 100; // Ensure colors are not too dark
+                int maxValue = 255;
+
+                // Generate at least one component that's bright
+                byte r = (byte)random.Next(minValue, maxValue);
+                byte g = (byte)random.Next(minValue, maxValue);
+                byte b = (byte)random.Next(minValue, maxValue);
+
+                // Ensure at least one channel is bright enough
+                if (r < 150 && g < 150 && b < 150)
+                {
+                    // Make one channel brighter
+                    switch (random.Next(3))
+                    {
+                        case 0: r = (byte)random.Next(150, maxValue); break;
+                        case 1: g = (byte)random.Next(150, maxValue); break;
+                        case 2: b = (byte)random.Next(150, maxValue); break;
+                    }
+                }
+
+                return new SolidColorBrush(ColorHelper.FromArgb(255, r, g, b));
+            }
+            else
+            {
+                // For light theme, generate darker colors
+                int minValue = 0;
+                int maxValue = 156; // Ensure colors are not too light
+
+                byte r = (byte)random.Next(minValue, maxValue);
+                byte g = (byte)random.Next(minValue, maxValue);
+                byte b = (byte)random.Next(minValue, maxValue);
+
+                // Ensure at least one channel is dark enough
+                if (r > 100 && g > 100 && b > 100)
+                {
+                    // Make one channel darker
+                    switch (random.Next(3))
+                    {
+                        case 0: r = (byte)random.Next(minValue, 100); break;
+                        case 1: g = (byte)random.Next(minValue, 100); break;
+                        case 2: b = (byte)random.Next(minValue, 100); break;
+                    }
+                }
+
+                return new SolidColorBrush(ColorHelper.FromArgb(255, r, g, b));
+            }
+        }
+
+        #endregion
+
+        #region Helper Methods
+
+        private int[] GetTimeFromPoint(Point point)
+        {
+            // Calculate angle from clock center
+            var angle = Math.Atan2(point.Y - 100, point.X - 100) * (180 / Math.PI);
+            angle = 180 + angle;
+
+            // Convert to minutes
+            var minutes = (int)(angle / 6);
+            minutes = (minutes + 45) % 60;
+
+            // Determine radial level
+            var distance = Math.Sqrt(Math.Pow(point.X - 100, 2) + Math.Pow(point.Y - 100, 2));
+            int radialLevel = distance < 55 ? (int)RadialLevel.Outer : (int)RadialLevel.Inner;
+
+            return new int[] { minutes, radialLevel };
+        }
+
+        private void OnRequestShowInstructions(object sender, EventArgs e)
+        {
+            ClockInstructionTip.IsOpen = true;
+        }
+
+        #endregion
     }
-
-    private void centreTextBox_TextChanged(object sender, TextChangedEventArgs e)
-    {
-        localSettingsService.SetCentreText(centreTextBox.Text);
-    }
-
 }

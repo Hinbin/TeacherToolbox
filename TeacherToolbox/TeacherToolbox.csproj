@@ -14,6 +14,7 @@
     <RuntimeIdentifier>win10-x86</RuntimeIdentifier>
     <SelfContained>true</SelfContained>
   </PropertyGroup>
+
   <ItemGroup>
     <None Remove="Assets\TTBHelp.png" />
     <None Remove="Controls\ExpanderItem.xaml" />
@@ -41,7 +42,7 @@
     <PackageReference Include="WinUIEx" Version="2.5.0" />
     <Manifest Include="$(ApplicationManifest)" />
   </ItemGroup>
-
+  
   <!-- 
     Defining the "Msix" ProjectCapability here allows the Single-project MSIX Packaging
     Tools extension to be activated for this project even if the Windows App SDK Nuget

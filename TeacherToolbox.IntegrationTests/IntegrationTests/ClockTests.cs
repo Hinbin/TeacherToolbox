@@ -55,7 +55,7 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
 
             // Find the clock canvas (where segments are drawn)
             _clockCanvas = WaitUntilFound<AutomationElement>(
-                () => _clockPage!.FindFirstDescendant(cf => cf.ByAutomationId("ClockCanvas")),
+                () => _clockPage!.FindFirstDescendant(cf => cf.ByAutomationId("ExamClockCanvas")),
                 "Clock canvas should be present");
 
             // Find digital time display
