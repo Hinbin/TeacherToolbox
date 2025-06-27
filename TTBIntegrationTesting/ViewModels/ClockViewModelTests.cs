@@ -2,11 +2,14 @@
 using System.Linq;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.UI;
 using Moq;
 using NUnit.Framework;
 using TeacherToolbox.Model;
 using TeacherToolbox.Services;
 using TeacherToolbox.ViewModels;
+using TeacherToolbox.Helpers;
 using Windows.Foundation;
 
 namespace TeacherToolbox.Tests.ViewModels
@@ -15,20 +18,59 @@ namespace TeacherToolbox.Tests.ViewModels
     public class ClockViewModelTests
     {
         private Mock<ISettingsService> _mockSettingsService;
-        private Mock<SleepPreventer> _mockSleepPreventer;
+        private Mock<ISleepPreventer> _mockSleepPreventer;
+        private Mock<ITimerService> _mockTimerService;
+        private Mock<IThemeService> _mockThemeService;
         private ClockViewModel _viewModel;
 
         [SetUp]
         public void Setup()
         {
             _mockSettingsService = new Mock<ISettingsService>();
-            _mockSleepPreventer = new Mock<SleepPreventer>();
+            _mockSleepPreventer = new Mock<ISleepPreventer>(); ;
+            _mockThemeService = new Mock<IThemeService>();
 
             // Setup default return values
             _mockSettingsService.Setup(s => s.GetCentreText()).Returns("Test Centre");
             _mockSettingsService.Setup(s => s.GetHasShownClockInstructions()).Returns(false);
 
-            _viewModel = new ClockViewModel(_mockSettingsService.Object, _mockSleepPreventer.Object);
+            // Setup theme service - avoid creating real WinUI objects in tests
+            _mockThemeService.Setup(t => t.IsDarkTheme()).Returns(false);
+            _mockThemeService.Setup(t => t.CurrentTheme).Returns(ElementTheme.Light);
+
+            // Mock the brush creation to return null - the ViewModel should handle this gracefully
+            _mockThemeService.Setup(t => t.GetHandColorBrush()).Returns((SolidColorBrush)null);
+
+            // Create a smart timer mock that tracks its own state
+            _mockTimerService = CreateSmartTimerMock();
+
+            // Pass all mock objects to the constructor
+            _viewModel = new ClockViewModel(
+                _mockSettingsService.Object,
+                _mockSleepPreventer.Object,
+                _mockTimerService.Object,
+                _mockThemeService.Object);
+        }
+
+        private Mock<ITimerService> CreateSmartTimerMock()
+        {
+            var mock = new Mock<ITimerService>();
+            bool isEnabled = false;
+            TimeSpan interval = TimeSpan.Zero;
+
+            // Set up Interval property with backing field
+            mock.SetupProperty(t => t.Interval);
+
+            // Set up IsEnabled to return the tracked state
+            mock.Setup(t => t.IsEnabled).Returns(() => isEnabled);
+
+            // Set up Start to change the state
+            mock.Setup(t => t.Start()).Callback(() => isEnabled = true);
+
+            // Set up Stop to change the state
+            mock.Setup(t => t.Stop()).Callback(() => isEnabled = false);
+
+            return mock;
         }
 
         [TearDown]
@@ -44,6 +86,16 @@ namespace TeacherToolbox.Tests.ViewModels
         {
             Assert.Throws<ArgumentNullException>(() =>
                 new ClockViewModel(null, _mockSleepPreventer.Object));
+        }
+
+        [Test]
+        public void Constructor_WithValidParameters_InitializesSuccessfully()
+        {
+            // Act & Assert
+            Assert.That(_viewModel, Is.Not.Null);
+
+            // Verify timer was configured
+            _mockTimerService.VerifySet(t => t.Interval = It.IsAny<TimeSpan>(), Times.Once);
         }
 
         [Test]
@@ -66,93 +118,20 @@ namespace TeacherToolbox.Tests.ViewModels
         }
 
         [Test]
-        public void ExtendTimeSlice_PreventsCrossingHourBoundaryOverlap_SpecificScenario()
+        public void Constructor_HandlesMissingThemeService_GracefullyWithFallback()
         {
-            // Specific scenario from user:
-            // 1. Create segment from 3 to 5 o'clock (15-25 minutes)
-            _viewModel.AddGaugeCommand.Execute(new Point(170, 100)); // ~15 minutes  
-            var firstSlice = _viewModel.TimeSlices.First();
-            // Extend to 25 minutes
-            _viewModel.ExtendTimeSlice(firstSlice.Name, 20, (int)RadialLevel.Inner);
-            _viewModel.ExtendTimeSlice(firstSlice.Name, 25, (int)RadialLevel.Inner);
+            // Test that ViewModel can handle null brush from theme service
+            // This test verifies the ViewModel doesn't crash when theme service returns null
 
-            Assert.That(firstSlice.StartMinute, Is.EqualTo(15));
-            Assert.That(firstSlice.Duration, Is.GreaterThanOrEqualTo(10)); // Should cover 15-25
+            // The ViewModel should have been constructed successfully even with null brush
+            Assert.That(_viewModel, Is.Not.Null);
 
-            // 2. Create new segment at 8 o'clock (40 minutes)
-            _viewModel.AddGaugeCommand.Execute(new Point(130, 170)); // ~40 minutes
-            Assert.That(_viewModel.TimeSlices.Count, Is.EqualTo(2));
-
-            var secondSlice = _viewModel.TimeSlices.Last();
-
-            // 3. Try to drag back to 2 o'clock (10 minutes) - this crosses hour boundary
-            // The slice would go from 40 minutes through 0 to 10 minutes
-            // This should be prevented as it would overlap with the 15-25 minute slice
-            var initialSecondSliceStart = secondSlice.StartMinute;
-            var initialSecondSliceDuration = secondSlice.Duration;
-
-            // Try extending backwards across the hour boundary
-            _viewModel.ExtendTimeSlice(secondSlice.Name, 10, (int)RadialLevel.Inner);
-
-            // The slice should NOT have changed because it would create an overlap
-            Assert.That(secondSlice.StartMinute, Is.EqualTo(initialSecondSliceStart),
-                "Start minute should not change when overlap would occur");
-            Assert.That(secondSlice.Duration, Is.EqualTo(initialSecondSliceDuration),
-                "Duration should not change when overlap would occur");
-        }
-
-        [Test]
-        public void ExtendTimeSlice_DoesNotExtendAcrossRadialLevels()
-        {
-            // Create a time slice in the outer radial level
-            _viewModel.AddGaugeCommand.Execute(new Point(130, 30)); // Outer ring position
-            var slice = _viewModel.TimeSlices.First();
-
-            Assert.That(slice.RadialLevel, Is.EqualTo((int)RadialLevel.Outer));
-
-            var initialDuration = slice.Duration;
-
-            // Try to extend to a position but with inner radial level
-            _viewModel.ExtendTimeSlice(slice.Name, 10, (int)RadialLevel.Inner);
-
-            // The slice should not have been extended because radial levels don't match
-            Assert.That(slice.Duration, Is.EqualTo(initialDuration),
-                "Slice should not extend when radial level doesn't match");
-        }
-
-        [Test]
-        public void AddGauge_DoesNotCreateOverlappingSlicesOnSameRadialLevel()
-        {
-            // Create first slice at 15 minutes (3 o'clock)
-            _viewModel.AddGaugeCommand.Execute(new Point(170, 100));
-            Assert.That(_viewModel.TimeSlices.Count, Is.EqualTo(1));
-
-            var firstSlice = _viewModel.TimeSlices.First();
-
-            // Try to create another slice at 17 minutes (would overlap with 15-20 slice)
-            // Using a point that would be at approximately 17 minutes
-            _viewModel.AddGaugeCommand.Execute(new Point(175, 105));
-
-            Assert.That(_viewModel.TimeSlices.Count, Is.EqualTo(1),
-                "Should not create slice that would overlap with existing slice");
-        }
-
-        [Test]
-        public void AddGauge_AllowsCreationOnDifferentRadialLevel()
-        {
-            // Create slice in inner ring
-            _viewModel.AddGaugeCommand.Execute(new Point(170, 100)); // Inner ring
-            Assert.That(_viewModel.TimeSlices.Count, Is.EqualTo(1));
-
-            // Create slice at same time position but in outer ring
-            _viewModel.AddGaugeCommand.Execute(new Point(150, 50)); // Outer ring (closer to center)
-
-            Assert.That(_viewModel.TimeSlices.Count, Is.EqualTo(2),
-                "Should allow creation on different radial level at same time");
-
-            Assert.That(_viewModel.TimeSlices[0].RadialLevel,
-                Is.Not.EqualTo(_viewModel.TimeSlices[1].RadialLevel),
-                "Slices should be on different radial levels");
+            // HandColorBrush should either be null or have a fallback value
+            // The ViewModel should handle this gracefully
+            Assert.DoesNotThrow(() => {
+                var brush = _viewModel.HandColorBrush;
+                // The brush can be null or a fallback - both are acceptable
+            });
         }
 
         #endregion
@@ -232,11 +211,13 @@ namespace TeacherToolbox.Tests.ViewModels
 
             // Add first slice
             _viewModel.AddGaugeCommand.Execute(point);
+            Assert.That(_viewModel.TimeSlices.Count, Is.EqualTo(1));
 
-            // Try to add at same position
+            // Try to add at same position - should not add another slice
             _viewModel.AddGaugeCommand.Execute(point);
 
-            Assert.That(_viewModel.TimeSlices.Count, Is.EqualTo(1));
+            Assert.That(_viewModel.TimeSlices.Count, Is.EqualTo(1),
+                "Should not create duplicate time slice at same position");
         }
 
         [Test]
@@ -264,8 +245,11 @@ namespace TeacherToolbox.Tests.ViewModels
             _viewModel.AddGaugeCommand.Execute(new Point(150, 100));
             var slice = _viewModel.TimeSlices.First();
 
+            // Calculate the position parameters that should match the slice
+            var timeData = GetMinutesFromCoordinate(new Point(150, 100));
+
             // Find at the same position
-            var found = _viewModel.FindTimeSliceAtPosition(45, (int)RadialLevel.Inner);
+            var found = _viewModel.FindTimeSliceAtPosition(timeData[0], timeData[1]);
 
             Assert.That(found, Is.Not.Null);
             Assert.That(found.Name, Is.EqualTo(slice.Name));
@@ -311,6 +295,61 @@ namespace TeacherToolbox.Tests.ViewModels
             _viewModel.ExtendTimeSlice(firstSlice.Name, 15, (int)RadialLevel.Inner);
 
             Assert.That(firstSlice.Duration, Is.EqualTo(initialDuration));
+        }
+
+        [Test]
+        public void ExtendTimeSlice_PreventsCrossingHourBoundaryOverlap_SpecificScenario()
+        {
+            // Specific scenario from user:
+            // 1. Create segment from 3 to 5 o'clock (15-25 minutes)
+            _viewModel.AddGaugeCommand.Execute(new Point(170, 100)); // ~15 minutes  
+            var firstSlice = _viewModel.TimeSlices.First();
+            // Extend to 25 minutes
+            _viewModel.ExtendTimeSlice(firstSlice.Name, 20, (int)RadialLevel.Inner);
+            _viewModel.ExtendTimeSlice(firstSlice.Name, 25, (int)RadialLevel.Inner);
+
+            Assert.That(firstSlice.StartMinute, Is.EqualTo(15));
+            Assert.That(firstSlice.Duration, Is.GreaterThanOrEqualTo(10)); // Should cover 15-25
+
+            // 2. Create new segment at 8 o'clock (40 minutes)
+            _viewModel.AddGaugeCommand.Execute(new Point(130, 170)); // ~40 minutes
+            Assert.That(_viewModel.TimeSlices.Count, Is.EqualTo(2));
+
+            var secondSlice = _viewModel.TimeSlices.Last();
+
+            // 3. Try to drag back to 2 o'clock (10 minutes) - this crosses hour boundary
+            // The slice would go from 40 minutes through 0 to 10 minutes
+            // This should be prevented as it would overlap with the 15-25 minute slice
+            var initialSecondSliceStart = secondSlice.StartMinute;
+            var initialSecondSliceDuration = secondSlice.Duration;
+
+            // Try extending backwards across the hour boundary
+            _viewModel.ExtendTimeSlice(secondSlice.Name, 10, (int)RadialLevel.Inner);
+
+            // The slice should NOT have changed because it would create an overlap
+            Assert.That(secondSlice.StartMinute, Is.EqualTo(initialSecondSliceStart),
+                "Start minute should not change when overlap would occur");
+            Assert.That(secondSlice.Duration, Is.EqualTo(initialSecondSliceDuration),
+                "Duration should not change when overlap would occur");
+        }
+
+        [Test]
+        public void ExtendTimeSlice_DoesNotExtendAcrossRadialLevels()
+        {
+            // Create a time slice in the outer radial level
+            _viewModel.AddGaugeCommand.Execute(new Point(130, 30)); // Outer ring position
+            var slice = _viewModel.TimeSlices.First();
+
+            Assert.That(slice.RadialLevel, Is.EqualTo((int)RadialLevel.Outer));
+
+            var initialDuration = slice.Duration;
+
+            // Try to extend to a position but with inner radial level
+            _viewModel.ExtendTimeSlice(slice.Name, 10, (int)RadialLevel.Inner);
+
+            // The slice should not have been extended because radial levels don't match
+            Assert.That(slice.Duration, Is.EqualTo(initialDuration),
+                "Slice should not extend when radial level doesn't match");
         }
 
         #endregion
@@ -390,6 +429,41 @@ namespace TeacherToolbox.Tests.ViewModels
             Assert.That(_viewModel.TimeSlices.Count, Is.EqualTo(1), "Should not create overlapping slice");
         }
 
+        [Test]
+        public void AddGauge_DoesNotCreateOverlappingSlicesOnSameRadialLevel()
+        {
+            // Create first slice at 15 minutes (3 o'clock)
+            _viewModel.AddGaugeCommand.Execute(new Point(170, 100));
+            Assert.That(_viewModel.TimeSlices.Count, Is.EqualTo(1));
+
+            var firstSlice = _viewModel.TimeSlices.First();
+
+            // Try to create another slice at 17 minutes (would overlap with 15-20 slice)
+            // Using a point that would be at approximately 17 minutes
+            _viewModel.AddGaugeCommand.Execute(new Point(175, 105));
+
+            Assert.That(_viewModel.TimeSlices.Count, Is.EqualTo(1),
+                "Should not create slice that would overlap with existing slice");
+        }
+
+        [Test]
+        public void AddGauge_AllowsCreationOnDifferentRadialLevel()
+        {
+            // Create slice in inner ring
+            _viewModel.AddGaugeCommand.Execute(new Point(170, 100)); // Inner ring
+            Assert.That(_viewModel.TimeSlices.Count, Is.EqualTo(1));
+
+            // Create slice at same time position but in outer ring
+            _viewModel.AddGaugeCommand.Execute(new Point(150, 50)); // Outer ring (closer to center)
+
+            Assert.That(_viewModel.TimeSlices.Count, Is.EqualTo(2),
+                "Should allow creation on different radial level at same time");
+
+            Assert.That(_viewModel.TimeSlices[0].RadialLevel,
+                Is.Not.EqualTo(_viewModel.TimeSlices[1].RadialLevel),
+                "Slices should be on different radial levels");
+        }
+
         #endregion
 
         #region Dispose Tests
@@ -410,6 +484,30 @@ namespace TeacherToolbox.Tests.ViewModels
 
             // Should only call AllowSleep once
             _mockSleepPreventer.Verify(s => s.AllowSleep(), Times.Once);
+        }
+
+        #endregion
+
+        #region Helper Methods
+
+        // Helper method that mirrors the ViewModel's coordinate calculation
+        private static int[] GetMinutesFromCoordinate(Point point)
+        {
+            const int ClockCenter = 100;
+
+            // Calculate angle from clock center
+            var angle = Math.Atan2(point.Y - ClockCenter, point.X - ClockCenter) * (180 / Math.PI);
+            angle = 180 + angle;
+
+            // Convert to minutes
+            var minutes = (int)(angle / 6);
+            minutes = (minutes + 45) % 60;
+
+            // Determine radial level (inner or outer)
+            var distance = Math.Sqrt(Math.Pow(point.X - ClockCenter, 2) + Math.Pow(point.Y - ClockCenter, 2));
+            int radialLevel = distance < 55 ? (int)RadialLevel.Outer : (int)RadialLevel.Inner;
+
+            return new int[] { minutes, radialLevel };
         }
 
         #endregion

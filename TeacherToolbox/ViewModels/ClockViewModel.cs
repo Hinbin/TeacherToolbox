@@ -27,7 +27,8 @@ namespace TeacherToolbox.ViewModels
 
         // Private fields
         private readonly ISettingsService _settingsService;
-        private readonly DispatcherTimer _timer;
+        private readonly ITimerService _timer;
+        private readonly IThemeService _themeService;
         private DateTime _currentTime;
         private TimeSpan _timeOffset;
         private string _digitalTimeText;
@@ -36,8 +37,8 @@ namespace TeacherToolbox.ViewModels
         private double _minuteHandAngle;
         private double _secondHandAngle;
         private readonly ObservableCollection<TimeSlice> _timeSlices;
-        private readonly SleepPreventer _sleepPreventer;
-        private bool _isDisposed;
+        private readonly ISleepPreventer _sleepPreventer;
+        private bool _disposed = false;
         private SolidColorBrush _handColorBrush;
         private int _gaugeNameCounter = 0; // Add a persistent counter for unique names
 
@@ -116,13 +117,18 @@ namespace TeacherToolbox.ViewModels
         public event EventHandler RequestShowInstructions;
 
         // Constructor with dependency injection
-        public ClockViewModel(ISettingsService settingsService, SleepPreventer sleepPreventer)
+        public ClockViewModel(
+            ISettingsService settingsService,
+            ISleepPreventer sleepPreventer,
+            ITimerService timerService = null,
+            IThemeService themeService = null)
         {
             _settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
             _sleepPreventer = sleepPreventer;
+            _themeService = themeService ?? new ThemeService();
 
             _timeSlices = new ObservableCollection<TimeSlice>();
-            _timer = new DispatcherTimer();
+            _timer = timerService ?? new DispatcherTimerService();
             _timer.Interval = TimeSpan.FromMilliseconds(200);
             _timer.Tick += Timer_Tick;
 
@@ -197,8 +203,41 @@ namespace TeacherToolbox.ViewModels
 
         private void UpdateHandColor()
         {
-            var isDarkTheme = ThemeHelper.IsDarkTheme();
-            HandColorBrush = new SolidColorBrush(isDarkTheme ? Colors.White : Colors.Black);
+            try
+            {
+                // Try to get brush from theme service
+                var brushFromTheme = _themeService?.GetHandColorBrush();
+                if (brushFromTheme != null)
+                {
+                    HandColorBrush = brushFromTheme;
+                }
+                else
+                {
+                    // Fallback: create a brush if we're in a UI context, otherwise leave null
+                    HandColorBrush = CreateFallbackBrush();
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error updating hand color: {ex.Message}");
+                // In case of error, try to create fallback brush
+                HandColorBrush = CreateFallbackBrush();
+            }
+        }
+
+        private SolidColorBrush CreateFallbackBrush()
+        {
+            try
+            {
+                // Try to create a black brush as fallback
+                return new SolidColorBrush(Colors.Black);
+            }
+            catch
+            {
+                // If we can't create brushes (e.g., in unit tests), return null
+                // The UI should handle null brushes gracefully
+                return null;
+            }
         }
 
         private void OnTimePicked(TimePickedEventArgs args)
@@ -347,20 +386,16 @@ namespace TeacherToolbox.ViewModels
 
         public void Dispose()
         {
-            if (_isDisposed) return;
-
-            if (_timer != null)
+            if (!_disposed)
             {
-                _timer.Stop();
-                _timer.Tick -= Timer_Tick;
+                _timer?.Stop();
+                if (_timer is IDisposable disposableTimer)
+                {
+                    disposableTimer.Dispose();
+                }
+                _sleepPreventer?.AllowSleep();
+                _disposed = true;
             }
-
-            if (_sleepPreventer != null)
-            {
-                _sleepPreventer.AllowSleep();
-            }
-
-            _isDisposed = true;
         }
     }
 }

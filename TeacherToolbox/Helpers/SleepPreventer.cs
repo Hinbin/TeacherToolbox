@@ -2,8 +2,9 @@
 using System.Runtime.InteropServices;
 using System.Diagnostics;
 using System.Threading;
+using TeacherToolbox.Services;
 
-public class SleepPreventer : IDisposable
+public class SleepPreventer : ISleepPreventer
 {
     [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
     private static extern EXECUTION_STATE SetThreadExecutionState(EXECUTION_STATE esFlags);

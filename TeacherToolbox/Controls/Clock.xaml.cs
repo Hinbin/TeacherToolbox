@@ -44,7 +44,7 @@ namespace TeacherToolbox.Controls
         private readonly string[] _colorPalette = new[]
         {
             "#FF0072B2", "#FFCC79A7", "#FFF0E442", "#FF009E73", "#FF785EF0",
-            "#FFD55E00", "#FF56B4E9", "#FF000000", "#FFDC267F", "#FF117733"
+            "#FFD55E00", "#FF56B4E9",  ThemeHelper.IsDarkTheme()? "#FFFFFFFF" : "#FF000000", "#FFDC267F", "#FF117733"
         };
 
         public Clock()
