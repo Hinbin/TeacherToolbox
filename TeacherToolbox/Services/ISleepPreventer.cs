@@ -8,7 +8,7 @@ namespace TeacherToolbox.Services
 {
     public interface ISleepPreventer
     {
-        void PreventSleep(bool keepDisplayOn = false);
+        void PreventSleep(bool keepDisplayOn = true);
         void AllowSleep();
         void Dispose();
     }

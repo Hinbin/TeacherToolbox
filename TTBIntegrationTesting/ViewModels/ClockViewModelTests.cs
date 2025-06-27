@@ -312,7 +312,7 @@ namespace TeacherToolbox.Tests.ViewModels
             Assert.That(firstSlice.Duration, Is.GreaterThanOrEqualTo(10)); // Should cover 15-25
 
             // 2. Create new segment at 8 o'clock (40 minutes)
-            _viewModel.AddGaugeCommand.Execute(new Point(130, 170)); // ~40 minutes
+            _viewModel.AddGaugeCommand.Execute(new Point(20, 145)); // ~40 minutes
             Assert.That(_viewModel.TimeSlices.Count, Is.EqualTo(2));
 
             var secondSlice = _viewModel.TimeSlices.Last();
@@ -337,7 +337,7 @@ namespace TeacherToolbox.Tests.ViewModels
         public void ExtendTimeSlice_DoesNotExtendAcrossRadialLevels()
         {
             // Create a time slice in the outer radial level
-            _viewModel.AddGaugeCommand.Execute(new Point(130, 30)); // Outer ring position
+            _viewModel.AddGaugeCommand.Execute(new Point(130, 80)); // Outer ring position
             var slice = _viewModel.TimeSlices.First();
 
             Assert.That(slice.RadialLevel, Is.EqualTo((int)RadialLevel.Outer));
@@ -445,16 +445,15 @@ namespace TeacherToolbox.Tests.ViewModels
             Assert.That(_viewModel.TimeSlices.Count, Is.EqualTo(1),
                 "Should not create slice that would overlap with existing slice");
         }
-
         [Test]
         public void AddGauge_AllowsCreationOnDifferentRadialLevel()
         {
-            // Create slice in inner ring
+            // Create slice in inner ring (distance > 55)
             _viewModel.AddGaugeCommand.Execute(new Point(170, 100)); // Inner ring
             Assert.That(_viewModel.TimeSlices.Count, Is.EqualTo(1));
 
-            // Create slice at same time position but in outer ring
-            _viewModel.AddGaugeCommand.Execute(new Point(150, 50)); // Outer ring (closer to center)
+            // Create slice in outer ring (distance < 55) - closer to center
+            _viewModel.AddGaugeCommand.Execute(new Point(130, 100)); // Outer ring
 
             Assert.That(_viewModel.TimeSlices.Count, Is.EqualTo(2),
                 "Should allow creation on different radial level at same time");
