@@ -1,27 +1,28 @@
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI;
+using Microsoft.UI.Input;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
+using Microsoft.UI.Xaml.Automation.Peers;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Navigation;
 using System;
-using System.Linq;
-using TeacherToolbox.Controls;
+using System.Diagnostics;
 using System.IO;
 using System.IO.Pipes;
-using System.Diagnostics;
-using WinUIEx;
-using Microsoft.UI.Input;
-using Microsoft.UI.Xaml.Automation.Peers;
-using Microsoft.UI.Xaml.Automation;
-using TeacherToolbox.Helpers;
-using Windows.UI;
-using System.Threading.Tasks;
+using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
+using TeacherToolbox.Controls;
+using TeacherToolbox.Helpers;
 using TeacherToolbox.Services;
 using Windows.ApplicationModel.VoiceCommands;
+using Windows.UI;
+using WinUIEx;
 
 
 
@@ -1130,49 +1131,14 @@ namespace TeacherToolbox
 
         public void UpdateTitleBarTheme()
         {
-            if (AppWindowTitleBar.IsCustomizationSupported())
+            try
             {
-                var titleBar = this.AppWindow.TitleBar;
-                var isDarkTheme = ThemeHelper.IsDarkTheme();
-
-                if (isDarkTheme)
-                {
-                    // Remove the background color completely to let the NavigationPane show through
-                    titleBar.BackgroundColor = null;
-                    titleBar.InactiveBackgroundColor = null;
-                    titleBar.ButtonBackgroundColor = null;
-                    titleBar.ButtonInactiveBackgroundColor = null;
-
-                    // Set the button states for dark theme
-                    titleBar.ButtonHoverBackgroundColor = Color.FromArgb(255, 44, 44, 44);
-                    titleBar.ButtonPressedBackgroundColor = Color.FromArgb(255, 54, 54, 54);
-
-                    // Set foreground colors
-                    titleBar.ForegroundColor = Colors.White;
-                    titleBar.ButtonForegroundColor = Colors.White;
-                    titleBar.ButtonHoverForegroundColor = Colors.White;
-                    titleBar.ButtonPressedForegroundColor = Colors.White;
-
-                    // Inactive states
-                    titleBar.InactiveForegroundColor = Color.FromArgb(255, 180, 180, 180);
-                    titleBar.ButtonInactiveForegroundColor = Color.FromArgb(255, 180, 180, 180);
-                }
-                else
-                {
-                    // Light theme - keeping existing colors
-                    var backgroundColor = ThemeHelper.GetApplicationBackgroundColor();
-
-                    titleBar.BackgroundColor = backgroundColor;
-                    titleBar.ButtonBackgroundColor = backgroundColor;
-                    titleBar.ButtonForegroundColor = Colors.Black;
-                    titleBar.ButtonHoverForegroundColor = Colors.Black;
-                    titleBar.ButtonPressedForegroundColor = Colors.Black;
-                    titleBar.ButtonInactiveForegroundColor = Color.FromArgb(255, 100, 100, 100);
-
-                    titleBar.ButtonHoverBackgroundColor = Color.FromArgb(255, 229, 229, 229);
-                    titleBar.ButtonPressedBackgroundColor = Color.FromArgb(255, 204, 204, 204);
-                    titleBar.ButtonInactiveBackgroundColor = Color.FromArgb(255, 243, 243, 243);
-                }
+                var themeService = App.Current.Services?.GetService<IThemeService>();
+                themeService?.UpdateTitleBarTheme(this);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error updating title bar theme: {ex.Message}");
             }
         }
 

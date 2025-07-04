@@ -35,6 +35,9 @@ namespace TeacherToolbox.Controls
     /// </summary>
     public sealed partial class TimerWindow : WindowEx
     {
+        // Services
+        private readonly IThemeService _themeService;
+        public ISettingsService localSettings;
 
         WindowsSystemDispatcherQueueHelper m_wsdqHelper; // See separate sample below for implementation
         Microsoft.UI.Composition.SystemBackdrops.DesktopAcrylicController m_acrylicController;
@@ -42,7 +45,6 @@ namespace TeacherToolbox.Controls
         private ObservableCollection<IntervalTimeViewModel> intervalsList;
 
         private WindowDragHelper dragHelper;
-        public ISettingsService localSettings;
         private DispatcherTimer resizeEndTimer;
 
         // To allow for a draggable window
@@ -136,7 +138,7 @@ namespace TeacherToolbox.Controls
         private void ConfigureWindowProperties()
         {
             TrySetAcrylicBackdrop(true);
-            ThemeHelper.ApplyThemeToWindow(this);
+            _themeService.ApplyThemeToWindow(this);
 
             var presenter = AppWindow?.Presenter as OverlappedPresenter;
             if (presenter != null)

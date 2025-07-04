@@ -35,11 +35,9 @@ namespace TeacherToolbox.Tests.ViewModels
             _mockSettingsService.Setup(s => s.GetHasShownClockInstructions()).Returns(false);
 
             // Setup theme service - avoid creating real WinUI objects in tests
-            _mockThemeService.Setup(t => t.IsDarkTheme()).Returns(false);
+            _mockThemeService.Setup(t => t.IsDarkTheme).Returns(false);
             _mockThemeService.Setup(t => t.CurrentTheme).Returns(ElementTheme.Light);
-
-            // Mock the brush creation to return null - the ViewModel should handle this gracefully
-            _mockThemeService.Setup(t => t.GetHandColorBrush()).Returns((SolidColorBrush)null);
+            _mockThemeService.Setup(t => t.HandColorBrush).Returns((SolidColorBrush)null);
 
             // Create a smart timer mock that tracks its own state
             _mockTimerService = CreateSmartTimerMock();

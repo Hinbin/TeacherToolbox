@@ -40,7 +40,7 @@ namespace TeacherToolbox.ViewModels
         private readonly ISleepPreventer _sleepPreventer;
         private bool _disposed = false;
         private SolidColorBrush _handColorBrush;
-        private int _gaugeNameCounter = 0; // Add a persistent counter for unique names
+        private int _gaugeNameCounter = 0;
 
         // Properties
         public DateTime CurrentTime
@@ -125,12 +125,18 @@ namespace TeacherToolbox.ViewModels
         {
             _settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
             _sleepPreventer = sleepPreventer;
-            _themeService = themeService ?? new ThemeService();
+            _themeService = themeService;  // Remove fallback to new ThemeService()
+            _timer = timerService ?? new DispatcherTimerService();
 
             _timeSlices = new ObservableCollection<TimeSlice>();
-            _timer = timerService ?? new DispatcherTimerService();
             _timer.Interval = TimeSpan.FromMilliseconds(200);
             _timer.Tick += Timer_Tick;
+
+            // Subscribe to theme changes if theme service is available
+            if (_themeService != null)
+            {
+                _themeService.ThemeChanged += OnThemeServiceChanged;
+            }
 
             // Initialize commands
             TimePickedCommand = new RelayCommand<TimePickedEventArgs>(OnTimePicked);
@@ -149,7 +155,11 @@ namespace TeacherToolbox.ViewModels
         }
 
         // Default constructor for design time or when no DI is available
-        public ClockViewModel() : this(LocalSettingsService.GetSharedInstanceSync(), new SleepPreventer())
+        public ClockViewModel() : this(
+            LocalSettingsService.GetSharedInstanceSync(),
+            new SleepPreventer(),
+            null,
+            App.Current?.Services?.GetService(typeof(IThemeService)) as IThemeService)
         {
         }
 
@@ -200,26 +210,22 @@ namespace TeacherToolbox.ViewModels
             MinuteHandAngle = _currentTime.Minute * 6 + _currentTime.Second * 0.1f;
             SecondHandAngle = _currentTime.Second * 6;
         }
-
         private void UpdateHandColor()
         {
             try
             {
-                // Try to get brush from theme service
-                var brushFromTheme = _themeService?.GetHandColorBrush();
-                if (brushFromTheme != null)
+                // Use property, not method
+                HandColorBrush = _themeService?.HandColorBrush;
+
+                // If theme service is null or returns null, create fallback
+                if (HandColorBrush == null)
                 {
-                    HandColorBrush = brushFromTheme;
-                }
-                else
-                {
-                    // Fallback: create a brush if we're in a UI context, otherwise leave null
                     HandColorBrush = CreateFallbackBrush();
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error updating hand color: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Error updating hand color: {ex.Message}");
                 // In case of error, try to create fallback brush
                 HandColorBrush = CreateFallbackBrush();
             }
@@ -229,8 +235,9 @@ namespace TeacherToolbox.ViewModels
         {
             try
             {
-                // Try to create a black brush as fallback
-                return new SolidColorBrush(Colors.Black);
+                // Try to determine theme and create appropriate brush
+                var isDarkTheme = _themeService?.IsDarkTheme ?? false;
+                return new SolidColorBrush(isDarkTheme ? Colors.White : Colors.Black);
             }
             catch
             {
@@ -238,6 +245,18 @@ namespace TeacherToolbox.ViewModels
                 // The UI should handle null brushes gracefully
                 return null;
             }
+        }
+
+        // Handler for theme service's ThemeChanged event
+        private void OnThemeServiceChanged(object sender, ElementTheme e)
+        {
+            UpdateHandColor();
+        }
+
+        // Keep this method for backward compatibility if needed
+        public void OnThemeChanged()
+        {
+            UpdateHandColor();
         }
 
         private void OnTimePicked(TimePickedEventArgs args)
@@ -369,11 +388,6 @@ namespace TeacherToolbox.ViewModels
             return new int[] { minutes, radialLevel };
         }
 
-        public void OnThemeChanged()
-        {
-            UpdateHandColor();
-        }
-
         public bool HasShownClockInstructions()
         {
             return _settingsService?.GetHasShownClockInstructions() ?? false;
@@ -388,6 +402,12 @@ namespace TeacherToolbox.ViewModels
         {
             if (!_disposed)
             {
+                // Unsubscribe from theme changes
+                if (_themeService != null)
+                {
+                    _themeService.ThemeChanged -= OnThemeServiceChanged;
+                }
+
                 _timer?.Stop();
                 if (_timer is IDisposable disposableTimer)
                 {

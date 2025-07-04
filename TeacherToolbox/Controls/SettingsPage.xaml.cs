@@ -1,21 +1,25 @@
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation.Peers;
 using TeacherToolbox.Helpers;
-using TeacherToolbox.ViewModels;
 using TeacherToolbox.Services;
-using System.Threading.Tasks;
+using TeacherToolbox.ViewModels;
 
 namespace TeacherToolbox.Controls
 {
     public sealed partial class SettingsPage : AutomatedPage
     {
-        // ViewModel property
+        private readonly IThemeService _themeService;
         public SettingsViewModel ViewModel { get; }
 
         public SettingsPage() : base()
         {
-            // Initialize ViewModel with the settings service
-            ViewModel = CreateViewModel();
+            // Get services
+            var settingsService = LocalSettingsService.GetSharedInstanceSync();
+            _themeService = App.Current.Services?.GetService<IThemeService>();
+
+            // Initialize ViewModel
+            ViewModel = new SettingsViewModel(settingsService);
 
             // Initialize component
             this.InitializeComponent();
@@ -28,25 +32,12 @@ namespace TeacherToolbox.Controls
             ViewModel.ThemeChanged += OnThemeChanged;
         }
 
-        private SettingsViewModel CreateViewModel()
-        {
-            // Get the settings service (this will be replaced with proper DI in the future)
-            var settingsService = LocalSettingsService.GetSharedInstanceSync();
-
-            // Create and return the view model with the injected service
-            return new SettingsViewModel(settingsService);
-        }
-
         private void OnThemeChanged(ElementTheme theme)
         {
-            // Update the root theme
-            ThemeHelper.RootTheme = theme;
-
-            // Update title bar
-            var window = WindowHelper.GetWindowForElement(this);
-            if (window != null)
+            if (_themeService != null)
             {
-                TitleBarHelper.ApplySystemThemeToCaptionButtons(window);
+                // Update the theme service
+                _themeService.CurrentTheme = theme;
             }
         }
 

@@ -3,7 +3,7 @@
     <OutputType>WinExe</OutputType>
     <WindowsPackageType>None</WindowsPackageType>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
-    <TargetFramework>net6.0-windows10.0.19041.0</TargetFramework>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
     <RootNamespace>TeacherToolbox</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Platforms>x86</Platforms>
@@ -11,7 +11,7 @@
     <EnableMsixTooling>true</EnableMsixTooling>
     <ApplicationIcon>Assets\OutwoodLogoWhite.ico</ApplicationIcon>
     <PlatformTarget>x86</PlatformTarget>
-    <RuntimeIdentifier>win10-x86</RuntimeIdentifier>
+    <RuntimeIdentifier>win-x86</RuntimeIdentifier>
     <SelfContained>true</SelfContained>
   </PropertyGroup>
 
@@ -30,16 +30,20 @@
     <Content Include="Assets\**\*.*" />    </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Appium.WebDriver" Version="7.0.0" />
+    <PackageReference Include="Appium.WebDriver" Version="8.0.0" />
     <PackageReference Include="AsyncFixer" Version="1.6.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <PackageReference Include="CommunityToolkit.WinUI.UI.Controls" Version="7.1.2" />
-    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.6.241114003" />
-    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1742" />
-    <PackageReference Include="WinUIEx" Version="2.5.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.6" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250606001" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.4188" />
+    <PackageReference Include="System.Net.Http" Version="4.3.4" />
+    <PackageReference Include="System.Private.Uri" Version="4.3.2" />
+    <PackageReference Include="System.Text.RegularExpressions" Version="4.3.1" />
+    <PackageReference Include="WinUIEx" Version="2.6.0" />
     <Manifest Include="$(ApplicationManifest)" />
   </ItemGroup>
   

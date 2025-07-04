@@ -1,4 +1,5 @@
 using CommunityToolkit.WinUI.UI.Controls;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI;
 using Microsoft.UI.Composition;
 using Microsoft.UI.Xaml;
@@ -9,14 +10,11 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Navigation;
-using Microsoft.UI.Xaml.Shapes;
 using System;
+using System.Diagnostics;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Numerics;
-using System.Threading.Tasks;
-using TeacherToolbox.Helpers;
 using TeacherToolbox.Model;
 using TeacherToolbox.Services;
 using TeacherToolbox.ViewModels;
@@ -39,32 +37,38 @@ namespace TeacherToolbox.Controls
         private readonly Dictionary<string, RadialGauge> _gauges = new Dictionary<string, RadialGauge>();
         private string _selectedGaugeName;
         private int _selectedGaugeRadialLevel = -1; // Track the radial level of selected gauge
+        private readonly string[] _colorPalette;
 
-        // Color palette for gauges
-        private readonly string[] _colorPalette = new[]
-        {
-            "#FF0072B2", "#FFCC79A7", "#FFF0E442", "#FF009E73", "#FF785EF0",
-            "#FFD55E00", "#FF56B4E9",  ThemeHelper.IsDarkTheme()? "#FFFFFFFF" : "#FF000000", "#FFDC267F", "#FF117733"
-        };
+        // Services
+        private readonly IThemeService _themeService;
 
         public Clock()
         {
             this.InitializeComponent();
             this.Loaded += Clock_Loaded;
-        }
 
+            // Initialize color palette based on theme
+            var themeService = App.Current.Services?.GetService<IThemeService>();
+            var isDarkTheme = themeService?.IsDarkTheme ?? false;
+
+            _colorPalette = new[]
+                {
+            "#FF0072B2", "#FFCC79A7", "#FFF0E442", "#FF009E73", "#FF785EF0",
+            "#FFD55E00", "#FF56B4E9", isDarkTheme ? "#FFFFFFFF" : "#FF000000",
+            "#FFDC267F", "#FF117733"
+        };
+        }
         protected override async void OnNavigatedTo(NavigationEventArgs e)
         {
             base.OnNavigatedTo(e);
 
-            // Get SleepPreventer from navigation parameter if available
-            SleepPreventer sleepPreventer = e.Parameter as SleepPreventer;
-
-            // Get settings service
+            // Get services from DI
             var settingsService = await LocalSettingsService.GetSharedInstanceAsync();
+            var themeService = App.Current.Services?.GetService<IThemeService>();
+            var sleepPreventer = e.Parameter as SleepPreventer;
 
-            // Create ViewModel with injected dependencies
-            ViewModel = new ClockViewModel(settingsService, sleepPreventer);
+            // Create ViewModel with all services
+            ViewModel = new ClockViewModel(settingsService, sleepPreventer, null, themeService);
             this.DataContext = ViewModel;
 
             // Subscribe to ViewModel events
@@ -72,9 +76,6 @@ namespace TeacherToolbox.Controls
             ViewModel.TimeSliceRemoved += OnTimeSliceRemoved;
             ViewModel.RequestShowInstructions += OnRequestShowInstructions;
             ViewModel.PropertyChanged += OnViewModelPropertyChanged;
-
-            // Initialize bindings
-            Bindings.Update();
         }
 
         protected override void OnNavigatedFrom(NavigationEventArgs e)
@@ -116,14 +117,23 @@ namespace TeacherToolbox.Controls
             // Create clock hands using Composition API
             CreateClockHands();
 
-            // Subscribe to theme changes
+            // Subscribe to theme changes through the actual theme property
             ((FrameworkElement)this.Content).ActualThemeChanged += OnThemeChanged;
         }
 
         private void CreateClockHands()
         {
-            var handColorBrush = _compositor.CreateColorBrush(
-                ViewModel?.HandColorBrush?.Color ?? (ThemeHelper.IsDarkTheme() ? Colors.White : Colors.Black));
+            // Get theme service from DI
+            var themeService = App.Current.Services?.GetService<IThemeService>();
+            var handColor = themeService?.IsDarkTheme == true ? Colors.White : Colors.Black;
+
+            // Use ViewModel's brush if available, otherwise use theme service color
+            if (ViewModel?.HandColorBrush?.Color != null)
+            {
+                handColor = ViewModel.HandColorBrush.Color;
+            }
+
+            var handColorBrush = _compositor.CreateColorBrush(handColor);
 
             // Second Hand
             _secondhand = _compositor.CreateSpriteVisual();
@@ -131,7 +141,6 @@ namespace TeacherToolbox.Controls
             _secondhand.Brush = _compositor.CreateColorBrush(Colors.Red);
             _secondhand.CenterPoint = new Vector3(1.0f, 80.0f, 0);
             _secondhand.Offset = new Vector3(99.0f, 20.0f, 0);
-            // Set initial second hand position
             _secondhand.RotationAngleInDegrees = (float)(ViewModel?.SecondHandAngle ?? 0);
             _root.Children.InsertAtTop(_secondhand);
 
@@ -151,21 +160,29 @@ namespace TeacherToolbox.Controls
             _minutehand.Offset = new Vector3(98.0f, 20.0f, 0);
             _root.Children.InsertAtTop(_minutehand);
 
-            // Update all hand positions
             UpdateClockHandPositions();
         }
 
         private void LoadClockBackgroundImage()
         {
-            var isDarkTheme = ThemeHelper.IsDarkTheme();
+            // Get theme service from DI
+            var themeService = App.Current.Services?.GetService<IThemeService>();
+            var isDarkTheme = themeService?.IsDarkTheme ?? false;
+
             string imagePath = System.IO.Path.Combine(
                 AppContext.BaseDirectory,
                 "Assets",
-                isDarkTheme ? "Clock_Face_Inverse.png" : "Clock_Face.png");
+                isDarkTheme ? "clockfacedark.png" : "clockface.png"
+            );
 
-            if (File.Exists(imagePath))
+            try
             {
-                ClockBackgroundImage.Source = new BitmapImage(new Uri(imagePath));
+                var bitmapImage = new BitmapImage(new Uri(imagePath));
+                ClockBackgroundImage.Source = bitmapImage;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to load clock face image: {ex.Message}");
             }
         }
 
@@ -465,7 +482,7 @@ namespace TeacherToolbox.Controls
 
             // If all palette colors are used, generate a random color that contrasts with the theme
             Random random = new Random();
-            bool isDarkTheme = ThemeHelper.IsDarkTheme();
+            bool isDarkTheme = _themeService?.IsDarkTheme ?? false;
 
             if (isDarkTheme)
             {

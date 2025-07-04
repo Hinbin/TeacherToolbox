@@ -1,13 +1,14 @@
-﻿using System;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.UI.Dispatching;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Media;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
-using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
-using Microsoft.UI.Dispatching;
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Media;
 using TeacherToolbox.Helpers;
 using TeacherToolbox.Model;
 using TeacherToolbox.Services;
@@ -22,6 +23,7 @@ namespace TeacherToolbox.ViewModels
 
         // Services
         private readonly ISettingsService _settingsService;
+        private readonly IThemeService _themeService;
 
         // Timer state
         private DispatcherTimer _timer;
@@ -161,10 +163,11 @@ namespace TeacherToolbox.ViewModels
         #region Constructor
 
         // Constructor with dependency injection
-        public TimerWindowViewModel(ISettingsService settingsService, int seconds)
+        public TimerWindowViewModel(ISettingsService settingsService, int seconds, IThemeService themeService = null)
         {
             _settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
             _initialSeconds = seconds;
+            _themeService = themeService ?? App.Current.Services?.GetService<IThemeService>();
 
             // Initialize commands
             StartTimerCommand = new RelayCommand(StartTimerFromSelection);
@@ -502,7 +505,7 @@ namespace TeacherToolbox.ViewModels
             else
             {
                 // Use appropriate theme color
-                bool isDarkTheme = ThemeHelper.IsDarkTheme();
+                bool isDarkTheme = _themeService.IsDarkTheme;
                 TimerTextColor = new SolidColorBrush(isDarkTheme ? Microsoft.UI.Colors.White : Microsoft.UI.Colors.Black);
             }
         }
@@ -563,7 +566,7 @@ namespace TeacherToolbox.ViewModels
                 IsPaused = false;
 
                 // Use theme color for trail
-                bool isDarkTheme = ThemeHelper.IsDarkTheme();
+                bool isDarkTheme = _themeService.IsDarkTheme;
                 TrailBrush = Application.Current.Resources.TryGetValue("darkPurpleBrush", out object purpleBrush)
                     ? purpleBrush as SolidColorBrush
                     : new SolidColorBrush(Microsoft.UI.Colors.Purple);
