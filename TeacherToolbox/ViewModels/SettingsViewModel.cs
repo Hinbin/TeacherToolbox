@@ -99,13 +99,6 @@ namespace TeacherToolbox.ViewModels
             InitializeSettings();
         }
 
-        /// <summary>
-        /// Default constructor that creates its own settings service instance
-        /// </summary>
-        public SettingsViewModel() : this(LocalSettingsService.GetSharedInstanceSync())
-        {
-        }
-
         private void InitializeSettings()
         {
             try

@@ -1,10 +1,11 @@
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Input;
 using TeacherToolbox.Helpers;
-using WinUIEx;
-using Windows.Graphics;
 using TeacherToolbox.Services;
+using Windows.Graphics;
+using WinUIEx;
 
 
 // To learn more about WinUI, the WinUI project structure,
@@ -17,12 +18,22 @@ namespace TeacherToolbox.Controls
     /// </summary>
     public sealed partial class ScreenRulerWindow : WindowEx
     {
+
+        // Services
+        private readonly IThemeService _themeService;
+        private readonly ISettingsService _settingsService;
+
+
         private WindowDragHelper dragHelper;
         private static BlurredBackdrop blurredBackdrop = new BlurredBackdrop();
         private ScreenRulerPage screenRulerPage;
 
         public ScreenRulerWindow(ScreenRulerPage fromPage,ulong displayId = 0)
         {
+            var services = App.Current.Services;
+            _settingsService = services.GetRequiredService<ISettingsService>();
+            _themeService = services.GetRequiredService<IThemeService>();
+
             this.InitializeComponent();
 
             var appWindow = this.AppWindow;
@@ -45,8 +56,7 @@ namespace TeacherToolbox.Controls
             this.IsResizable = false;
             this.SystemBackdrop = blurredBackdrop;
 
-            var settings = LocalSettingsService.GetSharedInstanceSync();
-            dragHelper = new WindowDragHelper(this, settings, true);
+            dragHelper = new WindowDragHelper(this, _settingsService, true);
 
             screenRulerPage = fromPage;
 

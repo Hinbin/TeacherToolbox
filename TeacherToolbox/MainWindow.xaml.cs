@@ -37,10 +37,13 @@ namespace TeacherToolbox
     /// </summary>
     public sealed partial class MainWindow
     {
+        // Services
+        private readonly ISleepPreventer _sleepPreventer;
+        private readonly ISettingsService _settingsService;
+
         private readonly OverlappedPresenter _presenter;
         private NamedPipeServerStream pipeServer;
         private WindowDragHelper dragHelper;
-        private readonly SleepPreventer _sleepPreventer;  // readonly to prevent accidental nulling
         private Process shortcutWatcherProcess;
         private System.Threading.Timer watchdogTimer;
         private const int MAX_RESTART_ATTEMPTS = 3;
@@ -58,7 +61,11 @@ namespace TeacherToolbox
         public MainWindow()
         {
             this.InitializeComponent();
-            _sleepPreventer = new SleepPreventer(); // Create it once
+
+            // Get services from the App's service provider
+            var services = App.Current.Services;
+            _settingsService = services.GetRequiredService<ISettingsService>();
+            _sleepPreventer = services.GetRequiredService<ISleepPreventer>();
 
             _presenter = this.AppWindow.Presenter as OverlappedPresenter;
             Windows.Graphics.SizeInt32 size = new(_Width: 600, _Height: 200);
@@ -76,8 +83,7 @@ namespace TeacherToolbox
 
             this.SetIsAlwaysOnTop(true);
 
-            var settings = LocalSettingsService.GetSharedInstanceSync();
-            dragHelper = new WindowDragHelper(this, settings);
+            dragHelper = new WindowDragHelper(this, _settingsService);
 
             try
             {

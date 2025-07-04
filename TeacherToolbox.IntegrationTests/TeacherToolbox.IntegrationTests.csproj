@@ -1,6 +1,5 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <OutputType>WinExe</OutputType>
     <WindowsPackageType>None</WindowsPackageType>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
@@ -13,7 +12,8 @@
 
   <ItemGroup>
     <ProjectCapability Include="TestContainer" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />  
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.6" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />  
   </ItemGroup>
 
   <ItemGroup>
@@ -39,19 +39,23 @@
     <ProjectCapability Include="Msix" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Appium.WebDriver" Version="7.1.0" />
+    <PackageReference Include="Appium.WebDriver" Version="8.0.0" />
     <PackageReference Include="FlaUI.Core" Version="5.0.0" />
     <PackageReference Include="FlaUI.UIA3" Version="5.0.0" />
-    <PackageReference Include="Microsoft.TestPlatform.TestHost" Version="17.13.0" />
-    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1742" />
-    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.6.250228001" />
+    <PackageReference Include="Microsoft.TestPlatform.TestHost" Version="17.14.1" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.4188" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250606001" />
     <PackageReference Include="Moq" Version="4.20.72" />
     <PackageReference Include="NUnit" Version="4.3.2" />
-    <PackageReference Include="NUnit.Analyzers" Version="4.6.0">
+    <PackageReference Include="NUnit.Analyzers" Version="4.9.2">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="NUnit3TestAdapter" Version="5.0.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\TeacherToolbox\TeacherToolbox.csproj" />
+    <ProjectReference Include="..\TTBIntegrationTesting\TeacherToolBox.Tests.csproj" />
   </ItemGroup>
 
   <!-- 

@@ -14,12 +14,12 @@ namespace TeacherToolbox.Controls
 
         public SettingsPage() : base()
         {
-            // Get services
-            var settingsService = LocalSettingsService.GetSharedInstanceSync();
-            _themeService = App.Current.Services?.GetService<IThemeService>();
+            var services = App.Current.Services;
 
-            // Initialize ViewModel
-            ViewModel = new SettingsViewModel(settingsService);
+            // Get services
+
+            ViewModel = services.GetRequiredService<SettingsViewModel>();
+            _themeService = services.GetRequiredService<IThemeService>();
 
             // Initialize component
             this.InitializeComponent();

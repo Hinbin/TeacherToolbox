@@ -41,20 +41,23 @@ namespace TeacherToolbox.Controls
 
         // Services
         private readonly IThemeService _themeService;
+        private readonly ISettingsService _settingsService;
+        private readonly ISleepPreventer _sleepPreventer;
 
         public Clock()
         {
             this.InitializeComponent();
             this.Loaded += Clock_Loaded;
 
-            // Initialize color palette based on theme
-            var themeService = App.Current.Services?.GetService<IThemeService>();
-            var isDarkTheme = themeService?.IsDarkTheme ?? false;
+            var services = App.Current.Services;
+            _settingsService = services.GetRequiredService<ISettingsService>();
+            _themeService = services.GetRequiredService<IThemeService>();
+            _sleepPreventer = services.GetRequiredService<ISleepPreventer>();
 
             _colorPalette = new[]
                 {
             "#FF0072B2", "#FFCC79A7", "#FFF0E442", "#FF009E73", "#FF785EF0",
-            "#FFD55E00", "#FF56B4E9", isDarkTheme ? "#FFFFFFFF" : "#FF000000",
+            "#FFD55E00", "#FF56B4E9", _themeService.IsDarkTheme ? "#FFFFFFFF" : "#FF000000",
             "#FFDC267F", "#FF117733"
         };
         }
@@ -62,13 +65,8 @@ namespace TeacherToolbox.Controls
         {
             base.OnNavigatedTo(e);
 
-            // Get services from DI
-            var settingsService = await LocalSettingsService.GetSharedInstanceAsync();
-            var themeService = App.Current.Services?.GetService<IThemeService>();
-            var sleepPreventer = e.Parameter as SleepPreventer;
-
             // Create ViewModel with all services
-            ViewModel = new ClockViewModel(settingsService, sleepPreventer, null, themeService);
+            ViewModel = new ClockViewModel(_settingsService, _sleepPreventer, null, _themeService);
             this.DataContext = ViewModel;
 
             // Subscribe to ViewModel events

@@ -79,17 +79,6 @@ namespace TeacherToolbox.Tests.ViewModels
             Assert.That(_viewModel.SoundOptions.Count, Is.GreaterThan(0));
         }
 
-        [Test]
-        public void DefaultConstructor_CreatesLocalSettingsService()
-        {
-            // This test is a bit harder since the default constructor uses a static method
-            // We'd need to use a more advanced mocking framework to mock static methods
-            // For now, we'll just verify it doesn't throw an exception
-
-            // Act & Assert
-            Assert.DoesNotThrow(() => new SettingsViewModel());
-        }
-
         #endregion
 
         #region Theme Tests

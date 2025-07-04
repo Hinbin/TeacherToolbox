@@ -118,15 +118,16 @@ namespace TeacherToolbox.ViewModels
 
         // Constructor with dependency injection
         public ClockViewModel(
-            ISettingsService settingsService,
-            ISleepPreventer sleepPreventer,
-            ITimerService timerService = null,
-            IThemeService themeService = null)
+       ISettingsService settingsService,
+       ISleepPreventer sleepPreventer,
+       ITimerService timerService,
+       IThemeService themeService)
         {
             _settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
-            _sleepPreventer = sleepPreventer;
-            _themeService = themeService;  // Remove fallback to new ThemeService()
-            _timer = timerService ?? new DispatcherTimerService();
+            _sleepPreventer = sleepPreventer ?? throw new ArgumentNullException(nameof(sleepPreventer));
+            _timer = timerService ?? throw new ArgumentNullException(nameof(timerService));
+            _themeService = themeService ?? throw new ArgumentNullException(nameof(themeService));
+
 
             _timeSlices = new ObservableCollection<TimeSlice>();
             _timer.Interval = TimeSpan.FromMilliseconds(200);
@@ -152,16 +153,7 @@ namespace TeacherToolbox.ViewModels
 
             // Prevent sleep if sleep preventer is provided
             _sleepPreventer?.PreventSleep();
-        }
-
-        // Default constructor for design time or when no DI is available
-        public ClockViewModel() : this(
-            LocalSettingsService.GetSharedInstanceSync(),
-            new SleepPreventer(),
-            null,
-            App.Current?.Services?.GetService(typeof(IThemeService)) as IThemeService)
-        {
-        }
+        }      
 
         private void InitializeProperties()
         {

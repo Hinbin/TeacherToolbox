@@ -4,6 +4,7 @@ using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using TeacherToolbox.Services;
+using TeacherToolbox.ViewModels;
 
 namespace TeacherToolbox
 {
@@ -27,11 +28,28 @@ namespace TeacherToolbox
 
         private void ConfigureServices(IServiceCollection services)
         {
+            // Register the settings service factory as singleton
+            services.AddSingleton<ISettingsServiceFactory, SettingsServiceFactory>();
+
+            // Register ISettingsService as singleton using factory
+            services.AddSingleton<ISettingsService>(provider =>
+            {
+                var factory = provider.GetRequiredService<ISettingsServiceFactory>();
+                // Use sync version for initial registration
+                return factory.CreateSync();
+            });
+
             // Register theme service as singleton
             services.AddSingleton<IThemeService>(provider => new ThemeService(this));
 
-            // Note: LocalSettingsService might need special handling due to async initialization
-            // You might need to register it differently or use a factory pattern
+            // Register other services
+            services.AddTransient<ISleepPreventer, SleepPreventer>();
+            services.AddTransient<ITimerService, DispatcherTimerService>();
+
+            // Register ViewModels
+            services.AddTransient<SettingsViewModel>();
+            services.AddTransient<ClockViewModel>();
+            services.AddTransient<TimerWindowViewModel>();
         }
 
         protected override async void OnLaunched(LaunchActivatedEventArgs args)
@@ -58,9 +76,13 @@ namespace TeacherToolbox
         {
             try
             {
-                var themeService = Services.GetService<IThemeService>();
-                var localSettings = await LocalSettingsService.GetSharedInstanceAsync();
-                var savedThemeIndex = localSettings.GetValueOrDefault(ThemeKey, 0);
+                var themeService = Services.GetRequiredService<IThemeService>();
+                var settingsService = Services.GetRequiredService<ISettingsService>();
+
+                // Ensure settings are loaded
+                await settingsService.LoadSettings();
+
+                var savedThemeIndex = settingsService.GetValueOrDefault(ThemeKey, 0);
 
                 // Convert index to ElementTheme
                 ElementTheme theme = savedThemeIndex switch
@@ -79,7 +101,6 @@ namespace TeacherToolbox
             catch (Exception ex)
             {
                 Debug.WriteLine($"Failed to initialize theme: {ex}");
-                // Fallback handled by theme service
             }
         }
     }

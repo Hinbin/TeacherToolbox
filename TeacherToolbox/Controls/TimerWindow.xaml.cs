@@ -1,28 +1,29 @@
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Input;
-using System;
-using System.IO;
-using WinUIEx;
-using WinRT;
-using System.Runtime.InteropServices;
-using Windows.Media.Playback;
-using Windows.Media.Core;
-using Windows.Graphics;
-using TeacherToolbox.Model;
-using System.Threading.Tasks;
-using Microsoft.UI.Windowing;
-using System.Linq;
-using TeacherToolbox.Helpers;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI;
-using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Dispatching;
-using Windows.System;
+using Microsoft.UI.Windowing;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Data;
+using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
-using Microsoft.UI.Xaml.Data;
+using System.IO;
+using System.Linq;
+using System.Runtime.InteropServices;
+using System.Threading.Tasks;
+using TeacherToolbox.Helpers;
+using TeacherToolbox.Model;
 using TeacherToolbox.Services;
+using Windows.Graphics;
+using Windows.Media.Core;
+using Windows.Media.Playback;
+using Windows.System;
+using WinRT;
+using WinUIEx;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -37,7 +38,7 @@ namespace TeacherToolbox.Controls
     {
         // Services
         private readonly IThemeService _themeService;
-        public ISettingsService localSettings;
+        private readonly ISettingsService _settingsService;
 
         WindowsSystemDispatcherQueueHelper m_wsdqHelper; // See separate sample below for implementation
         Microsoft.UI.Composition.SystemBackdrops.DesktopAcrylicController m_acrylicController;
@@ -68,6 +69,16 @@ namespace TeacherToolbox.Controls
 
         public TimerWindow(int seconds)
         {
+
+            var services = App.Current.Services;
+            _settingsService = services.GetRequiredService<ISettingsService>();
+            _themeService = services.GetRequiredService<IThemeService>();
+
+            intervalsList = new ObservableCollection<IntervalTimeViewModel>();
+
+            this.InitializeComponent();
+            InitializeUIElements();
+            InitializeWindowAsync(seconds);
 
             // First initialize the intervalsList to prevent null reference
             intervalsList = new ObservableCollection<IntervalTimeViewModel>();
@@ -156,8 +167,7 @@ namespace TeacherToolbox.Controls
             try
             {
                 // Use a local variable for sound loading to avoid creating multiple LocalSettings instances
-                var soundSettings = await LocalSettingsService.GetSharedInstanceAsync();
-                int soundIndex = soundSettings.GetValueOrDefault(SoundSettings.SoundKey, 0);
+                int soundIndex = _settingsService.GetValueOrDefault(SoundSettings.SoundKey, 0);
                 string soundFileName = SoundSettings.GetSoundFileName(soundIndex);
                 string soundPath = Path.Combine(AppContext.BaseDirectory, "Assets", soundFileName);
 
@@ -185,12 +195,7 @@ namespace TeacherToolbox.Controls
                 }
 
                 // Set up drag helper
-                var settings = LocalSettingsService.GetSharedInstanceSync();
-                dragHelper = new WindowDragHelper(this, settings);
-
-                // Get the shared instance
-                localSettings = await LocalSettingsService.GetSharedInstanceAsync();
-                Console.WriteLine("Using shared LocalSettings instance in TimerWindow");
+                dragHelper = new WindowDragHelper(this, _settingsService);
 
                 // Initialize display manager
                 displayManager = new DisplayManager();
@@ -199,12 +204,6 @@ namespace TeacherToolbox.Controls
             {
                 Console.WriteLine($"Error in InitializeResourcesAsync: {ex.Message}");
                 Console.WriteLine($"Stack trace: {ex.StackTrace}");
-
-                // Create minimal setup to avoid null references
-                if (localSettings == null)
-                {
-                    localSettings = await LocalSettingsService.GetSharedInstanceAsync();
-                }
 
                 if (displayManager == null)
                 {
@@ -218,16 +217,16 @@ namespace TeacherToolbox.Controls
         private async Task FinalizeWindowSetupAsync(int seconds)
         {
             // Handle window positioning first
-            if (localSettings?.GetLastTimerWindowPosition() != null)
+            if (_settingsService?.GetLastTimerWindowPosition() != null)
             {
-                if (localSettings.GetLastTimerWindowPosition().Width > 10 && localSettings.GetLastTimerWindowPosition().Height > 10)
+                if (_settingsService.GetLastTimerWindowPosition().Width > 10 && _settingsService.GetLastTimerWindowPosition().Height > 10)
                 {
-                    this.Height = localSettings.GetLastTimerWindowPosition().Height;
-                    this.Width = localSettings.GetLastTimerWindowPosition().Width;
+                    this.Height = _settingsService.GetLastTimerWindowPosition().Height;
+                    this.Width = _settingsService.GetLastTimerWindowPosition().Width;
                 }
 
-                PointInt32 lastPosition = new PointInt32(localSettings.GetLastTimerWindowPosition().X, localSettings.GetLastTimerWindowPosition().Y);
-                ulong lastDisplayIdValue = localSettings.GetLastTimerWindowPosition().DisplayID;
+                PointInt32 lastPosition = new PointInt32(_settingsService.GetLastTimerWindowPosition().X, _settingsService.GetLastTimerWindowPosition().Y);
+                ulong lastDisplayIdValue = _settingsService.GetLastTimerWindowPosition().DisplayID;
 
                 var allDisplayAreas = displayManager?.DisplayAreas;
                 if (allDisplayAreas?.Any(da => da.DisplayId.Value == lastDisplayIdValue) == true)
@@ -270,15 +269,6 @@ namespace TeacherToolbox.Controls
                 intervalsList = new ObservableCollection<IntervalTimeViewModel>();
             }
 
-            Debug.WriteLine($"Setting up custom timer selection. Type: {timerType}");
-            Debug.WriteLine($"Is localSettings null? {localSettings == null}");
-
-            if (localSettings == null)
-            {
-                Debug.WriteLine("LocalSettings is null, creating it now");
-                localSettings = await LocalSettingsService.GetSharedInstanceAsync();
-            }
-
             // Determine whether this is an interval timer or custom timer
             bool isIntervalTimer = timerType == -1;
 
@@ -288,13 +278,13 @@ namespace TeacherToolbox.Controls
             if (isIntervalTimer)
             {
                 // Load interval timer configurations
-                savedConfigs = localSettings.GetSavedIntervalConfigs();
+                savedConfigs = _settingsService.GetSavedIntervalConfigs();
                 Debug.WriteLine($"Loaded {savedConfigs?.Count ?? 0} saved interval configurations");
             }
             else
             {
                 // Load custom timer configurations
-                savedConfigs = localSettings.GetSavedCustomTimerConfigs();
+                savedConfigs = _settingsService.GetSavedCustomTimerConfigs();
                 Debug.WriteLine($"Loaded {savedConfigs?.Count ?? 0} saved custom timer configurations");
             }
 
@@ -422,8 +412,7 @@ namespace TeacherToolbox.Controls
         {
             try
             {
-                var settings = await LocalSettingsService.GetSharedInstanceAsync();
-                int soundIndex = settings.GetValueOrDefault(SoundSettings.SoundKey, 0);
+                int soundIndex = _settingsService.GetValueOrDefault(SoundSettings.SoundKey, 0);
                 string soundFileName = SoundSettings.GetSoundFileName(soundIndex);
                 string soundPath = Path.Combine(AppContext.BaseDirectory, "Assets", soundFileName);
 
@@ -459,8 +448,8 @@ namespace TeacherToolbox.Controls
 
         private async Task InitializeWindowPositionAsync()
         {
-            PointInt32 lastPosition = new PointInt32(localSettings.GetLastTimerWindowPosition().X, localSettings.GetLastTimerWindowPosition().Y);
-            ulong lastDisplayIdValue = localSettings.GetLastTimerWindowPosition().DisplayID;
+            PointInt32 lastPosition = new PointInt32(_settingsService.GetLastTimerWindowPosition().X, _settingsService.GetLastTimerWindowPosition().Y);
+            ulong lastDisplayIdValue = _settingsService.GetLastTimerWindowPosition().DisplayID;
 
             var allDisplayAreas = displayManager.DisplayAreas;
             if (allDisplayAreas.Any(da => da.DisplayId.Value == lastDisplayIdValue))
@@ -472,10 +461,10 @@ namespace TeacherToolbox.Controls
                 this.CenterOnScreen();
             }
 
-            if (localSettings.GetLastTimerWindowPosition().Width > 10 && localSettings.GetLastTimerWindowPosition().Height > 10)
+            if (_settingsService.GetLastTimerWindowPosition().Width > 10 && _settingsService.GetLastTimerWindowPosition().Height > 10)
             {
-                this.Height = localSettings.GetLastTimerWindowPosition().Height;
-                this.Width = localSettings.GetLastTimerWindowPosition().Width;
+                this.Height = _settingsService.GetLastTimerWindowPosition().Height;
+                this.Width = _settingsService.GetLastTimerWindowPosition().Width;
             }
             else
             {
@@ -630,7 +619,7 @@ namespace TeacherToolbox.Controls
         {
             // Default to CountUp if setting isn't found
             // Using the same key as defined in SettingsPage
-            int behaviorValue = localSettings.GetValueOrDefault("TimerFinishBehavior", (int)TimerFinishBehavior.CountUp);
+            int behaviorValue = _settingsService.GetValueOrDefault("TimerFinishBehavior", (int)TimerFinishBehavior.CountUp);
 
             // Ensure the value is within valid range
             if (!Enum.IsDefined(typeof(TimerFinishBehavior), behaviorValue))
@@ -851,7 +840,7 @@ namespace TeacherToolbox.Controls
         {
             dragHelper.PointerReleased(sender, e);
 
-            localSettings.SetLastTimerWindowPosition(GetCurrentWindowInformation());
+            _settingsService.SetLastTimerWindowPosition(GetCurrentWindowInformation());
         }
 
         private void TimerWindow_SizeChanged(object sender, WindowSizeChangedEventArgs e)
@@ -869,9 +858,9 @@ namespace TeacherToolbox.Controls
             {
                 resizeEndTimer.Stop();
                 // Perform actions here after resizing has stopped
-                if (localSettings != null)
+                if (_settingsService != null)
                 {
-                    localSettings.SetLastTimerWindowPosition(GetCurrentWindowInformation());
+                    _settingsService.SetLastTimerWindowPosition(GetCurrentWindowInformation());
                 }
             }
         }
@@ -962,13 +951,7 @@ namespace TeacherToolbox.Controls
             // Save the interval configurations using the existing localSettings instance
             if (savedConfigs.Any())
             {
-                Debug.WriteLine($"Saving {savedConfigs.Count} interval configurations");
-
-                if (localSettings == null)
-                {
-                    Debug.WriteLine("LocalSettings is null, creating it now");
-                    localSettings = await LocalSettingsService.GetSharedInstanceAsync();
-                }
+                Debug.WriteLine($"Saving {savedConfigs.Count} interval configurations");               
 
                 // Determine whether this is an interval timer or custom timer
                 // We can identify interval timers by checking if the addIntervalButton is visible
@@ -977,17 +960,17 @@ namespace TeacherToolbox.Controls
                 // Save to the appropriate configuration
                 if (isIntervalTimer)
                 {
-                    localSettings.SaveIntervalConfigs(savedConfigs);
+                    _settingsService.SaveIntervalConfigs(savedConfigs);
                     Debug.WriteLine("Saved interval timer configurations");
                 }
                 else
                 {
-                    localSettings.SaveCustomTimerConfigs(savedConfigs);
+                    _settingsService.SaveCustomTimerConfigs(savedConfigs);
                     Debug.WriteLine("Saved custom timer configurations");
                 }
 
                 // Force save to ensure it's written to disk
-                localSettings.SaveSettings();
+                _settingsService.SaveSettings();
                 Debug.WriteLine("Saved configurations to settings");
             }
 

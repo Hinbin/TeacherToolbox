@@ -37,13 +37,9 @@ namespace TeacherToolbox.Services
         private List<SavedIntervalConfig> savedIntervalConfigs;
         private List<SavedIntervalConfig> savedCustomTimerConfigs;
         private readonly object _settingsLock = new object();
-        private static LocalSettingsService _sharedInstance;
-        private static readonly object _initLock = new object();
         private bool hasShownClockInstructions;
 
         protected virtual string FilePath => filePath;
-
-        #region Singleton Implementation
 
         public LocalSettingsService()
         {
@@ -53,62 +49,21 @@ namespace TeacherToolbox.Services
             settings = new Dictionary<string, object>();
             savedIntervalConfigs = new List<SavedIntervalConfig>();
             savedCustomTimerConfigs = new List<SavedIntervalConfig>();
-            filePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TeacherToolbox", "settings.json");
+            filePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "TeacherToolbox", "settings.json");
 
             Directory.CreateDirectory(Path.GetDirectoryName(filePath));
         }
-        internal static void ResetForTesting()
+
+        public async Task InitializeAsync()
         {
-            _sharedInstance = null;
+            await LoadSettings();
         }
 
-        /// <summary>
-        /// Gets the shared instance of the settings service
-        /// </summary>
-        public static async Task<ISettingsService> GetSharedInstanceAsync()
+        public void InitializeSync()
         {
-            if (_sharedInstance == null)
-            {
-                lock (_initLock)
-                {
-                    if (_sharedInstance == null)
-                    {
-                        Debug.WriteLine("Creating new shared LocalSettingsService instance");
-                        _sharedInstance = new LocalSettingsService();
-                    }
-                }
-
-                // Load settings outside the lock to prevent deadlocks
-                await _sharedInstance.LoadSettings();
-                Debug.WriteLine("Loaded settings into shared instance");
-            }
-
-            return _sharedInstance;
+            LoadSettingsSync();
         }
-
-        /// <summary>
-        /// Gets the shared instance of the settings service synchronously
-        /// </summary>
-        public static ISettingsService GetSharedInstanceSync()
-        {
-            if (_sharedInstance == null)
-            {
-                lock (_initLock)
-                {
-                    if (_sharedInstance == null)
-                    {
-                        _sharedInstance = new LocalSettingsService();
-
-                        // Use synchronous file I/O instead of async
-                        _sharedInstance.LoadSettingsSync();
-                    }
-                }
-            }
-
-            return _sharedInstance;
-        }
-
-        #endregion
 
         #region Helper Methods
 

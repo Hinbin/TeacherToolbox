@@ -83,7 +83,7 @@ namespace TeacherToolbox.Tests.ViewModels
         public void Constructor_WithNullSettingsService_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() =>
-                new ClockViewModel(null, _mockSleepPreventer.Object));
+                new ClockViewModel(null, _mockSleepPreventer.Object, null,null));
         }
 
         [Test]
