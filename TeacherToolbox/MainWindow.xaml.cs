@@ -40,6 +40,7 @@ namespace TeacherToolbox
         // Services
         private readonly ISleepPreventer _sleepPreventer;
         private readonly ISettingsService _settingsService;
+        private readonly IThemeService _themeService;
 
         private readonly OverlappedPresenter _presenter;
         private NamedPipeServerStream pipeServer;
@@ -64,8 +65,10 @@ namespace TeacherToolbox
 
             // Get services from the App's service provider
             var services = App.Current.Services;
+
             _settingsService = services.GetRequiredService<ISettingsService>();
             _sleepPreventer = services.GetRequiredService<ISleepPreventer>();
+            _themeService = services.GetRequiredService<IThemeService>();
 
             _presenter = this.AppWindow.Presenter as OverlappedPresenter;
             Windows.Graphics.SizeInt32 size = new(_Width: 600, _Height: 200);
@@ -1138,9 +1141,8 @@ namespace TeacherToolbox
         public void UpdateTitleBarTheme()
         {
             try
-            {
-                var themeService = App.Current.Services?.GetService<IThemeService>();
-                themeService?.UpdateTitleBarTheme(this);
+            {                
+                _themeService?.UpdateTitleBarTheme(this);
             }
             catch (Exception ex)
             {

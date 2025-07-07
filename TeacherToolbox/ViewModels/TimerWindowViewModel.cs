@@ -167,7 +167,7 @@ namespace TeacherToolbox.ViewModels
         {
             _settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
             _initialSeconds = seconds;
-            _themeService = themeService ?? App.Current.Services?.GetService<IThemeService>();
+            _themeService = themeService ?? throw new ArgumentNullException(nameof(themeService));
 
             // Initialize commands
             StartTimerCommand = new RelayCommand(StartTimerFromSelection);

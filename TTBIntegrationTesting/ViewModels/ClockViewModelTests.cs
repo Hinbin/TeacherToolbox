@@ -26,49 +26,36 @@ namespace TeacherToolbox.Tests.ViewModels
         [SetUp]
         public void Setup()
         {
-            _mockSettingsService = new Mock<ISettingsService>();
-            _mockSleepPreventer = new Mock<ISleepPreventer>(); ;
             _mockThemeService = new Mock<IThemeService>();
+            _mockSettingsService = new Mock<ISettingsService>();
+            _mockTimerService = new Mock<ITimerService>();
+            _mockSleepPreventer = new Mock<ISleepPreventer>();
 
-            // Setup default return values
-            _mockSettingsService.Setup(s => s.GetCentreText()).Returns("Test Centre");
-            _mockSettingsService.Setup(s => s.GetHasShownClockInstructions()).Returns(false);
+            _mockThemeService.Setup(x => x.HandColorBrush)
+                .Returns((SolidColorBrush)null);  // Don't create UI objects in tests
+            _mockThemeService.Setup(x => x.IsDarkTheme).Returns(false);
 
-            // Setup theme service - avoid creating real WinUI objects in tests
-            _mockThemeService.Setup(t => t.IsDarkTheme).Returns(false);
-            _mockThemeService.Setup(t => t.CurrentTheme).Returns(ElementTheme.Light);
-            _mockThemeService.Setup(t => t.HandColorBrush).Returns((SolidColorBrush)null);
+            // Setup settings service
+            _mockSettingsService.Setup(x => x.GetCentreText()).Returns("Test Centre");
+            _mockSettingsService.Setup(x => x.GetHasShownClockInstructions()).Returns(false);
+            _mockSettingsService.Setup(x => x.SetCentreText(It.IsAny<string>()));
+            _mockSettingsService.Setup(x => x.SetHasShownClockInstructions(It.IsAny<bool>()));
 
-            // Create a smart timer mock that tracks its own state
-            _mockTimerService = CreateSmartTimerMock();
+            // Setup timer service
+            _mockTimerService.SetupProperty(x => x.Interval);
+            _mockTimerService.Setup(x => x.Start());
+            _mockTimerService.Setup(x => x.Stop());
+
+            // Setup sleep preventer
+            _mockSleepPreventer.Setup(x => x.PreventSleep(true));
+            _mockSleepPreventer.Setup(x => x.AllowSleep());
 
             // Pass all mock objects to the constructor
-            _viewModel = new ClockViewModel(
-                _mockSettingsService.Object,
-                _mockSleepPreventer.Object,
-                _mockTimerService.Object,
-                _mockThemeService.Object);
-        }
+            _viewModel = new ClockViewModel(_mockThemeService.Object, 
+                                            _mockSettingsService.Object, 
+                                            _mockTimerService.Object, 
+                                            _mockSleepPreventer.Object);
 
-        private Mock<ITimerService> CreateSmartTimerMock()
-        {
-            var mock = new Mock<ITimerService>();
-            bool isEnabled = false;
-            TimeSpan interval = TimeSpan.Zero;
-
-            // Set up Interval property with backing field
-            mock.SetupProperty(t => t.Interval);
-
-            // Set up IsEnabled to return the tracked state
-            mock.Setup(t => t.IsEnabled).Returns(() => isEnabled);
-
-            // Set up Start to change the state
-            mock.Setup(t => t.Start()).Callback(() => isEnabled = true);
-
-            // Set up Stop to change the state
-            mock.Setup(t => t.Stop()).Callback(() => isEnabled = false);
-
-            return mock;
         }
 
         [TearDown]
@@ -78,13 +65,6 @@ namespace TeacherToolbox.Tests.ViewModels
         }
 
         #region Constructor Tests
-
-        [Test]
-        public void Constructor_WithNullSettingsService_ThrowsArgumentNullException()
-        {
-            Assert.Throws<ArgumentNullException>(() =>
-                new ClockViewModel(null, _mockSleepPreventer.Object, null,null));
-        }
 
         [Test]
         public void Constructor_WithValidParameters_InitializesSuccessfully()

@@ -1,12 +1,15 @@
-using FlaUI.UIA3;
 using FlaUI.Core;
 using FlaUI.Core.AutomationElements;
-using System.Diagnostics;
 using FlaUI.Core.Tools;
+using FlaUI.UIA3;
 using Microsoft.UI.Xaml.Controls;
 using NUnit.Framework;
+using OpenQA.Selenium.BiDi.Modules.Script;
 using System;
+using System.Diagnostics;
 using System.IO;
+using System.Linq;
+using System.Reflection;
 using System.Threading;
 
 
@@ -62,38 +65,47 @@ public class TestBase
             }
         }
 
-        var solutionDir = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"..\..\..\..\..\.."));
+        // Find the solution root by traversing up from the test assembly location
+        var assemblyLocation = Assembly.GetExecutingAssembly().Location;
+        var dir = new DirectoryInfo(Path.GetDirectoryName(assemblyLocation)!);
+        DirectoryInfo? solutionRoot = dir;
+        while (solutionRoot != null && !File.Exists(Path.Combine(solutionRoot.FullName, "TeacherToolbox.sln")))
+            solutionRoot = solutionRoot.Parent;
+
+        if (solutionRoot == null)
+            throw new DirectoryNotFoundException("Could not find solution root (TeacherToolbox.sln not found).");
+
+        // Build the path to the TeacherToolbox.exe in the main app's output directory
         var appPath = Path.Combine(
-            solutionDir,
-            @"TeacherToolbox\bin\x86\Debug\net6.0-windows10.0.19041.0\win10-x86\TeacherToolbox.exe"
+            solutionRoot.FullName,
+            "TeacherToolbox",
+            "bin",
+            "x86",
+            "Debug", // or "Release" if you want to run release builds
+            "net8.0-windows10.0.19041.0",
+            "win-x86",
+            "TeacherToolbox.exe"
         );
 
         if (!File.Exists(appPath))
-        {
-            throw new FileNotFoundException($"Application not found at {appPath}");
-        }
+            throw new FileNotFoundException($"TeacherToolbox.exe not found at {appPath}. Make sure the app project is built.");
 
-        // Launch the application and wait for it to be ready
-        App = Application.Launch(appPath);
-        Automation = new UIA3Automation();
-
-        // Wait for the main window with a timeout
         try
         {
+            // Launch the application
+            App = Application.Launch(appPath);
+            Automation = new UIA3Automation();
             MainWindow = App.GetMainWindow(Automation, TimeSpan.FromSeconds(10));
+            NavigationPane = MainWindow!.FindFirstDescendant(cf => cf.ByAutomationId("NavigationPane"));
+            Assert.That(MainWindow, Is.Not.Null, "Main window should be found");
         }
         catch (Exception ex)
         {
             // Clean up if we failed to get the main window
             Automation?.Dispose();
             App?.Dispose();
-            throw new Exception("Failed to get main window. Make sure the application launches correctly.", ex);
+            throw new Exception("Failed to launch or initialize application. Make sure the application is built correctly.", ex);
         }
-
-        NavigationPane = MainWindow!.FindFirstDescendant(cf =>
-            cf.ByAutomationId("NavigationPane"));
-
-        Assert.That(MainWindow, Is.Not.Null, "Main window should be found");
     }
 
     [TearDown]

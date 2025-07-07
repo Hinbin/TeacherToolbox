@@ -256,7 +256,7 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
                 // Get the path relative to the solution directory
                 var solutionDir = Path.GetFullPath(Path.Combine(
                     Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location),
-                    @"..\..\..\..\..\.."));
+                    @"..\..\..\..\.."));
                 var path = Path.Combine(solutionDir, "TeacherToolbox.IntegrationTests", "Files", fileName);
 
                 filenameInput.Focus();

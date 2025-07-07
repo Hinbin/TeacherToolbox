@@ -1,5 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -27,7 +28,7 @@ namespace TeacherToolbox.ViewModels
 
         // Private fields
         private readonly ISettingsService _settingsService;
-        private readonly ITimerService _timer;
+        private readonly ITimerService _timerService;
         private readonly IThemeService _themeService;
         private DateTime _currentTime;
         private TimeSpan _timeOffset;
@@ -118,20 +119,20 @@ namespace TeacherToolbox.ViewModels
 
         // Constructor with dependency injection
         public ClockViewModel(
-       ISettingsService settingsService,
-       ISleepPreventer sleepPreventer,
-       ITimerService timerService,
-       IThemeService themeService)
+            IThemeService themeService,
+            ISettingsService settingsService,
+            ITimerService timerService,
+            ISleepPreventer sleepPreventer = null)
         {
-            _settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
-            _sleepPreventer = sleepPreventer ?? throw new ArgumentNullException(nameof(sleepPreventer));
-            _timer = timerService ?? throw new ArgumentNullException(nameof(timerService));
-            _themeService = themeService ?? throw new ArgumentNullException(nameof(themeService));
 
+            _themeService = themeService ?? throw new ArgumentNullException(nameof(themeService));
+            _settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
+            _timerService = timerService ?? throw new ArgumentNullException(nameof(timerService));
+            _sleepPreventer = sleepPreventer;
 
             _timeSlices = new ObservableCollection<TimeSlice>();
-            _timer.Interval = TimeSpan.FromMilliseconds(200);
-            _timer.Tick += Timer_Tick;
+            _timerService.Interval = TimeSpan.FromMilliseconds(200);
+            _timerService.Tick += Timer_Tick;
 
             // Subscribe to theme changes if theme service is available
             if (_themeService != null)
@@ -149,11 +150,11 @@ namespace TeacherToolbox.ViewModels
             InitializeProperties();
 
             // Start the timer
-            _timer.Start();
+            _timerService.Start();
 
             // Prevent sleep if sleep preventer is provided
             _sleepPreventer?.PreventSleep();
-        }      
+        }
 
         private void InitializeProperties()
         {
@@ -400,8 +401,8 @@ namespace TeacherToolbox.ViewModels
                     _themeService.ThemeChanged -= OnThemeServiceChanged;
                 }
 
-                _timer?.Stop();
-                if (_timer is IDisposable disposableTimer)
+                _timerService?.Stop();
+                if (_timerService is IDisposable disposableTimer)
                 {
                     disposableTimer.Dispose();
                 }

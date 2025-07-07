@@ -41,18 +41,15 @@ namespace TeacherToolbox.Controls
 
         // Services
         private readonly IThemeService _themeService;
-        private readonly ISettingsService _settingsService;
-        private readonly ISleepPreventer _sleepPreventer;
 
         public Clock()
         {
+
             this.InitializeComponent();
             this.Loaded += Clock_Loaded;
 
-            var services = App.Current.Services;
-            _settingsService = services.GetRequiredService<ISettingsService>();
-            _themeService = services.GetRequiredService<IThemeService>();
-            _sleepPreventer = services.GetRequiredService<ISleepPreventer>();
+            // Get theme service from DI
+            _themeService = App.Current.Services.GetRequiredService<IThemeService>();
 
             _colorPalette = new[]
                 {
@@ -66,7 +63,7 @@ namespace TeacherToolbox.Controls
             base.OnNavigatedTo(e);
 
             // Create ViewModel with all services
-            ViewModel = new ClockViewModel(_settingsService, _sleepPreventer, null, _themeService);
+            ViewModel = App.Current.Services.GetRequiredService<ClockViewModel>();
             this.DataContext = ViewModel;
 
             // Subscribe to ViewModel events
@@ -122,8 +119,7 @@ namespace TeacherToolbox.Controls
         private void CreateClockHands()
         {
             // Get theme service from DI
-            var themeService = App.Current.Services?.GetService<IThemeService>();
-            var handColor = themeService?.IsDarkTheme == true ? Colors.White : Colors.Black;
+            var handColor = _themeService?.IsDarkTheme == true ? Colors.White : Colors.Black;
 
             // Use ViewModel's brush if available, otherwise use theme service color
             if (ViewModel?.HandColorBrush?.Color != null)
@@ -164,8 +160,7 @@ namespace TeacherToolbox.Controls
         private void LoadClockBackgroundImage()
         {
             // Get theme service from DI
-            var themeService = App.Current.Services?.GetService<IThemeService>();
-            var isDarkTheme = themeService?.IsDarkTheme ?? false;
+            var isDarkTheme = _themeService?.IsDarkTheme ?? false;
 
             string imagePath = System.IO.Path.Combine(
                 AppContext.BaseDirectory,
