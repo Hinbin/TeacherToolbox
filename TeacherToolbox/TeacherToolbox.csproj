@@ -21,7 +21,6 @@
     <None Remove="Controls\RandomNameGenerator.xaml" />
     <None Remove="Controls\ScreenRulerPage.xaml" />
     <None Remove="Controls\ScreenRulerWindow.xaml" />
-    <None Remove="Controls\Timer.xaml" />
     <None Remove="Controls\TimerWindow.xaml" />
     <None Remove="RandomNameGenerator.xaml" />
   </ItemGroup>
@@ -71,7 +70,7 @@
     </Page>
   </ItemGroup>
   <ItemGroup>
-    <Page Update="Controls\Timer.xaml">
+    <Page Update="Controls\TimerSelectionPage.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
   </ItemGroup>
@@ -99,10 +98,10 @@
     <Content Update="Assets\announcement.wav">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Update="Assets\Clock_Face.png">
+    <Content Update="Assets\clockface.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Update="Assets\Clock_Face_Inverse.png">
+    <Content Update="Assets\clockfacedark.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Update="Assets\doublechime.mp3">

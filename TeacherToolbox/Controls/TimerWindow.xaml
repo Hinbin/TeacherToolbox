@@ -8,6 +8,7 @@
     xmlns:local="using:TeacherToolbox.Controls"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:winex="using:WinUIEx"
+    Title="Timer Window"
     mc:Ignorable="d">
 
     <Grid
@@ -126,6 +127,7 @@
                                 </Grid.ColumnDefinitions>
 
                                 <TextBlock
+                                    Name="IntervalNumber"
                                     Grid.Column="0"
                                     Margin="0,0,8,0"
                                     VerticalAlignment="Center"
@@ -143,14 +145,18 @@
                                     </Grid.ColumnDefinitions>
 
                                     <!--  Hours  -->
-                                    <TextBox
+                                    <ComboBox
+                                        Name="HoursTextBox"
                                         Grid.Column="0"
                                         MinWidth="60"
                                         HorizontalAlignment="Stretch"
                                         FontSize="22"
+                                        IsEditable="True"
+                                        ItemsSource="{Binding HoursList}"
                                         PlaceholderText="h"
+                                        PreviewKeyDown="ComboBox_PreviewKeyDown"
                                         Text="{Binding Hours, Mode=TwoWay}"
-                                        TextAlignment="Center" />
+                                        TextSubmitted="ComboBox_TextSubmitted" />
 
                                     <TextBlock
                                         Grid.Column="1"
@@ -161,14 +167,18 @@
                                         Text=":" />
 
                                     <!--  Minutes  -->
-                                    <TextBox
+                                    <ComboBox
+                                        Name="MinutesTextBox"
                                         Grid.Column="2"
                                         MinWidth="60"
                                         HorizontalAlignment="Stretch"
                                         FontSize="22"
+                                        IsEditable="True"
+                                        ItemsSource="{Binding MinutesList}"
                                         PlaceholderText="m"
+                                        PreviewKeyDown="ComboBox_PreviewKeyDown"
                                         Text="{Binding Minutes, Mode=TwoWay}"
-                                        TextAlignment="Center" />
+                                        TextSubmitted="ComboBox_TextSubmitted" />
 
                                     <TextBlock
                                         Grid.Column="3"
@@ -179,14 +189,18 @@
                                         Text=":" />
 
                                     <!--  Seconds  -->
-                                    <TextBox
+                                    <ComboBox
+                                        Name="SecondsTextBox"
                                         Grid.Column="4"
                                         MinWidth="60"
                                         HorizontalAlignment="Stretch"
                                         FontSize="22"
+                                        IsEditable="True"
+                                        ItemsSource="{Binding SecondsList}"
                                         PlaceholderText="s"
+                                        PreviewKeyDown="ComboBox_PreviewKeyDown"
                                         Text="{Binding Seconds, Mode=TwoWay}"
-                                        TextAlignment="Center" />
+                                        TextSubmitted="ComboBox_TextSubmitted" />
                                 </Grid>
 
                                 <Button
@@ -195,6 +209,7 @@
                                     Height="36"
                                     Margin="8,0,0,0"
                                     VerticalAlignment="Center"
+                                    AutomationProperties.AutomationId="RemoveIntervalButton"
                                     Click="RemoveInterval_Click"
                                     Visibility="{Binding ShowRemoveButton, Converter={StaticResource BoolToVisibilityConverter}}">
                                     <FontIcon FontSize="16" Glyph="&#xE711;" />

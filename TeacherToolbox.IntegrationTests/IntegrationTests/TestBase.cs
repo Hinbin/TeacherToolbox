@@ -40,6 +40,7 @@ public class TestBase
     // Array of files to delete during setup
     private readonly string[] filesToDelete = new[]
     {
+        "settings.json",
         "centreNumber.json",
         "classes.json"
     };
@@ -48,7 +49,7 @@ public class TestBase
     public void BaseSetUp()
     {
         // Delete specified files if they exist
-        var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "\\TeacherToolbox";
         foreach (var fileName in filesToDelete)
         {
             string filePath = Path.Combine(localAppData, fileName);

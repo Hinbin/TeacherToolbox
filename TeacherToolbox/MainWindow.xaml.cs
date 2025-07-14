@@ -46,7 +46,7 @@ namespace TeacherToolbox
         private NamedPipeServerStream pipeServer;
         private WindowDragHelper dragHelper;
         private Process shortcutWatcherProcess;
-        private System.Threading.Timer watchdogTimer;
+        private Timer watchdogTimer;
         private const int MAX_RESTART_ATTEMPTS = 3;
         private int restartAttempts = 0;
         private bool isShortcutWatcherRunning = false;
@@ -624,7 +624,7 @@ namespace TeacherToolbox
                         Task.Delay(5000).ContinueWith(_ => VerifyShortcutWatcherRunning());
 
                         // Start a watchdog timer to periodically check if the process is still running
-                        watchdogTimer = new System.Threading.Timer(WatchdogCallback, null, 15000, 30000);
+                        watchdogTimer = new Timer(WatchdogCallback, null, 15000, 30000);
 
                         Debug.WriteLine($"ShortcutWatcher process started with PID: {shortcutWatcherProcess.Id}");
 

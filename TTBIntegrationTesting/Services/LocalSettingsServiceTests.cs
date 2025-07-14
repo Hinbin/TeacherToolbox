@@ -519,6 +519,6 @@ namespace TeacherToolbox.Tests.Services
         }
 
         // Override the file path property to use our test path
-        protected override string FilePath => _testFilePath;
+        public string FilePath => _testFilePath;
     }
 }

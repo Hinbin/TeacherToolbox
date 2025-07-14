@@ -74,7 +74,7 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
         public void NavigateToTimer_LoadsTimerPage()
         {
             NavigateToPage("Timer");
-            var timerPage = VerifyPageLoaded("Timer");
+            var timerPage = VerifyPageLoaded("TimerSelectionPage");
 
             // Wait for timer controls using helper
             var timerControls = WaitUntilFound<AutomationElement[]>(
@@ -125,7 +125,7 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
             // Define the standard navigation pages
             var navigationOrder = new[]
             {
-                ("Timer", "Timer"),
+                ("Timer", "TimerSelectionPage"),
                 ("Screen Ruler", "ScreenRulerPage"),
                 ("Exam Clock", "Clock"),
                 ("Random Name Generator", "RandomNameGenerator"),

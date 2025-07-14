@@ -1,15 +1,16 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <local:AutomatedPage
-    x:Class="TeacherToolbox.Controls.Timer"
+    x:Class="TeacherToolbox.Controls.TimerSelectionPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:local="using:TeacherToolbox.Controls"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    AutomationProperties.AutomationId="TimerSelectionPage"
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
     mc:Ignorable="d">
 
-    <Grid>
+    <Grid AutomationProperties.AutomationId="TimerSelectionGrid">
         <Viewbox>
             <Grid>
                 <Grid.RowDefinitions>
@@ -24,7 +25,7 @@
                 </Grid.ColumnDefinitions>
 
                 <Button
-                    x:Name="thirtySecondButton"
+                    x:Name="timer30Button"
                     Grid.Row="0"
                     Grid.Column="0"
                     Width="100"
@@ -34,6 +35,7 @@
                     Click="OpenTimer_Click"
                     Content="30 secs" />
                 <Button
+                    x:Name="timer60Button"
                     Grid.Row="0"
                     Grid.Column="1"
                     Width="100"
@@ -43,6 +45,7 @@
                     Click="OpenTimer_Click"
                     Content="1 mins" />
                 <Button
+                    x:Name="timer120Button"
                     Grid.Row="0"
                     Grid.Column="2"
                     Width="100"
@@ -52,6 +55,7 @@
                     Click="OpenTimer_Click"
                     Content="2 mins" />
                 <Button
+                    x:Name="timer180Button"
                     Grid.Row="0"
                     Grid.Column="3"
                     Width="100"
@@ -61,6 +65,7 @@
                     Click="OpenTimer_Click"
                     Content="3 mins" />
                 <Button
+                    x:Name="timer300Button"
                     Grid.Row="1"
                     Grid.Column="0"
                     Width="100"
@@ -70,6 +75,7 @@
                     Click="OpenTimer_Click"
                     Content="5 mins" />
                 <Button
+                    x:Name="timer600Button"
                     Grid.Row="1"
                     Grid.Column="1"
                     Width="100"
@@ -79,6 +85,7 @@
                     Click="OpenTimer_Click"
                     Content="10 mins" />
                 <Button
+                    x:Name="timerIntervalButton"
                     Grid.Row="1"
                     Grid.Column="2"
                     Width="100"
@@ -88,6 +95,7 @@
                     Click="OpenTimer_Click"
                     Content="Interval" />
                 <Button
+                    x:Name="timerCustomButton"
                     Grid.Row="1"
                     Grid.Column="3"
                     Width="100"

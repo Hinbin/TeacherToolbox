@@ -90,7 +90,6 @@ namespace TeacherToolbox.Controls
 
         }
 
-        // Update the InitializeUIElements method to properly handle the containers
         private void InitializeUIElements()
         {
             // Set default text for the timer
@@ -98,8 +97,13 @@ namespace TeacherToolbox.Controls
             {
                 timerText.Text = "00:00";
             }
-        }
 
+            // Make timeSelector focusable so it can receive keyboard events
+            if (timeSelector != null)
+            {
+                timeSelector.IsTabStop = true;
+            }
+        }
 
         private async void InitializeWindowAsync(int seconds)
         {
@@ -341,40 +345,96 @@ namespace TeacherToolbox.Controls
             UpdateIntervalNumbers();
         }
 
-        private void ComboBox_KeyDown(object sender, KeyRoutedEventArgs e)
+
+        private void ComboBox_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
         {
             if (e.Key == VirtualKey.Enter)
             {
-                e.Handled = true;
-                StartTimer_FromCustomSelection();
+                var comboBox = sender as ComboBox;
+
+                // Validate the current combobox
+                if (ValidateComboBoxValue(comboBox))
+                {
+                    // Check if all intervals have valid times before starting
+                    if (AreAllIntervalsValid())
+                    {
+                        e.Handled = true;
+                        StartTimer_FromCustomSelection();
+                    }
+                    else
+                    {
+                        e.Handled = true;
+                        // Optionally show a message or focus the first invalid field
+                        // FocusFirstInvalidInterval();
+                    }
+                }
+                else
+                {
+                    e.Handled = true;
+                    // Invalid input, don't start timer
+                }
             }
         }
 
         private void ComboBox_TextSubmitted(ComboBox sender, ComboBoxTextSubmittedEventArgs args)
         {
-            bool isValid = false;
-            if (int.TryParse(args.Text, out int value))
-            {
-                // Get the binding property name from the ComboBox's parent StackPanel
-                var stackPanel = VisualTreeHelper.GetParent(sender) as StackPanel;
-                var label = stackPanel?.Children.OfType<TextBlock>().FirstOrDefault();
-                string propertyName = label?.Text.ToLower();
-
-                if (propertyName == "hours" && value >= 0 && value < 24)
-                {
-                    isValid = true;
-                }
-                else if ((propertyName == "minutes" || propertyName == "seconds") && value >= 0 && value < 60)
-                {
-                    isValid = true;
-                }
-            }
+            bool isValid = ValidateComboBoxValue(sender);
 
             if (!isValid)
             {
                 args.Handled = true;
                 sender.Text = "0";
             }
+        }
+
+        private bool ValidateComboBoxValue(ComboBox comboBox)
+        {
+            if (comboBox == null) return false;
+
+            if (!int.TryParse(comboBox.Text, out int value))
+            {
+                return false;
+            }
+
+            string comboBoxName = comboBox.Name.ToLower();
+
+            if (comboBoxName.Contains("hours") && value >= 0 && value < 24)
+            {
+                return true;
+            }
+            else if ((comboBoxName.Contains("minutes") || comboBoxName.Contains("seconds")) && value >= 0 && value < 60)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        private bool AreAllIntervalsValid()
+        {
+            if (intervalsList == null || intervalsList.Count == 0)
+            {
+                return false;
+            }
+
+            foreach (var interval in intervalsList)
+            {
+                // Check if the interval has a valid total time (at least 1 second)
+                if (interval.TotalSeconds <= 0)
+                {
+                    return false;
+                }
+
+                // Validate individual components
+                if (interval.Hours < 0 || interval.Hours >= 24 ||
+                    interval.Minutes < 0 || interval.Minutes >= 60 ||
+                    interval.Seconds < 0 || interval.Seconds >= 60)
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         private void StartButton_Click(object sender, RoutedEventArgs e)

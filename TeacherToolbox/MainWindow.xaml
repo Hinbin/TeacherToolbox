@@ -40,7 +40,7 @@
                         <FontIcon FontFamily="Segoe MDL2 Assets" Glyph="&#xE9CE;" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem Content="Timer" Tag="TeacherToolbox.Controls.Timer">
+                <NavigationViewItem Content="Timer" Tag="TeacherToolbox.Controls.TimerSelectionPage">
                     <NavigationViewItem.Icon>
                         <FontIcon FontFamily="Segoe MDL2 Assets" Glyph="&#xF182;" />
                     </NavigationViewItem.Icon>

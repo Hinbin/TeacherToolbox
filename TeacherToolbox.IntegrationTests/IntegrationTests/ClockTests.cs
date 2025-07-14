@@ -31,6 +31,7 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
         private const int TwelveOClockOffsetX = 10; // Increased offset to ensure 12:01+ position
         private const int LargerClockRadius = 70; // For tests using larger radius
 
+
         [SetUp]
         public void ClockSetUp()
         {
@@ -43,8 +44,13 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
             InitializeClockElements();
             Wait.UntilResponsive(_clockPage!);
             Wait.UntilResponsive(_digitalTimeDisplay);
+
+            // Close the TeachingTip if it's open
+            DismissTeachingTipIfOpen();
+
             Wait.UntilInputIsProcessed();
         }
+
 
         private void InitializeClockElements()
         {
@@ -506,6 +512,46 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
             catch
             {
                 return new AutomationElement[0];
+            }
+        }
+
+        private void DismissTeachingTipIfOpen()
+        {
+            try
+            {
+                // Look for the teaching tip
+                var teachingTip = _clockPage!.FindFirstDescendant(cf =>
+                    cf.ByAutomationId("ClockInstructionTip"));
+
+                if (teachingTip != null && teachingTip.IsEnabled)
+                {
+                    // Method 1: Try to find and click the close button
+                    var closeButton = teachingTip.FindFirstDescendant(cf =>
+                        cf.ByName("Got it!").And(cf.ByControlType(ControlType.Button)));
+
+                    if (closeButton != null)
+                    {
+                        closeButton.Click();
+                        Wait.UntilInputIsProcessed();
+                        return;
+                    }
+
+                    // Method 2: If close button not found, try light dismiss by clicking on clock canvas
+                    if (_clockCanvas != null)
+                    {
+                        var clockCenter = GetClockCenterPoint();
+                        Mouse.MoveTo(clockCenter);
+                        Wait.UntilInputIsProcessed();
+                        Mouse.Click();
+                        Wait.UntilInputIsProcessed();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log the exception but don't fail the test setup
+                // The teaching tip might not be present, which is fine
+                Console.WriteLine($"Note: Could not dismiss teaching tip: {ex.Message}");
             }
         }
 

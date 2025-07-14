@@ -34,6 +34,7 @@
         <TeachingTip
             x:Name="ClockInstructionTip"
             Title="Exam Clock Controls"
+            AutomationProperties.AutomationId="ClockInstructionTip"
             CloseButtonContent="Got it!"
             IsLightDismissEnabled="True"
             PlacementMargin="20"
