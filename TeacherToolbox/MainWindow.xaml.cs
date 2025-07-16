@@ -940,7 +940,7 @@ namespace TeacherToolbox
             // If navigation occurs on SelectionChanged, this isn't needed.
             // Because we use ItemInvoked to navigate, we need to call Navigate
             // here to load the home page.
-            NavView_Navigate(typeof(RandomNameGenerator), new EntranceNavigationTransitionInfo());
+            NavView_Navigate(typeof(RandomNameGeneratorPage), new EntranceNavigationTransitionInfo());
             NavView.Header = null;
         }
 
@@ -988,7 +988,7 @@ namespace TeacherToolbox
             dragHelper.OnNavigate();
 
             // Only enable always on top for the RNG page
-            if (ContentFrame.SourcePageType == typeof(RandomNameGenerator))
+            if (ContentFrame.SourcePageType == typeof(RandomNameGeneratorPage))
             {
                 this.SetIsAlwaysOnTop(true);
             }
@@ -1053,32 +1053,6 @@ namespace TeacherToolbox
         private void Grid_PointerMoved(object sender, PointerRoutedEventArgs e)
         {
             dragHelper.PointerMoved(sender, e);
-        }
-
-        private void NavView_Tapped(object sender, TappedRoutedEventArgs e)
-        {
-            // If the random name generator is currently open, generate a new name
-            // Call the GenerateName function of the RandomNameGenerator page
-            if (ContentFrame.Content is RandomNameGenerator randomNameGenerator)
-            {
-                // Return if a button was the source of the tap
-                if (e.OriginalSource is Button)
-                {
-                    return;
-                }
-
-                // If the sender is a text block with the word start, return
-                if (e.OriginalSource is TextBlock textBlock)
-                {
-                    if (textBlock.Text == "Add Class" || textBlock.Text == "Remove Class" || textBlock.Text == "More")
-                    {
-                        return;
-                    }
-                }
-
-
-                randomNameGenerator.GenerateName();
-            }
         }
 
         private void SetRegionsForCustomTitleBar()
@@ -1189,15 +1163,15 @@ namespace TeacherToolbox
                             // Grab focus and unminiize the window
                             this.Activate();
 
-                            // Navigate to the RandomNameGenerator page if needed
-                            if (ContentFrame.SourcePageType != typeof(RandomNameGenerator))
+                            // Navigate to the RandomNameGeneratorPage page if needed
+                            if (ContentFrame.SourcePageType != typeof(RandomNameGeneratorPage))
                             {
                                 NavView.SelectedItem = NavView.MenuItems[1];
-                                NavView_Navigate(typeof(RandomNameGenerator), new EntranceNavigationTransitionInfo());
+                                NavView_Navigate(typeof(RandomNameGeneratorPage), new EntranceNavigationTransitionInfo());
                             }
 
-                            // Call the GenerateName function of the RandomNameGenerator page
-                            if (ContentFrame.Content is RandomNameGenerator randomNameGenerator)
+                            // Call the GenerateName function of the RandomNameGeneratorPage page
+                            if (ContentFrame.Content is RandomNameGeneratorPage randomNameGenerator)
                             {
                                 randomNameGenerator.GenerateName();
                             }

@@ -31,11 +31,10 @@
             ItemInvoked="NavView_ItemInvoked"
             Loaded="NavView_Loaded"
             PaneDisplayMode="LeftMinimal"
-            PaneHeader="{x:Null}"
-            Tapped="NavView_Tapped">
+            PaneHeader="{x:Null}">
 
             <NavigationView.MenuItems>
-                <NavigationViewItem Content="Random Name Generator" Tag="TeacherToolbox.Controls.RandomNameGenerator">
+                <NavigationViewItem Content="Random Name Generator" Tag="TeacherToolbox.Controls.RandomNameGeneratorPage">
                     <NavigationViewItem.Icon>
                         <FontIcon FontFamily="Segoe MDL2 Assets" Glyph="&#xE9CE;" />
                     </NavigationViewItem.Icon>

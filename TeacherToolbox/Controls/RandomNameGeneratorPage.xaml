@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Page
+    x:Class="TeacherToolbox.Controls.RandomNameGeneratorPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:converters="using:TeacherToolbox.Converters"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="using:TeacherToolbox.Controls"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:model="using:TeacherToolbox.Model"
+    x:Name="Page"
+    AutomationProperties.AutomationId="RandomNameGeneratorPage"
+    AutomationProperties.Name="RandomNameGeneratorPage"
+    mc:Ignorable="d">
+
+    <Page.Resources>
+        <converters:IsSelectedToStyleConverter
+            x:Key="IsSelectedToStyleConverter"
+            DefaultStyle="{StaticResource DefaultButtonStyle}"
+            SelectedStyle="{StaticResource AccentButtonStyle}" />
+    </Page.Resources>
+
+    <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" Tapped="Page_Tapped">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="3*" />
+            <RowDefinition Height="1*" />
+        </Grid.RowDefinitions>
+
+        <!--  Main Display Area  -->
+        <Grid Grid.Row="0">
+            <!--  Name Display  -->
+            <Viewbox
+                x:Name="NameViewbox"
+                MaxWidth="800"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Visibility="{x:Bind ViewModel.IsNameVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                <TextBlock
+                    x:Name="NameDisplay"
+                    AutomationProperties.AutomationId="NameDisplay"
+                    FontSize="72"
+                    FontWeight="Bold"
+                    Text="{x:Bind ViewModel.NameDisplay, Mode=OneWay}"
+                    TextAlignment="Center" />
+            </Viewbox>
+
+            <!--  Tip Display  -->
+            <Border
+                x:Name="TipContainer"
+                MaxWidth="600"
+                Padding="12"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                CornerRadius="8"
+                Visibility="{x:Bind ViewModel.IsTipVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                <StackPanel Spacing="16">
+                    <TextBlock
+                        HorizontalAlignment="Center"
+                        Style="{StaticResource SubtitleTextBlockStyle}"
+                        Text="💡 Tip of the Day" />
+                    <TextBlock
+                        AutomationProperties.AutomationId="TipContent"
+                        AutomationProperties.Name="TipContent"
+                        Style="{StaticResource BodyTextBlockStyle}"
+                        Text="{x:Bind ViewModel.TipText, Mode=OneWay}"
+                        TextAlignment="Center"
+                        TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!--  Class Selection Panel  -->
+        <Viewbox
+            Grid.Row="1"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            Stretch="Uniform"
+            StretchDirection="DownOnly">
+            <StackPanel
+                Padding="5"
+                AutomationProperties.AutomationId="ClassesViewer"
+                AutomationProperties.Name="ClassesViewer"
+                Orientation="Horizontal"
+                Spacing="10">
+
+                <!--  Class Buttons (Data bound to VisibleClasses)  -->
+                <ItemsControl ItemsSource="{x:Bind ViewModel.VisibleClasses, Mode=OneWay}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" Spacing="10" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="model:StudentClass">
+                            <Button
+                                Click="SelectClass_Click"
+                                Content="{x:Bind ClassName}"
+                                RightTapped="Class_Right_Clicked"
+                                Style="{x:Bind IsSelected, Mode=OneWay, Converter={StaticResource IsSelectedToStyleConverter}}"
+                                Tag="{x:Bind Mode=OneWay}" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!--  More Button (Dropdown for overflow classes and additional commands)  -->
+                <DropDownButton
+                    x:Name="MoreButton"
+                    Content="More"
+                    Loaded="MoreButton_Loaded"
+                    Visibility="{x:Bind ViewModel.ShowMoreButton, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <DropDownButton.Flyout>
+                        <MenuFlyout x:Name="MoreMenuFlyout" />
+                    </DropDownButton.Flyout>
+                </DropDownButton>
+
+                <!--  Add Class Button (shown directly when 3 or fewer classes)  -->
+                <Button
+                    Command="{x:Bind ViewModel.AddClassCommand}"
+                    Content="Add Class"
+                    Visibility="{x:Bind ViewModel.ShowAddRemoveButtonsDirectly, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+
+                <!--  Remove Class Button (shown directly when 3 or fewer classes)  -->
+                <Button
+                    Command="{x:Bind ViewModel.RemoveClassCommand}"
+                    Content="Remove Class"
+                    Visibility="{x:Bind ViewModel.ShowAddRemoveButtonsDirectly, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+
+                <!--  Get Started Button  -->
+                <Button
+                    Command="{x:Bind ViewModel.ShowInstructionsCommand}"
+                    Content="Get Started"
+                    Tapped="Button_Tapped"
+                    Visibility="{x:Bind ViewModel.IsInstructionVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+            </StackPanel>
+        </Viewbox>
+    </Grid>
+</Page>

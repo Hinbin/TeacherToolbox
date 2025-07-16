@@ -37,7 +37,7 @@ namespace TeacherToolbox.Model
         public async Task LoadClasses()
         {
             // Load classes.json
-            string filePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "classes.json");
+            string filePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TeacherToolbox", "classes.json");
 
             // Handle any exceptions - don't load the file if there is an exception
 
@@ -107,7 +107,8 @@ namespace TeacherToolbox.Model
             string json = JsonSerializer.Serialize(studentClasses);
 
             // Specify the file path where you want to save the JSON file
-            string filePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "classes.json");
+
+            string filePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TeacherToolbox", "classes.json");
 
             // Write the serialized JSON string to the specified file path
             File.WriteAllText(filePath, json);

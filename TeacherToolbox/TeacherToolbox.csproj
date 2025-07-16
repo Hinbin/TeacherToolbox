@@ -18,7 +18,6 @@
   <ItemGroup>
     <None Remove="Assets\TTBHelp.png" />
     <None Remove="Controls\ExpanderItem.xaml" />
-    <None Remove="Controls\RandomNameGenerator.xaml" />
     <None Remove="Controls\ScreenRulerPage.xaml" />
     <None Remove="Controls\ScreenRulerWindow.xaml" />
     <None Remove="Controls\TimerWindow.xaml" />
@@ -65,7 +64,7 @@
     </Page>
   </ItemGroup>
   <ItemGroup>
-    <Page Update="Controls\RandomNameGenerator.xaml">
+    <Page Update="Controls\RandomNameGeneratorPage.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
   </ItemGroup>

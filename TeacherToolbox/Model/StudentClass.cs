@@ -4,10 +4,11 @@ using System.Linq;
 using Windows.Storage;
 using System.Text;
 using System.Threading.Tasks;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace TeacherToolbox.Model
 {
-    public class StudentClass
+    public class StudentClass : ObservableObject
     {
         public string ClassName { get; set; }
         public string ClassPath { get; set; }
@@ -17,6 +18,7 @@ namespace TeacherToolbox.Model
         // Define a list to keep track of previously selected students
         private readonly List<Student> previouslySelected = new();
         private Student lastStudentSelected;
+        private bool _isSelected;
 
         public StudentClass(string className, string classPath)
         {
@@ -45,6 +47,12 @@ namespace TeacherToolbox.Model
         public void ClearStudents()
         {
             Students.Clear();
+        }
+
+        public bool IsSelected
+        {
+            get => _isSelected;
+            set => SetProperty(ref _isSelected, value);
         }
 
         public async Task LoadStudents()

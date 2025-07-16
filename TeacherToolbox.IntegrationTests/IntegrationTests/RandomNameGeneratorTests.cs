@@ -40,7 +40,7 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
             rngNavItem?.Click();
 
             // Check if RNG page is loaded using the Base class methods
-            _rngPage = VerifyPageLoaded("RandomNameGenerator");
+            _rngPage = VerifyPageLoaded("RandomNameGeneratorPage");
         }
 
         [Test]
@@ -68,10 +68,13 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
 
             OpenClassFile_NavigatesToFileAndOpens("8xCs2.txt");
 
-            // Wait for class count to increase using base class WaitUntilCondition
-            WaitUntilCondition(
-                () => CountClassLists() == initialClassCount + 2,
-                "A new class should be added (+2 for remove class)");
+            // Check to see if a new class was added with text 8xCs2
+            var classList = GetClassList().ToList();
+
+
+            // Verify the new class is present
+            var newClass = classList.FirstOrDefault(c => c.AsButton().Name.Contains("8xCs2"));
+            Assert.That(newClass, Is.Not.Null, "New class '8xCs2' should be added");
         }
 
         [Test]

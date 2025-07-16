@@ -42,6 +42,8 @@ namespace TeacherToolbox
             // Register theme service as singleton
             services.AddSingleton<IThemeService>(provider => new ThemeService(this));
 
+            services.AddSingleton<IFilePickerService, FilePickerService>();
+
             // Register other services
             services.AddTransient<ISleepPreventer, SleepPreventer>();
             services.AddTransient<ITimerService, DispatcherTimerService>();
@@ -50,6 +52,7 @@ namespace TeacherToolbox
             services.AddTransient<SettingsViewModel>();
             services.AddTransient<ClockViewModel>();
             services.AddTransient<TimerWindowViewModel>();
+            services.AddTransient<RandomNameGeneratorViewModel>();
         }
 
         protected override async void OnLaunched(LaunchActivatedEventArgs args)
