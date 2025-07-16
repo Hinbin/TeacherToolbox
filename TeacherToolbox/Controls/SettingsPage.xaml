@@ -38,13 +38,17 @@
                 Text="Settings" />
 
             <!--  Feedback section  -->
-            <local:ExpanderItem Header="Feedback" Subheader="Report bugs and suggest improvements by clicking on this button">
+            <local:ExpanderItem Header="Feedback" Subheader="Report bugs and suggest improvements by clicking on these buttons">
                 <local:ExpanderItem.ItemContent>
                     <StackPanel Spacing="8">
                         <Button
-                            x:Name="FeedbackButton"
+                            x:Name="SendFeedbackButton"
                             Command="{Binding SendFeedbackCommand}"
                             Content="Send Feedback" />
+                        <Button
+                            x:Name="ViewFeedbackButton"
+                            Command="{Binding ViewFeedbackCommand}"
+                            Content="View Feedback" />
                     </StackPanel>
                 </local:ExpanderItem.ItemContent>
             </local:ExpanderItem>
@@ -147,7 +151,7 @@
 
                 <local:ExpanderItem Header="Teacher Toolbox">
                     <local:ExpanderItem.ItemContent>
-                        <TextBlock Style="{StaticResource CaptionTextBlockStyle}" Text="Version 0.2" />
+                        <TextBlock Style="{StaticResource CaptionTextBlockStyle}" Text="Version 0.23" />
                     </local:ExpanderItem.ItemContent>
                 </local:ExpanderItem>
             </StackPanel>

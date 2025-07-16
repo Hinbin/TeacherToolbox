@@ -116,7 +116,7 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
         public void NavigateToRNG_LoadsRNGPage()
         {
             NavigateToPage("Random Name Generator");
-            VerifyPageLoaded("RandomNameGenerator");
+            VerifyPageLoaded("RandomNameGeneratorPage");
         }
 
         [Test]
@@ -128,7 +128,7 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
                 ("Timer", "TimerSelectionPage"),
                 ("Screen Ruler", "ScreenRulerPage"),
                 ("Exam Clock", "Clock"),
-                ("Random Name Generator", "RandomNameGenerator"),
+                ("Random Name Generator", "RandomNameGeneratorPage"),
                 ("Settings", "SettingsPage")
             };
 

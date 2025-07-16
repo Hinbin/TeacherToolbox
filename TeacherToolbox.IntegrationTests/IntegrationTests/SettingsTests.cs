@@ -420,7 +420,7 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
 
             // Wait for navigation to complete using base class helper
             WaitUntilFound<AutomationElement>(
-                () => MainWindow!.FindFirstDescendant(cf => cf.ByAutomationId("RandomNameGenerator")),
+                () => MainWindow!.FindFirstDescendant(cf => cf.ByAutomationId("RandomNameGeneratorPage")),
                 "Should navigate to Random Name Generator page");
 
             // Navigate back to Settings

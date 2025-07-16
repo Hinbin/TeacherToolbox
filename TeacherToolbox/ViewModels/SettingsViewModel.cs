@@ -72,6 +72,7 @@ namespace TeacherToolbox.ViewModels
         // Commands
         public IRelayCommand TestSoundCommand { get; }
         public IRelayCommand SendFeedbackCommand { get; }
+        public IRelayCommand ViewFeedbackCommand { get; }
 
         // Events for view interaction
         public event Action<ElementTheme> ThemeChanged;
@@ -94,6 +95,7 @@ namespace TeacherToolbox.ViewModels
             // Initialize commands
             TestSoundCommand = new AsyncRelayCommand(TestSoundAsync);
             SendFeedbackCommand = new AsyncRelayCommand(SendFeedbackAsync);
+            ViewFeedbackCommand = new AsyncRelayCommand(ViewFeedbackAsync);
 
             // Initialize settings
             InitializeSettings();
@@ -185,7 +187,20 @@ namespace TeacherToolbox.ViewModels
         {
             try
             {
-                var uri = new Uri("https://teachertoolbox.canny.io/feature-requests/");
+                var uri = new Uri("https://docs.google.com/forms/d/e/1FAIpQLScAKZmB6CN7jBhIiZ7E25Vn_80yPTEUWBTNV4ZMJQEeXrF42g/viewform");
+                await Windows.System.Launcher.LaunchUriAsync(uri);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error launching feedback URL: {ex.Message}");
+            }
+        }
+
+        private async Task ViewFeedbackAsync()
+        {
+            try
+            {
+                var uri = new Uri("https://docs.google.com/spreadsheets/d/1fdZeVxytN2yPmk5jKqhIFK6_U_6s66v6A4w2uh_SBxA/edit?gid=0#gid=0");
                 await Windows.System.Launcher.LaunchUriAsync(uri);
             }
             catch (Exception ex)

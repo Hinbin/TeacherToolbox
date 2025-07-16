@@ -563,7 +563,7 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
 
             // Wait for navigation
             WaitUntilFound<AutomationElement>(
-                () => MainWindow!.FindFirstDescendant(cf => cf.ByAutomationId("RandomNameGenerator")),
+                () => MainWindow!.FindFirstDescendant(cf => cf.ByAutomationId("RandomNameGeneratorPage")),
                 "Should navigate away from clock");
 
             // Navigate back to clock

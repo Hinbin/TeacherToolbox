@@ -4,6 +4,7 @@ using Microsoft.UI.Xaml.Automation.Peers;
 using TeacherToolbox.Helpers;
 using TeacherToolbox.Services;
 using TeacherToolbox.ViewModels;
+using System;
 
 namespace TeacherToolbox.Controls
 {

@@ -1045,6 +1045,87 @@ namespace TeacherToolbox.Controls
             }
         }
 
+        private void TimeTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            var textBox = sender as TextBox;
+            if (textBox == null) return;
+
+            // Get the data context (should be IntervalTimeViewModel)
+            var viewModel = textBox.DataContext as IntervalTimeViewModel;
+            if (viewModel == null) return;
+
+            // Get the binding property name
+            var bindingExpression = textBox.GetBindingExpression(TextBox.TextProperty);
+            if (bindingExpression == null) return;
+
+            string propertyName = bindingExpression.ParentBinding.Path.Path;
+
+            // If the text is empty, interpret as 0 internally but keep the UI blank
+            if (string.IsNullOrEmpty(textBox.Text))
+            {
+                // Temporarily disable TextChanged event handler to prevent recursion
+                textBox.TextChanged -= TimeTextBox_TextChanged;
+
+                // Set the internal value to 0 but keep the UI field blank
+                switch (propertyName)
+                {
+                    case "Hours":
+                        viewModel.Hours = 0;
+                        break;
+                    case "Minutes":
+                        viewModel.Minutes = 0;
+                        break;
+                    case "Seconds":
+                        viewModel.Seconds = 0;
+                        break;
+                }
+
+                // Ensure the text remains empty in the UI
+                if (textBox.Text != "")
+                {
+                    textBox.Text = "";
+                }
+
+                // Re-enable the TextChanged event handler
+                textBox.TextChanged += TimeTextBox_TextChanged;
+                return;
+            }
+
+            // If not empty, validate that it's a valid number and within range
+            if (int.TryParse(textBox.Text, out int value))
+            {
+                bool isValid = false;
+
+                if (propertyName == "Hours" && value >= 0 && value < 24)
+                {
+                    isValid = true;
+                }
+                else if ((propertyName == "Minutes" || propertyName == "Seconds") && value >= 0 && value < 60)
+                {
+                    isValid = true;
+                }
+
+                if (!isValid)
+                {
+                    // Invalid value - set to 0 but preserve cursor position
+                    int cursorPosition = textBox.SelectionStart;
+                    textBox.TextChanged -= TimeTextBox_TextChanged;
+                    textBox.Text = "0";
+                    textBox.SelectionStart = Math.Min(cursorPosition, textBox.Text.Length);
+                    textBox.TextChanged += TimeTextBox_TextChanged;
+                }
+            }
+            else if (!string.IsNullOrEmpty(textBox.Text))
+            {
+                // Not a valid number - set to 0 but preserve cursor position
+                int cursorPosition = textBox.SelectionStart;
+                textBox.TextChanged -= TimeTextBox_TextChanged;
+                textBox.Text = "0";
+                textBox.SelectionStart = Math.Min(cursorPosition, textBox.Text.Length);
+                textBox.TextChanged += TimeTextBox_TextChanged;
+            }
+        }
+
 
         private void Grid_PointerPressed(object sender, PointerRoutedEventArgs e)
         {
