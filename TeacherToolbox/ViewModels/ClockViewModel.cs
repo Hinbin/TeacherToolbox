@@ -30,6 +30,8 @@ namespace TeacherToolbox.ViewModels
         private readonly ISettingsService _settingsService;
         private readonly ITimerService _timerService;
         private readonly IThemeService _themeService;
+
+
         private DateTime _currentTime;
         private TimeSpan _timeOffset;
         private string _digitalTimeText;

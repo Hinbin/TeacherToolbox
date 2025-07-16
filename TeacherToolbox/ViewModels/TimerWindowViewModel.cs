@@ -24,9 +24,9 @@ namespace TeacherToolbox.ViewModels
         // Services
         private readonly ISettingsService _settingsService;
         private readonly IThemeService _themeService;
+        private readonly ITimerService _timerService;
 
         // Timer state
-        private DispatcherTimer _timer;
         private int _secondsLeft;
         private int _initialSeconds;
         private bool _isPaused;
@@ -163,11 +163,17 @@ namespace TeacherToolbox.ViewModels
         #region Constructor
 
         // Constructor with dependency injection
-        public TimerWindowViewModel(ISettingsService settingsService, int seconds, IThemeService themeService = null)
+        public TimerWindowViewModel(
+          ISettingsService settingsService,
+          int seconds,
+          IThemeService themeService,
+          ITimerService timerService) 
         {
             _settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
+            _timerService = timerService ?? throw new ArgumentNullException(nameof(timerService));
             _initialSeconds = seconds;
             _themeService = themeService ?? throw new ArgumentNullException(nameof(themeService));
+
 
             // Initialize commands
             StartTimerCommand = new RelayCommand(StartTimerFromSelection);
@@ -386,21 +392,13 @@ namespace TeacherToolbox.ViewModels
 
         private void StartTimer()
         {
-            if (_timer != null)
-            {
-                _timer.Stop();
-                _timer.Tick -= TimerTick;
-            }
-
-            _timer = new DispatcherTimer();
-            _timer.Interval = TimeSpan.FromSeconds(1);
-            _timer.Tick += TimerTick;
-            _timer.Start();
-
-            IsPaused = false;
+            _timerService.Tick -= OnTimerTick; // Add this line
+            _timerService.Interval = TimeSpan.FromSeconds(1);
+            _timerService.Tick += OnTimerTick;
+            _timerService.Start();
         }
 
-        private void TimerTick(object sender, object e)
+        private void OnTimerTick(object sender, object e)
         {
             _secondsLeft--;
             UpdateTimerText();
@@ -450,7 +448,7 @@ namespace TeacherToolbox.ViewModels
             switch (behavior)
             {
                 case TimerFinishBehavior.CloseTimer:
-                    _timer.Stop();
+                    _timerService.Stop();
                     TimerTextColor = new SolidColorBrush(Microsoft.UI.Colors.Red);
 
                     // Signal that the timer is finished, view should close the window
@@ -463,7 +461,7 @@ namespace TeacherToolbox.ViewModels
                     break;
 
                 case TimerFinishBehavior.StayAtZero:
-                    _timer.Stop();
+                    _timerService.Stop();
                     TimerTextColor = new SolidColorBrush(Microsoft.UI.Colors.Red);
                     _secondsLeft = 0;
                     UpdateTimerText();
@@ -547,14 +545,14 @@ namespace TeacherToolbox.ViewModels
 
         private void PauseResumeTimer()
         {
-            if (_timer == null) return;
+            if (_timerService == null) return;
 
             // Prevent pausing immediately after starting
             if (_secondsLeft == _currentIntervalTotal) return;
 
-            if (_timer.IsEnabled)
+            if (_timerService.IsEnabled)
             {
-                _timer.Stop();
+                _timerService.Stop();
                 IsPaused = true;
 
                 // Set visual indication of pause
@@ -562,7 +560,7 @@ namespace TeacherToolbox.ViewModels
             }
             else
             {
-                _timer.Start();
+                _timerService.Start();
                 IsPaused = false;
 
                 // Use theme color for trail
@@ -616,11 +614,24 @@ namespace TeacherToolbox.ViewModels
 
         public void Dispose()
         {
-            _timer?.Stop();
-            _timer = null;
+            // Properly dispose timer service
+            if (_timerService != null)
+            {
+                _timerService.Tick -= OnTimerTick; // Unsubscribe first
+                _timerService.Stop();
 
-            _player?.Dispose();
-            _player = null;
+                if (_timerService is IDisposable disposableTimer)
+                {
+                    disposableTimer.Dispose();
+                }
+            }
+
+            // Properly dispose media player
+            if (_player != null)
+            {
+                _player.Dispose();
+                _player = null;
+            }
         }
 
         #endregion
