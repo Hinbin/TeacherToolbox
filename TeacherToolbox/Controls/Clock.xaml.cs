@@ -266,13 +266,13 @@ namespace TeacherToolbox.Controls
 
         private void Clock_Pointer_Pressed(object sender, PointerRoutedEventArgs e)
         {
-            if (ViewModel?.IsPaused == true) return;
+            if (ViewModel?.IsPaused == true && ViewModel?.IsMockMode != true) return;
 
             var canvas = (Canvas)sender;
             canvas.CapturePointer(e.Pointer);
 
-            var point = e.GetCurrentPoint(canvas).Position;
-            var timeSelected = GetTimeFromPoint(point);
+            var point = e.GetCurrentPoint((UIElement)sender).Position;
+            var timeSelected = ViewModel.GetMinutesFromCoordinate(point);
 
             var existingSlice = ViewModel?.FindTimeSliceAtPosition(timeSelected[0], timeSelected[1]);
             _selectedGaugeName = existingSlice?.Name;
@@ -331,13 +331,13 @@ namespace TeacherToolbox.Controls
             e.Handled = true;
 
             // Don't process if paused in mock mode
-            if (ViewModel?.IsPaused == true) return;
+            if (ViewModel?.IsPaused == true && ViewModel?.IsMockMode != true) return;
 
             if (!e.Pointer.IsInContact || string.IsNullOrEmpty(_selectedGaugeName))
                 return;
 
             var point = e.GetCurrentPoint((UIElement)sender).Position;
-            var timeSelected = GetTimeFromPoint(point);
+            var timeSelected = ViewModel.GetMinutesFromCoordinate(point);
 
             // Check if the time selected already contains a time slice in the SAME radial level as our selected gauge
             // This allows dragging across radial levels while preventing collision with slices in the same level

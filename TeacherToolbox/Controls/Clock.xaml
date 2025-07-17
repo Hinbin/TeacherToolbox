@@ -27,8 +27,8 @@
             <ColumnDefinition Width="2*" />
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
-            <RowDefinition Height="5*" />
-            <RowDefinition Height="4*" />
+            <RowDefinition Height="7*" />
+            <RowDefinition Height="2*" />
             <RowDefinition Height="Auto" MinHeight="40" />
         </Grid.RowDefinitions>
 
@@ -99,73 +99,120 @@
                 TextWrapping="NoWrap" />
         </Viewbox>
 
-        <!--  Mock Mode Controls - shown when Mock Mode is ON  -->
-        <Grid
-            x:Name="MockControlsGrid"
+        <!--  Mock Mode Controls - shown when Mock Mode is ON (now properly scaled and extended)  -->
+        <Viewbox
             Grid.Row="0"
+            Grid.RowSpan="2"
             Grid.Column="1"
-            Margin="10"
+            Margin="5"
+            Stretch="Uniform"
+            StretchDirection="Both"
             Visibility="{x:Bind ViewModel.IsMockMode, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-            </Grid.RowDefinitions>
+            <Grid
+                x:Name="MockControlsGrid"
+                Width="280"
+                Height="380">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
 
-            <TextBlock
-                Grid.Row="0"
-                Margin="0,0,0,10"
-                HorizontalAlignment="Center"
-                FontWeight="Bold"
-                Text="Mock Mode Controls" />
+                <TextBlock
+                    Grid.Row="0"
+                    Margin="0,0,0,18"
+                    HorizontalAlignment="Center"
+                    FontSize="16"
+                    FontWeight="Bold"
+                    Text="Mock Mode Controls" />
 
-            <!--  Time Adjustment Controls  -->
-            <StackPanel
-                Grid.Row="1"
-                Margin="0,5"
-                HorizontalAlignment="Center"
-                Orientation="Horizontal">
+                <!--  Large Time Adjustment Controls (+/- 5 minutes)  -->
+                <StackPanel
+                    Grid.Row="1"
+                    Margin="0,10"
+                    HorizontalAlignment="Center"
+                    Orientation="Horizontal">
+                    <Button
+                        x:Name="FiveMinutesBackButton"
+                        Width="125"
+                        Height="40"
+                        Margin="4"
+                        Command="{x:Bind ViewModel.NudgeTimeCommand}"
+                        CommandParameter="-5"
+                        Content="◀◀ -5 Min" />
+                    <Button
+                        x:Name="FiveMinutesForwardButton"
+                        Width="125"
+                        Height="40"
+                        Margin="4"
+                        Command="{x:Bind ViewModel.NudgeTimeCommand}"
+                        CommandParameter="5"
+                        Content="+5 Min ▶▶" />
+                </StackPanel>
+
+                <!--  Small Time Adjustment Controls (+/- 1 minute)  -->
+                <StackPanel
+                    Grid.Row="2"
+                    Margin="0,10"
+                    HorizontalAlignment="Center"
+                    Orientation="Horizontal">
+                    <Button
+                        x:Name="MinuteBackButton"
+                        Width="125"
+                        Height="40"
+                        Margin="4"
+                        Command="{x:Bind ViewModel.NudgeTimeCommand}"
+                        CommandParameter="-1"
+                        Content="◀ -1 Min" />
+                    <Button
+                        x:Name="MinuteForwardButton"
+                        Width="125"
+                        Height="40"
+                        Margin="4"
+                        Command="{x:Bind ViewModel.NudgeTimeCommand}"
+                        CommandParameter="1"
+                        Content="+1 Min ▶" />
+                </StackPanel>
+
+                <!--  Pause/Resume Button with Icons  -->
                 <Button
-                    x:Name="MinuteBackButton"
-                    Margin="2"
-                    Command="{x:Bind ViewModel.NudgeTimeCommand}"
-                    CommandParameter="-1"
-                    Content="◀ -1 Min" />
-                <Button
-                    x:Name="MinuteForwardButton"
-                    Margin="2"
-                    Command="{x:Bind ViewModel.NudgeTimeCommand}"
-                    CommandParameter="1"
-                    Content="+1 Min ▶" />
-            </StackPanel>
+                    x:Name="PauseResumeButton"
+                    Grid.Row="3"
+                    Width="140"
+                    Height="45"
+                    Margin="0,12"
+                    HorizontalAlignment="Center"
+                    Command="{x:Bind ViewModel.TogglePauseCommand}">
+                    <StackPanel Orientation="Horizontal">
+                        <FontIcon
+                            Margin="0,0,8,0"
+                            FontFamily="Segoe MDL2 Assets"
+                            FontSize="18"
+                            Glyph="{x:Bind ViewModel.IsPaused, Mode=OneWay, Converter={StaticResource PauseResumeIconConverter}}" />
+                        <TextBlock FontSize="14" Text="{x:Bind ViewModel.IsPaused, Mode=OneWay, Converter={StaticResource PauseResumeTextConverter}}" />
+                    </StackPanel>
+                </Button>
 
-            <!--  Pause/Resume Button  -->
-            <Button
-                x:Name="PauseResumeButton"
-                Grid.Row="2"
-                MinWidth="100"
-                Margin="0,5"
-                HorizontalAlignment="Center"
-                Command="{x:Bind ViewModel.TogglePauseCommand}"
-                Content="{x:Bind ViewModel.IsPaused, Mode=OneWay, Converter={StaticResource PauseResumeTextConverter}}" />
-
-            <!--  Sound Toggle  -->
-            <CheckBox
-                x:Name="SoundEnabledCheckBox"
-                Grid.Row="3"
-                Margin="0,5"
-                HorizontalAlignment="Center"
-                Content="Play sound on segment end"
-                IsChecked="{x:Bind ViewModel.IsSoundEnabled, Mode=TwoWay}" />
-        </Grid>
+                <!--  Sound Toggle  -->
+                <CheckBox
+                    x:Name="SoundEnabledCheckBox"
+                    Grid.Row="4"
+                    Margin="0,12"
+                    HorizontalAlignment="Center"
+                    Content="Play sound on segment end"
+                    FontSize="12"
+                    IsChecked="{x:Bind ViewModel.IsSoundEnabled, Mode=TwoWay}" />
+            </Grid>
+        </Viewbox>
 
         <!--  Digital Time Display with constrained height  -->
         <Grid
             Grid.Row="1"
             Grid.Column="1"
             VerticalAlignment="Center">
-            <Viewbox MaxHeight="100" Tapped="Digital_Time_Tapped">
+            <Viewbox Tapped="Digital_Time_Tapped">
                 <TextBlock
                     x:Name="digitalTimeTextBlock"
                     VerticalAlignment="Center"
@@ -193,5 +240,6 @@
 
     <Page.Resources>
         <converters:PauseResumeTextConverter x:Key="PauseResumeTextConverter" />
+        <converters:PauseResumeIconConverter x:Key="PauseResumeIconConverter" />
     </Page.Resources>
 </local:AutomatedPage>

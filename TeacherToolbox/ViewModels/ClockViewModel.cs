@@ -16,6 +16,7 @@ using TeacherToolbox.Services;
 using Windows.Foundation;
 using Windows.Media.Core;
 using Windows.Media.Playback;
+using System.IO;
 
 namespace TeacherToolbox.ViewModels
 {
@@ -45,6 +46,8 @@ namespace TeacherToolbox.ViewModels
         private bool _disposed = false;
         private SolidColorBrush _handColorBrush;
         private int _gaugeNameCounter = 0;
+        private bool _isSoundAvailable;
+
 
         // Mock Mode fields
         private bool _isMockMode;
@@ -52,6 +55,7 @@ namespace TeacherToolbox.ViewModels
         private bool _isSoundEnabled;
         private MediaPlayer _mediaPlayer;
         private int _lastMinute = -1;
+        private DateTime? _pausedTime;
 
         // Properties
         public DateTime CurrentTime
@@ -225,14 +229,37 @@ namespace TeacherToolbox.ViewModels
         {
             try
             {
-                _mediaPlayer = new MediaPlayer();
-                // Load a system sound or a custom sound file
-                var soundUri = new Uri("ms-winsoundevent:Notification.Default");
-                _mediaPlayer.Source = MediaSource.CreateFromUri(soundUri);
+                int soundIndex = _settingsService?.GetTimerSound() ?? 0;
+                string soundFileName = SoundSettings.GetSoundFileName(soundIndex);
+                string soundPath = Path.Combine(AppContext.BaseDirectory, "Assets", soundFileName);
+
+                if (File.Exists(soundPath))
+                {
+                    _mediaPlayer = new MediaPlayer();
+                    _mediaPlayer.Source = MediaSource.CreateFromUri(new Uri(soundPath));
+                    _isSoundAvailable = true;
+                }
+                else
+                {
+                    // Try loading default sound
+                    string defaultSoundPath = Path.Combine(AppContext.BaseDirectory, "Assets", SoundSettings.GetSoundFileName(0));
+                    if (File.Exists(defaultSoundPath))
+                    {
+                        _mediaPlayer = new MediaPlayer();
+                        _mediaPlayer.Source = MediaSource.CreateFromUri(new Uri(defaultSoundPath));
+                        _isSoundAvailable = true;
+                    }
+                    else
+                    {
+                        Debug.WriteLine("No sound files available");
+                        _isSoundAvailable = false;
+                    }
+                }
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"Failed to initialize media player: {ex.Message}");
+                _isSoundAvailable = false;
             }
         }
 
@@ -247,21 +274,30 @@ namespace TeacherToolbox.ViewModels
 
         private void UpdateTime()
         {
-            _currentTime = DateTime.Now.Add(_timeOffset);
+            if (_isPaused && _pausedTime.HasValue)
+            {
+                // When paused, use the stored paused time
+                _currentTime = _pausedTime.Value;
+            }
+            else
+            {
+                // Normal operation - current time is real time plus offset
+                _currentTime = DateTime.Now.Add(_timeOffset);
+            }
+
             DigitalTimeText = _currentTime.ToString("h:mm tt");
             UpdateClockHands();
         }
 
         private void UpdateClockHands()
         {
-            var hours = _currentTime.Hour % 12;
-            var minutes = _currentTime.Minute;
-            var seconds = _currentTime.Second;
+            // Use TotalHours for gradual hour hand movement (includes minutes and seconds as fractions)
+            HourHandAngle = _currentTime.TimeOfDay.TotalHours * 30;
 
-            // Calculate angles (0 degrees is at 12 o'clock)
-            HourHandAngle = (hours * 30) + (minutes * 0.5);
-            MinuteHandAngle = minutes * 6;
-            SecondHandAngle = seconds * 6;
+            // Add seconds to minute hand for gradual movement (each second = 0.1 degrees)
+            MinuteHandAngle = (_currentTime.Minute * 6) + (_currentTime.Second * 0.1);
+
+            SecondHandAngle = _currentTime.Second * 6;
         }
 
         private void CheckForSegmentExpiry()
@@ -292,13 +328,17 @@ namespace TeacherToolbox.ViewModels
 
         private void PlaySound()
         {
-            try
+            if (_isSoundAvailable && _mediaPlayer != null)
             {
-                _mediaPlayer?.Play();
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Failed to play sound: {ex.Message}");
+                try
+                {
+                    _mediaPlayer.PlaybackSession.Position = TimeSpan.Zero;
+                    _mediaPlayer.Play();
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Failed to play sound: {ex.Message}");
+                }
             }
         }
 
@@ -316,19 +356,50 @@ namespace TeacherToolbox.ViewModels
             }
         }
 
-        // Mock Mode command handlers
         private void OnNudgeTime(string parameter)
         {
             if (!_isMockMode || !int.TryParse(parameter, out int minutes)) return;
 
-            _timeOffset = _timeOffset.Add(TimeSpan.FromMinutes(minutes));
+            // Store the current time for reference
+            var currentDisplayTime = _currentTime;
+
+            // Add the minutes to the current displayed time and reset seconds to 0
+            var newTargetTime = currentDisplayTime.AddMinutes(minutes);
+            newTargetTime = new DateTime(newTargetTime.Year, newTargetTime.Month, newTargetTime.Day,
+                                        newTargetTime.Hour, newTargetTime.Minute, 0, 0);
+
+            // Calculate the offset needed to display this target time
+            _timeOffset = newTargetTime.Subtract(DateTime.Now);
+
+            // If we're currently paused, update the paused time too
+            if (_isPaused && _pausedTime.HasValue)
+            {
+                _pausedTime = newTargetTime;
+            }
+
             UpdateTime();
         }
 
         private void OnTogglePause()
         {
             if (!_isMockMode) return;
-            IsPaused = !IsPaused;
+
+            if (!_isPaused)
+            {
+                // About to pause - store the current displayed time
+                _pausedTime = _currentTime;
+                IsPaused = true;
+            }
+            else
+            {
+                // About to resume - adjust offset so current time matches paused time
+                if (_pausedTime.HasValue)
+                {
+                    _timeOffset = _pausedTime.Value.Subtract(DateTime.Now);
+                    _pausedTime = null;
+                }
+                IsPaused = false;
+            }
         }
 
         // Existing command handlers
@@ -360,6 +431,11 @@ namespace TeacherToolbox.ViewModels
             _timeOffset = new TimeSpan(_timeOffset.Hours, _timeOffset.Minutes, 0);
 
             UpdateTime();
+        }
+
+        public void RefreshSound()
+        {
+            InitializeMediaPlayer();
         }
 
         private void OnAddGauge(Point point)
@@ -396,17 +472,15 @@ namespace TeacherToolbox.ViewModels
             RequestShowInstructions?.Invoke(this, EventArgs.Empty);
         }
 
-        private int[] GetMinutesFromCoordinate(Point point)
+        public int[] GetMinutesFromCoordinate(Point point)
         {
             var dx = point.X - ClockCenter;
             var dy = point.Y - ClockCenter;
             var distance = Math.Sqrt(dx * dx + dy * dy);
 
-            // Determine radial level based on distance
-            // Based on TimeSliceVisual.cs, there are only two levels:
-            // Inner (0) - larger radius, and Outer (1) - smaller radius
+            // Single source of truth for radial level determination
             int radialLevel;
-            if (distance < 70)  // Closer to center = Outer level
+            if (distance < 60)  // Closer to center = Outer level
             {
                 radialLevel = 1;  // Outer (smaller circle)
             }
