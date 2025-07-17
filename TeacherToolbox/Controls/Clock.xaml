@@ -4,6 +4,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:CommunityToolkit.WinUI.UI.Controls"
+    xmlns:converters="using:TeacherToolbox.Converters"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:local="using:TeacherToolbox.Controls"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -27,8 +28,8 @@
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
             <RowDefinition Height="5*" />
-            <RowDefinition Height="5*" />
-            <RowDefinition Height="*" />
+            <RowDefinition Height="4*" />
+            <RowDefinition Height="Auto" MinHeight="40" />
         </Grid.RowDefinitions>
 
         <TeachingTip
@@ -81,7 +82,13 @@
             </Canvas>
         </Viewbox>
 
-        <Viewbox Grid.Row="0" Grid.Column="1">
+        <!--  Centre Number section - shown when Mock Mode is OFF  -->
+        <Viewbox
+            x:Name="CentreNumberViewbox"
+            Grid.Row="0"
+            Grid.Column="1"
+            Margin="5"
+            Visibility="{x:Bind ViewModel.IsNotMockMode, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
             <TextBox
                 x:Name="centreTextBox"
                 Padding="4"
@@ -92,20 +99,99 @@
                 TextWrapping="NoWrap" />
         </Viewbox>
 
-        <Viewbox
+        <!--  Mock Mode Controls - shown when Mock Mode is ON  -->
+        <Grid
+            x:Name="MockControlsGrid"
+            Grid.Row="0"
+            Grid.Column="1"
+            Margin="10"
+            Visibility="{x:Bind ViewModel.IsMockMode, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <TextBlock
+                Grid.Row="0"
+                Margin="0,0,0,10"
+                HorizontalAlignment="Center"
+                FontWeight="Bold"
+                Text="Mock Mode Controls" />
+
+            <!--  Time Adjustment Controls  -->
+            <StackPanel
+                Grid.Row="1"
+                Margin="0,5"
+                HorizontalAlignment="Center"
+                Orientation="Horizontal">
+                <Button
+                    x:Name="MinuteBackButton"
+                    Margin="2"
+                    Command="{x:Bind ViewModel.NudgeTimeCommand}"
+                    CommandParameter="-1"
+                    Content="◀ -1 Min" />
+                <Button
+                    x:Name="MinuteForwardButton"
+                    Margin="2"
+                    Command="{x:Bind ViewModel.NudgeTimeCommand}"
+                    CommandParameter="1"
+                    Content="+1 Min ▶" />
+            </StackPanel>
+
+            <!--  Pause/Resume Button  -->
+            <Button
+                x:Name="PauseResumeButton"
+                Grid.Row="2"
+                MinWidth="100"
+                Margin="0,5"
+                HorizontalAlignment="Center"
+                Command="{x:Bind ViewModel.TogglePauseCommand}"
+                Content="{x:Bind ViewModel.IsPaused, Mode=OneWay, Converter={StaticResource PauseResumeTextConverter}}" />
+
+            <!--  Sound Toggle  -->
+            <CheckBox
+                x:Name="SoundEnabledCheckBox"
+                Grid.Row="3"
+                Margin="0,5"
+                HorizontalAlignment="Center"
+                Content="Play sound on segment end"
+                IsChecked="{x:Bind ViewModel.IsSoundEnabled, Mode=TwoWay}" />
+        </Grid>
+
+        <!--  Digital Time Display with constrained height  -->
+        <Grid
             Grid.Row="1"
             Grid.Column="1"
-            Tapped="Digital_Time_Tapped">
-            <TextBlock
-                x:Name="digitalTimeTextBlock"
-                VerticalAlignment="Top"
-                Text="{x:Bind ViewModel.DigitalTimeText, Mode=OneWay}" />
-            <FlyoutBase.AttachedFlyout>
-                <TimePickerFlyout
-                    x:Name="timePickerFlyout"
-                    ClockIdentifier="12HourClock"
-                    TimePicked="TimePickerFlyout_TimePicked" />
-            </FlyoutBase.AttachedFlyout>
-        </Viewbox>
+            VerticalAlignment="Center">
+            <Viewbox MaxHeight="100" Tapped="Digital_Time_Tapped">
+                <TextBlock
+                    x:Name="digitalTimeTextBlock"
+                    VerticalAlignment="Center"
+                    Text="{x:Bind ViewModel.DigitalTimeText, Mode=OneWay}" />
+                <FlyoutBase.AttachedFlyout>
+                    <TimePickerFlyout
+                        x:Name="timePickerFlyout"
+                        ClockIdentifier="12HourClock"
+                        TimePicked="TimePickerFlyout_TimePicked" />
+                </FlyoutBase.AttachedFlyout>
+            </Viewbox>
+        </Grid>
+
+        <!--  Mock Mode Checkbox in its own row  -->
+        <CheckBox
+            x:Name="MockModeCheckBox"
+            Grid.Row="2"
+            Grid.Column="1"
+            Margin="0,5,10,5"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Center"
+            Content="Mock Mode"
+            IsChecked="{x:Bind ViewModel.IsMockMode, Mode=TwoWay}" />
     </Grid>
+
+    <Page.Resources>
+        <converters:PauseResumeTextConverter x:Key="PauseResumeTextConverter" />
+    </Page.Resources>
 </local:AutomatedPage>

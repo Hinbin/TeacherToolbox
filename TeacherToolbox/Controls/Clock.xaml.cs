@@ -266,6 +266,8 @@ namespace TeacherToolbox.Controls
 
         private void Clock_Pointer_Pressed(object sender, PointerRoutedEventArgs e)
         {
+            if (ViewModel?.IsPaused == true) return;
+
             var canvas = (Canvas)sender;
             canvas.CapturePointer(e.Pointer);
 
@@ -328,29 +330,70 @@ namespace TeacherToolbox.Controls
         {
             e.Handled = true;
 
+            // Don't process if paused in mock mode
+            if (ViewModel?.IsPaused == true) return;
+
             if (!e.Pointer.IsInContact || string.IsNullOrEmpty(_selectedGaugeName))
                 return;
 
             var point = e.GetCurrentPoint((UIElement)sender).Position;
             var timeSelected = GetTimeFromPoint(point);
 
-            // Check if we're still in the same radial level as the selected gauge
-            if (timeSelected[1] != _selectedGaugeRadialLevel)
-            {
-                // Radial level changed during drag - stop extending
+            // Check if the time selected already contains a time slice in the SAME radial level as our selected gauge
+            // This allows dragging across radial levels while preventing collision with slices in the same level
+            if (ViewModel.TimeSlices.Any(x => x.Name != _selectedGaugeName &&
+                                            x.RadialLevel == _selectedGaugeRadialLevel &&
+                                            x.IsWithinTimeSlice(timeSelected[0], x.RadialLevel)))
                 return;
+
+            // Find the timeSlice in the timeSlices list by reference
+            var timeSlice = ViewModel.TimeSlices.FirstOrDefault(x => x.Name == _selectedGaugeName);
+            if (timeSlice == null) return;
+
+            // Get the startMinute and endMinute in the 5 minute interval
+            int startFiveMinuteInterval = timeSlice.StartMinute / 5;
+            int endFiveMinuteInterval = (timeSlice.StartMinute + timeSlice.Duration) / 5;
+            int newFiveMinuteInterval = timeSelected[0] / 5;
+
+            bool extended = false;
+
+            if (newFiveMinuteInterval >= endFiveMinuteInterval)
+            {
+                // If in the next slice, fill the slice
+                if (newFiveMinuteInterval == endFiveMinuteInterval)
+                {
+                    timeSlice.Duration += 5;
+                    extended = true;
+                }
+                // Check to see if the hour boundary has been crossed backwards 
+                else if (newFiveMinuteInterval == startFiveMinuteInterval + 11)
+                {
+                    timeSlice.StartMinute = (timeSlice.StartMinute + 55) % 60;
+                    timeSlice.Duration += 5;
+                    extended = true;
+                }
+            }
+            else if (newFiveMinuteInterval < startFiveMinuteInterval)
+            {
+                // If in the previous slice, fill the slice
+                if (newFiveMinuteInterval == startFiveMinuteInterval - 1)
+                {
+                    timeSlice.StartMinute = newFiveMinuteInterval * 5;
+                    timeSlice.Duration += 5;
+                    extended = true;
+                }
+                // Check to see if the hour boundary has been crossed forwards 
+                else if (newFiveMinuteInterval == endFiveMinuteInterval - 12)
+                {
+                    timeSlice.Duration += 5;
+                    extended = true;
+                }
             }
 
-            ViewModel?.ExtendTimeSlice(_selectedGaugeName, timeSelected[0], timeSelected[1]);
-
-            // Update the visual gauge
-            if (_gauges.TryGetValue(_selectedGaugeName, out var gauge))
+            // Update the visual gauge if we extended
+            if (extended && _gauges.TryGetValue(_selectedGaugeName, out var gauge))
             {
-                var slice = ViewModel.TimeSlices.FirstOrDefault(s => s.Name == _selectedGaugeName);
-                if (slice != null)
-                {
-                    UpdateGaugeFromSlice(gauge, slice);
-                }
+                UpdateGaugeFromSlice(gauge, timeSlice);
             }
         }
 

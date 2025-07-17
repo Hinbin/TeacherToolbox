@@ -140,7 +140,7 @@ namespace TeacherToolbox.Services
 
         #endregion
 
-        #region Misc Settings
+        #region Clock Settings
 
         /// <summary>
         /// Gets whether clock instructions have been shown
@@ -165,6 +165,13 @@ namespace TeacherToolbox.Services
         /// </summary>
         /// <param name="text">The center text to set</param>
         void SetCentreText(string text);
+
+        // Mock Mode settings
+        bool GetMockMode();
+        void SetMockMode(bool value);
+
+        bool GetSoundEnabled();
+        void SetSoundEnabled(bool value);
 
         #endregion
     }

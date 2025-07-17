@@ -14,6 +14,8 @@ using TeacherToolbox.Helpers;
 using TeacherToolbox.Model;
 using TeacherToolbox.Services;
 using Windows.Foundation;
+using Windows.Media.Core;
+using Windows.Media.Playback;
 
 namespace TeacherToolbox.ViewModels
 {
@@ -31,7 +33,6 @@ namespace TeacherToolbox.ViewModels
         private readonly ITimerService _timerService;
         private readonly IThemeService _themeService;
 
-
         private DateTime _currentTime;
         private TimeSpan _timeOffset;
         private string _digitalTimeText;
@@ -44,6 +45,13 @@ namespace TeacherToolbox.ViewModels
         private bool _disposed = false;
         private SolidColorBrush _handColorBrush;
         private int _gaugeNameCounter = 0;
+
+        // Mock Mode fields
+        private bool _isMockMode;
+        private bool _isPaused;
+        private bool _isSoundEnabled;
+        private MediaPlayer _mediaPlayer;
+        private int _lastMinute = -1;
 
         // Properties
         public DateTime CurrentTime
@@ -108,11 +116,51 @@ namespace TeacherToolbox.ViewModels
             private set => SetProperty(ref _handColorBrush, value);
         }
 
+        // Mock Mode Properties
+        public bool IsMockMode
+        {
+            get => _isMockMode;
+            set
+            {
+                if (_isMockMode != value)
+                {
+                    _isMockMode = value;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(IsNotMockMode));
+                }
+            }
+        }
+
+        public bool IsNotMockMode => !IsMockMode;
+
+        public bool IsPaused
+        {
+            get => _isPaused;
+            set
+            {
+                if (SetProperty(ref _isPaused, value))
+                {
+                    if (value)
+                        _timerService.Stop();
+                    else
+                        _timerService.Start();
+                }
+            }
+        }
+
+        public bool IsSoundEnabled
+        {
+            get => _isSoundEnabled;
+            set => SetProperty(ref _isSoundEnabled, value);
+        }
+
         // Commands
         public IRelayCommand<TimePickedEventArgs> TimePickedCommand { get; }
         public IRelayCommand<Point> AddGaugeCommand { get; }
         public IRelayCommand<string> RemoveGaugeCommand { get; }
         public IRelayCommand ShowInstructionsCommand { get; }
+        public IRelayCommand<string> NudgeTimeCommand { get; }
+        public IRelayCommand TogglePauseCommand { get; }
 
         // Events
         public event EventHandler<TimeSlice> TimeSliceAdded;
@@ -126,7 +174,6 @@ namespace TeacherToolbox.ViewModels
             ITimerService timerService,
             ISleepPreventer sleepPreventer = null)
         {
-
             _themeService = themeService ?? throw new ArgumentNullException(nameof(themeService));
             _settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
             _timerService = timerService ?? throw new ArgumentNullException(nameof(timerService));
@@ -147,9 +194,14 @@ namespace TeacherToolbox.ViewModels
             AddGaugeCommand = new RelayCommand<Point>(OnAddGauge);
             RemoveGaugeCommand = new RelayCommand<string>(OnRemoveGauge);
             ShowInstructionsCommand = new RelayCommand(OnShowInstructions);
+            NudgeTimeCommand = new RelayCommand<string>(OnNudgeTime);
+            TogglePauseCommand = new RelayCommand(OnTogglePause);
 
             // Initialize properties
             InitializeProperties();
+
+            // Initialize media player for sound
+            InitializeMediaPlayer();
 
             // Start the timer
             _timerService.Start();
@@ -161,94 +213,130 @@ namespace TeacherToolbox.ViewModels
         private void InitializeProperties()
         {
             _currentTime = DateTime.Now;
-            _timeOffset = TimeSpan.Zero;
-
-            // Load saved settings
-            if (_settingsService != null)
-            {
-                CentreText = _settingsService.GetCentreText();
-            }
-
-            // Set hand color based on theme
+            _centreText = _settingsService?.GetCentreText() ?? string.Empty;
+            // Initialize mock mode with defaults since methods might not exist
+            _isMockMode = false;
+            _isSoundEnabled = true;
             UpdateHandColor();
-
-            // Update initial time display
             UpdateTime();
+        }
+
+        private void InitializeMediaPlayer()
+        {
+            try
+            {
+                _mediaPlayer = new MediaPlayer();
+                // Load a system sound or a custom sound file
+                var soundUri = new Uri("ms-winsoundevent:Notification.Default");
+                _mediaPlayer.Source = MediaSource.CreateFromUri(soundUri);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Failed to initialize media player: {ex.Message}");
+            }
         }
 
         private void Timer_Tick(object sender, object e)
         {
-            var checkTime = DateTime.Now;
-
-            // Update digital time display
-            DigitalTimeText = _currentTime.ToString("h:mm tt");
-
-            // Check if we have a new second
-            if (_currentTime.Second != checkTime.Second)
+            if (!_isPaused)
             {
-                _currentTime = DateTime.Now.Add(_timeOffset);
-                UpdateClockHands();
+                UpdateTime();
+                CheckForSegmentExpiry();
             }
         }
 
         private void UpdateTime()
         {
             _currentTime = DateTime.Now.Add(_timeOffset);
-            UpdateClockHands();
             DigitalTimeText = _currentTime.ToString("h:mm tt");
+            UpdateClockHands();
         }
 
         private void UpdateClockHands()
         {
-            // Calculate angles for clock hands
-            HourHandAngle = (float)_currentTime.TimeOfDay.TotalHours * 30;
-            MinuteHandAngle = _currentTime.Minute * 6 + _currentTime.Second * 0.1f;
-            SecondHandAngle = _currentTime.Second * 6;
+            var hours = _currentTime.Hour % 12;
+            var minutes = _currentTime.Minute;
+            var seconds = _currentTime.Second;
+
+            // Calculate angles (0 degrees is at 12 o'clock)
+            HourHandAngle = (hours * 30) + (minutes * 0.5);
+            MinuteHandAngle = minutes * 6;
+            SecondHandAngle = seconds * 6;
         }
+
+        private void CheckForSegmentExpiry()
+        {
+            if (!_isMockMode || !_isSoundEnabled) return;
+
+            var currentMinute = _currentTime.Minute;
+
+            // Check if we've crossed into a new minute
+            if (currentMinute != _lastMinute)
+            {
+                _lastMinute = currentMinute;
+
+                // Check if any time slice ends at this minute
+                foreach (var slice in _timeSlices)
+                {
+                    // Calculate the end minute of the slice
+                    var sliceEndMinute = (slice.StartMinute + slice.Duration) % 60;
+
+                    if (currentMinute == sliceEndMinute)
+                    {
+                        PlaySound();
+                        break;
+                    }
+                }
+            }
+        }
+
+        private void PlaySound()
+        {
+            try
+            {
+                _mediaPlayer?.Play();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Failed to play sound: {ex.Message}");
+            }
+        }
+
         private void UpdateHandColor()
         {
             try
             {
-                // Use property, not method
-                HandColorBrush = _themeService?.HandColorBrush;
-
-                // If theme service is null or returns null, create fallback
-                if (HandColorBrush == null)
-                {
-                    HandColorBrush = CreateFallbackBrush();
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error updating hand color: {ex.Message}");
-                // In case of error, try to create fallback brush
-                HandColorBrush = CreateFallbackBrush();
-            }
-        }
-
-        private SolidColorBrush CreateFallbackBrush()
-        {
-            try
-            {
-                // Try to determine theme and create appropriate brush
                 var isDarkTheme = _themeService?.IsDarkTheme ?? false;
-                return new SolidColorBrush(isDarkTheme ? Colors.White : Colors.Black);
+                HandColorBrush = new SolidColorBrush(isDarkTheme ? Colors.White : Colors.Black);
             }
             catch
             {
-                // If we can't create brushes (e.g., in unit tests), return null
-                // The UI should handle null brushes gracefully
-                return null;
+                // If we can't create brushes (e.g., in unit tests), set to null
+                HandColorBrush = null;
             }
         }
 
-        // Handler for theme service's ThemeChanged event
+        // Mock Mode command handlers
+        private void OnNudgeTime(string parameter)
+        {
+            if (!_isMockMode || !int.TryParse(parameter, out int minutes)) return;
+
+            _timeOffset = _timeOffset.Add(TimeSpan.FromMinutes(minutes));
+            UpdateTime();
+        }
+
+        private void OnTogglePause()
+        {
+            if (!_isMockMode) return;
+            IsPaused = !IsPaused;
+        }
+
+        // Existing command handlers
         private void OnThemeServiceChanged(object sender, ElementTheme e)
         {
             UpdateHandColor();
         }
 
-        // Keep this method for backward compatibility if needed
         public void OnThemeChanged()
         {
             UpdateHandColor();
@@ -289,11 +377,11 @@ namespace TeacherToolbox.ViewModels
 
         private void OnRemoveGauge(string gaugeName)
         {
-            var slice = _timeSlices.FirstOrDefault(s => s.Name == gaugeName);
-            if (slice != null)
+            var sliceToRemove = _timeSlices.FirstOrDefault(s => s.Name == gaugeName);
+            if (sliceToRemove != null)
             {
-                _timeSlices.Remove(slice);
-                TimeSliceRemoved?.Invoke(this, slice);
+                _timeSlices.Remove(sliceToRemove);
+                TimeSliceRemoved?.Invoke(this, sliceToRemove);
 
                 // Reset counter if no slices remain
                 if (_timeSlices.Count == 0)
@@ -308,79 +396,157 @@ namespace TeacherToolbox.ViewModels
             RequestShowInstructions?.Invoke(this, EventArgs.Empty);
         }
 
-        public TimeSlice FindTimeSliceAtPosition(int minute, int radialLevel)
+        private int[] GetMinutesFromCoordinate(Point point)
         {
-            return _timeSlices.FirstOrDefault(slice => slice.IsWithinTimeSlice(minute, radialLevel));
+            var dx = point.X - ClockCenter;
+            var dy = point.Y - ClockCenter;
+            var distance = Math.Sqrt(dx * dx + dy * dy);
+
+            // Determine radial level based on distance
+            // Based on TimeSliceVisual.cs, there are only two levels:
+            // Inner (0) - larger radius, and Outer (1) - smaller radius
+            int radialLevel;
+            if (distance < 70)  // Closer to center = Outer level
+            {
+                radialLevel = 1;  // Outer (smaller circle)
+            }
+            else
+            {
+                radialLevel = 0;  // Inner (larger circle)
+            }
+
+            // Calculate angle and convert to minutes
+            var angle = Math.Atan2(dy, dx) * 180 / Math.PI;
+            angle = (angle + 90 + 360) % 360; // Convert to clock coordinates
+            var minutes = (int)Math.Round(angle / 6);
+
+            return new[] { minutes % 60, radialLevel };
         }
 
-        private TimeSlice CreateTimeSlice(int[] timeSelected)
+        // Make this method public so Clock.xaml.cs can access it
+        public TimeSlice FindTimeSliceAtPosition(int minutes, int radialLevel)
         {
-            int radialLevel = timeSelected[1];
-            int fiveMinuteInterval = timeSelected[0] / 5;
+            return _timeSlices.FirstOrDefault(s => s.IsWithinTimeSlice(minutes, radialLevel));
+        }
+
+        private TimeSlice CreateTimeSlice(int[] timeData)
+        {
+            int radialLevel = timeData[1];
+            int fiveMinuteInterval = timeData[0] / 5;
 
             // Use the counter for unique names instead of count
             var name = $"Gauge{_gaugeNameCounter++}";
             return new TimeSlice(fiveMinuteInterval * 5, 5, radialLevel, name);
         }
 
+        // ExtendTimeSlice method that Clock.xaml.cs is calling
         public void ExtendTimeSlice(string sliceName, int newMinute, int newRadialLevel)
         {
             var slice = _timeSlices.FirstOrDefault(s => s.Name == sliceName);
             if (slice == null || slice.RadialLevel != newRadialLevel) return;
 
-            // Check if the new position is already occupied by another slice
-            var existingSlice = _timeSlices.FirstOrDefault(s => s != slice && s.IsWithinTimeSlice(newMinute, newRadialLevel));
-            if (existingSlice != null) return;
-
+            // Round to 5-minute intervals
             int newFiveMinuteInterval = newMinute / 5;
-            int startInterval = slice.StartMinute / 5;
-            int endInterval = (slice.StartMinute + slice.Duration) / 5;
+            int currentStartInterval = slice.StartMinute / 5;
+            int currentEndInterval = (slice.StartMinute + slice.Duration) / 5;
 
-            // Update the slice duration based on the new position
-            if (newFiveMinuteInterval >= endInterval)
+            // Don't extend if we're already at this position
+            if (newFiveMinuteInterval >= currentStartInterval &&
+                newFiveMinuteInterval < currentEndInterval)
             {
-                if (newFiveMinuteInterval == endInterval)
-                {
-                    slice.Duration += 5;
-                }
-                else if (newFiveMinuteInterval == startInterval + 11)
-                {
-                    slice.StartMinute = (slice.StartMinute + 55) % 60;
-                    slice.Duration += 5;
-                }
-            }
-            else if (newFiveMinuteInterval < startInterval)
-            {
-                if (newFiveMinuteInterval == startInterval - 1)
-                {
-                    slice.StartMinute = newFiveMinuteInterval * 5;
-                    slice.Duration += 5;
-                }
-                else if (newFiveMinuteInterval == endInterval - 12)
-                {
-                    slice.Duration += 5;
-                }
+                return; // Mouse is within the current slice
             }
 
-            // Notify that the collection has changed
-            OnPropertyChanged(nameof(TimeSlices));
+            // Check if the new position would overlap with another slice
+            var wouldOverlap = _timeSlices.Any(s =>
+                s != slice &&
+                s.RadialLevel == newRadialLevel &&
+                WouldOverlapIfExtended(slice, newFiveMinuteInterval, s));
+
+            if (wouldOverlap) return;
+
+            // Calculate the shortest angular distance to determine direction
+            int forwardDistance = CalculateForwardDistance(currentEndInterval, newFiveMinuteInterval);
+            int backwardDistance = CalculateBackwardDistance(currentStartInterval, newFiveMinuteInterval);
+
+            if (forwardDistance <= backwardDistance)
+            {
+                // Extend forward
+                int newDuration = (forwardDistance + (currentEndInterval - currentStartInterval)) * 5;
+                if (newDuration > 0 && newDuration <= 60 && !WouldCrossHourBoundary(slice.StartMinute, newDuration))
+                {
+                    slice.Duration = newDuration;
+                    OnPropertyChanged(nameof(TimeSlices));
+                }
+            }
+            else
+            {
+                // Extend backward
+                int newStartMinute = newFiveMinuteInterval * 5;
+                int newDuration = (backwardDistance + (currentEndInterval - currentStartInterval)) * 5;
+                if (newDuration > 0 && newDuration <= 60 && !WouldCrossHourBoundary(newStartMinute, newDuration))
+                {
+                    slice.StartMinute = newStartMinute;
+                    slice.Duration = newDuration;
+                    OnPropertyChanged(nameof(TimeSlices));
+                }
+            }
         }
 
-        private static int[] GetMinutesFromCoordinate(Point point)
+        // Helper method to calculate forward distance considering hour wrap
+        private int CalculateForwardDistance(int fromInterval, int toInterval)
         {
-            // Calculate angle from clock center
-            var angle = Math.Atan2(point.Y - ClockCenter, point.X - ClockCenter) * (180 / Math.PI);
-            angle = 180 + angle;
+            if (toInterval >= fromInterval)
+                return toInterval - fromInterval;
+            else
+                return (12 - fromInterval) + toInterval; // Wrap around hour
+        }
 
-            // Convert to minutes
-            var minutes = (int)(angle / 6);
-            minutes = (minutes + 45) % 60;
+        // Helper method to calculate backward distance considering hour wrap
+        private int CalculateBackwardDistance(int fromInterval, int toInterval)
+        {
+            if (toInterval <= fromInterval)
+                return fromInterval - toInterval;
+            else
+                return fromInterval + (12 - toInterval); // Wrap around hour
+        }
 
-            // Determine radial level (inner or outer)
-            var distance = Math.Sqrt(Math.Pow(point.X - ClockCenter, 2) + Math.Pow(point.Y - ClockCenter, 2));
-            int radialLevel = distance < 55 ? (int)RadialLevel.Outer : (int)RadialLevel.Inner;
+        // Check if extension would cross hour boundary in a way that makes the slice invalid
+        private bool WouldCrossHourBoundary(int startMinute, int duration)
+        {
+            // Allow slices up to 60 minutes that may cross hour boundary
+            return duration > 60;
+        }
 
-            return new int[] { minutes, radialLevel };
+        // Check if extending to a new position would overlap with another slice
+        private bool WouldOverlapIfExtended(TimeSlice extendingSlice, int newInterval, TimeSlice otherSlice)
+        {
+            int newMinute = newInterval * 5;
+
+            // If extending forward
+            if (newMinute > extendingSlice.StartMinute + extendingSlice.Duration ||
+                (extendingSlice.StartMinute + extendingSlice.Duration > 55 && newMinute < 5))
+            {
+                // Check all minutes from current end to new position
+                int currentEnd = extendingSlice.StartMinute + extendingSlice.Duration;
+                for (int minute = currentEnd; minute != newMinute; minute = (minute + 5) % 60)
+                {
+                    if (otherSlice.IsWithinTimeSlice(minute, otherSlice.RadialLevel))
+                        return true;
+                }
+            }
+            // If extending backward
+            else
+            {
+                // Check all minutes from new position to current start
+                for (int minute = newMinute; minute != extendingSlice.StartMinute; minute = (minute + 5) % 60)
+                {
+                    if (otherSlice.IsWithinTimeSlice(minute, otherSlice.RadialLevel))
+                        return true;
+                }
+            }
+
+            return false;
         }
 
         public bool HasShownClockInstructions()
@@ -388,27 +554,25 @@ namespace TeacherToolbox.ViewModels
             return _settingsService?.GetHasShownClockInstructions() ?? false;
         }
 
-        public void SetHasShownClockInstructions(bool shown)
+        public void SetHasShownClockInstructions(bool value)
         {
-            _settingsService?.SetHasShownClockInstructions(shown);
+            _settingsService?.SetHasShownClockInstructions(value);
         }
 
         public void Dispose()
         {
             if (!_disposed)
             {
-                // Unsubscribe from theme changes
+                _timerService.Tick -= Timer_Tick;
+                _timerService.Stop();
+
                 if (_themeService != null)
                 {
                     _themeService.ThemeChanged -= OnThemeServiceChanged;
                 }
 
-                _timerService?.Stop();
-                if (_timerService is IDisposable disposableTimer)
-                {
-                    disposableTimer.Dispose();
-                }
                 _sleepPreventer?.AllowSleep();
+                _mediaPlayer?.Dispose();
                 _disposed = true;
             }
         }

@@ -27,6 +27,8 @@ namespace TeacherToolbox.Services
         private const string LastWindowPositionKey = "LastWindowPosition";
         private const string LastTimerWindowPositionKey = "LastTimerWindowPosition";
         private const string HasShownClockInstructionsKey = "HasShownClockInstructions";
+        private const string MockModeKey = "Clock_MockMode";
+        private const string SoundEnabledKey = "Clock_SoundEnabled";
 
         // Private fields
         private string centreText;
@@ -38,6 +40,8 @@ namespace TeacherToolbox.Services
         private List<SavedIntervalConfig> savedCustomTimerConfigs;
         private readonly object _settingsLock = new object();
         private bool hasShownClockInstructions;
+        private bool mockMode;
+        private bool soundEnabled;
 
         protected virtual string FilePath => filePath;
 
@@ -51,6 +55,8 @@ namespace TeacherToolbox.Services
             savedCustomTimerConfigs = new List<SavedIntervalConfig>();
             filePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "TeacherToolbox", "settings.json");
+            mockMode = false;
+            soundEnabled = false;
 
             Directory.CreateDirectory(Path.GetDirectoryName(filePath));
         }
@@ -127,7 +133,12 @@ namespace TeacherToolbox.Services
                         { LastTimerWindowPositionKey, lastTimerWindowPosition },
                         { IntervalConfigsKey, savedIntervalConfigs ?? new List<SavedIntervalConfig>() },
                         { HasShownClockInstructionsKey, hasShownClockInstructions },
-                        { CustomTimerConfigsKey, savedCustomTimerConfigs ?? new List<SavedIntervalConfig>() }
+                        { CustomTimerConfigsKey, savedCustomTimerConfigs ?? new List<SavedIntervalConfig>() },
+                        { SoundKey, GetTimerSound() },
+                        { TimerFinishBehaviorKey, (int)GetTimerFinishBehavior() },
+                        { ThemeKey, GetTheme() },
+                        { MockModeKey, mockMode },
+                        { SoundEnabledKey, soundEnabled }
                     };
 
                     foreach (var setting in settings)
@@ -234,6 +245,57 @@ namespace TeacherToolbox.Services
                                 case HasShownClockInstructionsKey:
                                     hasShownClockInstructions = kvp.Value.GetBoolean();
                                     break;
+                                    case SoundKey:
+                                        if (kvp.Value.ValueKind == JsonValueKind.Number)
+                                    {
+                                        settings[SoundKey] = kvp.Value.GetInt32();
+                                    }
+                                    else
+                                    {
+                                        settings[SoundKey] = kvp.Value.GetString() ?? "0";
+                                    }
+                                        break;
+                                    case TimerFinishBehaviorKey:
+                                        if (kvp.Value.ValueKind == JsonValueKind.Number)
+                                    {
+                                        settings[TimerFinishBehaviorKey] = kvp.Value.GetInt32();
+                                    }
+                                    else
+                                    {
+                                        settings[TimerFinishBehaviorKey] = kvp.Value.GetString() ?? "0";
+                                    }
+                                        break;
+                                    case ThemeKey:
+                                        if (kvp.Value.ValueKind == JsonValueKind.Number)
+                                    {
+                                        settings[ThemeKey] = kvp.Value.GetInt32();
+                                    }
+                                    else
+                                    {
+                                        settings[ThemeKey] = kvp.Value.GetString() ?? "0";
+                                    }
+                                        break;
+                                    case MockModeKey:
+                                        if (kvp.Value.ValueKind == JsonValueKind.True || kvp.Value.ValueKind == JsonValueKind.False)
+                                    {
+                                        mockMode = kvp.Value.GetBoolean();
+                                    }
+                                    else
+                                    {
+                                        mockMode = kvp.Value.GetString() == "true";
+                                    }
+                                        break;
+                                    case SoundEnabledKey:
+                                        if (kvp.Value.ValueKind == JsonValueKind.True || kvp.Value.ValueKind == JsonValueKind.False)
+                                    {
+                                        soundEnabled = kvp.Value.GetBoolean();
+                                    }
+                                    else
+                                    {
+                                        soundEnabled = kvp.Value.GetString() == "true";
+                                    }
+                                        break;
+                                // Handle any other custom settings
                                 default:
                                     settings[kvp.Key] = kvp.Value;
                                     break;
@@ -498,6 +560,27 @@ namespace TeacherToolbox.Services
         public void SetCentreText(string text)
         {
             SetAndSave(ref centreText, text);
+        }
+
+        // Mock Mode settings implementation
+        public bool GetMockMode()
+        {
+            return mockMode;
+        }
+
+        public void SetMockMode(bool value)
+        {
+            SetAndSave(ref mockMode, value);
+        }
+
+        public bool GetSoundEnabled()
+        {
+            return soundEnabled;
+        }
+
+        public void SetSoundEnabled(bool value)
+        {
+            SetAndSave(ref soundEnabled, value);
         }
 
         #endregion
