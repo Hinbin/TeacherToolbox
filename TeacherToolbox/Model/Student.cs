@@ -48,11 +48,12 @@ namespace TeacherToolbox.Model
             // Use regex to remove any punctuation apart from - and ', but keep apostrophes that are between letters
             sanitizedName = Regex.Replace(sanitizedName, @"(?<![a-zA-Z])'|'(?![a-zA-Z])|[^\w\s'-]", "");
 
-            // Remove trailing single letters (including repeated patterns like "I I I" or "J K L")
-            sanitizedName = Regex.Replace(sanitizedName, @"(?:\s+[A-Z])+$", "");
+            // Remove trailing repeated single letters (like "I I I I") but keep single letters (like "W")
+            sanitizedName = Regex.Replace(sanitizedName, @"\s+([A-Z])(?:\s+\1)+$", "");
 
             // Modified regex to preserve single letters followed by space and another word, but only at the start
-            sanitizedName = Regex.Replace(sanitizedName, @"\b(?!([A-Z](?=\s+[A-Za-z]{2,}))|[a-zA-Z]'\b)\w\b", "");
+            // Also preserve single capital letters at the end (like "John S")
+            sanitizedName = Regex.Replace(sanitizedName, @"\b(?!([A-Z](?=\s+[A-Za-z]{2,}))|[a-zA-Z]'\b|[A-Z]$)\w\b", "");
 
             // Trim any whitespace and remove multiple spaces
             sanitizedName = Regex.Replace(sanitizedName.Trim(), @"\s+", " ");

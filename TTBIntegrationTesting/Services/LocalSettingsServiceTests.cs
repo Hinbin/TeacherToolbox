@@ -23,6 +23,13 @@ namespace TeacherToolbox.Tests.Services
             string tempDir = Path.Combine(Path.GetTempPath(), "TeacherToolboxTests", Guid.NewGuid().ToString());
             Directory.CreateDirectory(tempDir);
             _testFilePath = Path.Combine(tempDir, "test_settings.json");
+
+            // Ensure file is deleted before each test
+            if (File.Exists(_testFilePath))
+            {
+                File.Delete(_testFilePath);
+            }
+
             _settingsService = new TestLocalSettingsService(_testFilePath);
         }
 
@@ -41,6 +48,11 @@ namespace TeacherToolbox.Tests.Services
                 {
                     // Ignore IO exceptions during cleanup - these might happen if files are still in use
                 }
+            }
+
+            if (File.Exists(_testFilePath))
+            {
+                File.Delete(_testFilePath);
             }
         }
 
@@ -436,6 +448,7 @@ namespace TeacherToolbox.Tests.Services
         #region Error Handling
 
         [Test]
+        [NonParallelizable]
         public async Task LoadSettings_WithCorruptJsonFile_RecoversGracefully()
         {
             // Arrange - create an invalid JSON file
@@ -445,7 +458,7 @@ namespace TeacherToolbox.Tests.Services
             var newService = new TestLocalSettingsService(_testFilePath);
 
             // Act & Assert - should not throw an exception
-            Assert.DoesNotThrowAsync(async () => await newService.LoadSettings());
+            Assert.DoesNotThrowAsync(() => newService.LoadSettings());
 
             // Verify defaults are used
             Assert.That(newService.GetTheme(), Is.EqualTo(0));
@@ -453,6 +466,7 @@ namespace TeacherToolbox.Tests.Services
         }
 
         [Test]
+        [NonParallelizable]
         public void LoadSettingsSync_WithCorruptJsonFile_RecoversGracefully()
         {
             // Arrange - create an invalid JSON file

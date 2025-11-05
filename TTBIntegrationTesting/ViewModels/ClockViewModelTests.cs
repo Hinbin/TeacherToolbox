@@ -248,13 +248,13 @@ namespace TeacherToolbox.Tests.ViewModels
         [Test]
         public void ExtendTimeSlice_ExtendsForward()
         {
-            // Add initial slice at 0 minutes
+            // Add initial slice at 0 minutes (default duration 5: covers 0-5)
             _viewModel.AddGaugeCommand.Execute(new Point(100, 30)); // Top of clock
             var slice = _viewModel.TimeSlices.First();
             var initialDuration = slice.Duration;
 
-            // Extend to next 5-minute interval
-            _viewModel.ExtendTimeSlice(slice.Name, 5, (int)RadialLevel.Inner);
+            // Extend to minute 10 (beyond the current 0-5 range)
+            _viewModel.ExtendTimeSlice(slice.Name, 10, (int)RadialLevel.Inner);
 
             Assert.That(slice.Duration, Is.GreaterThan(initialDuration));
         }

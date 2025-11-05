@@ -60,6 +60,16 @@ public class StudentTests
     }
 
     [Test]
+    public void SanitizeName_WithSingleNonRepeatingCharacterWord_KeepCharAtEnd()
+    {
+        // Arrange & Act
+        var student = new Student("John S");
+
+        // Assert
+        Assert.That(student.Name, Is.EqualTo("John S"));
+    }
+
+    [Test]
     public void SanitizeName_WithSingleCharacterWord_RemovesPunctuationCharsAtEnd()
     {
         // Arrange & Act

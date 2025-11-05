@@ -592,7 +592,6 @@ namespace TeacherToolbox.ViewModels
             return duration > 60;
         }
 
-        // Check if extending to a new position would overlap with another slice
         private bool WouldOverlapIfExtended(TimeSlice extendingSlice, int newInterval, TimeSlice otherSlice)
         {
             int newMinute = newInterval * 5;
@@ -601,23 +600,29 @@ namespace TeacherToolbox.ViewModels
             if (newMinute > extendingSlice.StartMinute + extendingSlice.Duration ||
                 (extendingSlice.StartMinute + extendingSlice.Duration > 55 && newMinute < 5))
             {
-                // Check all minutes from current end to new position
                 int currentEnd = extendingSlice.StartMinute + extendingSlice.Duration;
-                for (int minute = currentEnd; minute != newMinute; minute = (minute + 5) % 60)
+                int minute = currentEnd;
+
+                // Check INCLUDING the target minute
+                do
                 {
                     if (otherSlice.IsWithinTimeSlice(minute, otherSlice.RadialLevel))
                         return true;
-                }
+                    minute = (minute + 5) % 60;
+                } while (minute != (newMinute + 5) % 60); // Loop one past target to include it
             }
             // If extending backward
             else
             {
-                // Check all minutes from new position to current start
-                for (int minute = newMinute; minute != extendingSlice.StartMinute; minute = (minute + 5) % 60)
+                int minute = newMinute;
+
+                // Check INCLUDING the starting position
+                do
                 {
                     if (otherSlice.IsWithinTimeSlice(minute, otherSlice.RadialLevel))
                         return true;
-                }
+                    minute = (minute + 5) % 60;
+                } while (minute != extendingSlice.StartMinute);
             }
 
             return false;
