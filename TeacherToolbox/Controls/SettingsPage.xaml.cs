@@ -12,6 +12,7 @@ namespace TeacherToolbox.Controls
     {
         private readonly IThemeService _themeService;
         public SettingsViewModel ViewModel { get; }
+        public string AppVersion => $"Version {VersionHelper.GetAppVersion()}";
 
         public SettingsPage() : base()
         {

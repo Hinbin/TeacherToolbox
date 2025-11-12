@@ -151,7 +151,7 @@
 
                 <local:ExpanderItem Header="Teacher Toolbox">
                     <local:ExpanderItem.ItemContent>
-                        <TextBlock Style="{StaticResource CaptionTextBlockStyle}" Text="Version 0.23" />
+                        <TextBlock Style="{StaticResource CaptionTextBlockStyle}" Text="{x:Bind AppVersion, Mode=OneTime}" />
                     </local:ExpanderItem.ItemContent>
                 </local:ExpanderItem>
             </StackPanel>
