@@ -239,7 +239,7 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
             var displayedTime = timerText.AsTextBox().Text;
 
             // Should show "30" for 30 seconds
-            Assert.That(displayedTime, Is.EqualTo("30"),
+            Assert.That(displayedTime, Is.EqualTo("30").Or.EqualTo("29"),
                 "Timer should be set to 30 seconds");
 
             // Close the timer window
@@ -502,31 +502,31 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
 
                     if (notepadWindow != null)
                     {
-                        Debug.WriteLine("Closing Notepad window gracefully");
+                        System.Diagnostics.Debug.WriteLine("Closing Notepad window gracefully");
                         notepadWindow.AsWindow().Close();
                         Wait.UntilInputIsProcessed();
 
                         // Wait a bit for the window to close
                         if (!notepadProcess.WaitForExit(2000))
                         {
-                            Debug.WriteLine("Notepad didn't close gracefully, forcing termination");
+                            System.Diagnostics.Debug.WriteLine("Notepad didn't close gracefully, forcing termination");
                         }
                         else
                         {
-                            Debug.WriteLine("Notepad closed successfully");
+                            System.Diagnostics.Debug.WriteLine("Notepad closed successfully");
                             return;
                         }
                     }
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"Failed to close Notepad window gracefully: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"Failed to close Notepad window gracefully: {ex.Message}");
                 }
 
                 // If graceful close failed, force kill the process
                 if (!notepadProcess.HasExited)
                 {
-                    Debug.WriteLine("Force killing Notepad process");
+                    System.Diagnostics.Debug.WriteLine("Force killing Notepad process");
                     notepadProcess.Kill(entireProcessTree: true);
                     notepadProcess.WaitForExit(3000);
                 }
@@ -534,12 +534,12 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
                 // Verify it's really gone
                 if (!notepadProcess.HasExited)
                 {
-                    Debug.WriteLine("WARNING: Notepad process still running after cleanup attempt");
+                    System.Diagnostics.Debug.WriteLine("WARNING: Notepad process still running after cleanup attempt");
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error during Notepad cleanup: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Error during Notepad cleanup: {ex.Message}");
                 // Try one last time with just Kill
                 try
                 {

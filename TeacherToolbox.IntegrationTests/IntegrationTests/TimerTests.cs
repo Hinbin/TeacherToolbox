@@ -639,14 +639,14 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
                             
                             if (timerWindow != null)
                             {
-                                Debug.WriteLine($"Found timer window: Name={timerWindow.Name}, Class={timerWindow.ClassName}");
+                                System.Diagnostics.Debug.WriteLine($"Found timer window: Name={timerWindow.Name}, Class={timerWindow.ClassName}");
                                 try
                                 {      
                                     return timerWindow.AsWindow(); // Convert to Window type
                                 }
                                 catch (Exception ex)
                                 {
-                                    Debug.WriteLine($"Failed to convert to Window: {ex.Message}");
+                                    System.Diagnostics.Debug.WriteLine($"Failed to convert to Window: {ex.Message}");
                                 }
                             }
                             return null;
