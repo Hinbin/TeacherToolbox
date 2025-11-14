@@ -9,7 +9,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Threading;
 
 namespace TeacherToolbox.IntegrationTests.IntegrationTests
 {
@@ -21,13 +20,11 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
         [SetUp]
         public void ShortcutWatcherSetUp()
         {
-            // Give the ShortcutWatcher process time to start and connect
-            Thread.Sleep(2000);
-
-            // Verify ShortcutWatcher is running
-            var watcherProcess = Process.GetProcessesByName("ShortcutWatcher");
-            Assert.That(watcherProcess.Length, Is.GreaterThan(0),
-                "ShortcutWatcher.exe should be running");
+            // Wait for ShortcutWatcher process to start and connect
+            WaitUntilCondition(
+                () => Process.GetProcessesByName("ShortcutWatcher").Length > 0,
+                "ShortcutWatcher.exe should be running",
+                TimeSpan.FromSeconds(5));
         }
 
         [Test]
@@ -50,23 +47,17 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
         {
             // First, navigate away from RandomNameGenerator to ensure F9 brings us back
             NavigateToPage("Timer");
-            Thread.Sleep(500);
 
-            // Verify we're not on RandomNameGenerator page
-            var timerPage = MainWindow!.FindFirstDescendant(cf =>
-                cf.ByAutomationId("TimerPage"));
-            Assert.That(timerPage, Is.Not.Null,
-                "Should be on Timer page before F9 is pressed");
+            // Verify we're on Timer page
+            var timerPage = VerifyPageLoaded("TimerPage");
 
             // Press F9
             Keyboard.Press(VirtualKeyShort.F9);
-
-            // Wait for navigation to complete
-            Thread.Sleep(1000);
+            Wait.UntilInputIsProcessed();
 
             // Verify we're now on RandomNameGenerator page
             var rngPage = WaitUntilFound<AutomationElement>(
-                () => MainWindow.FindFirstDescendant(cf =>
+                () => MainWindow!.FindFirstDescendant(cf =>
                     cf.ByAutomationId("RandomNameGeneratorPage")),
                 "RandomNameGeneratorPage should be loaded after F9",
                 TimeSpan.FromSeconds(5));
@@ -80,28 +71,30 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
         {
             // First, set up a class with students
             NavigateToPage("Random Name Generator");
-            Thread.Sleep(500);
 
-            _rngPage = WaitUntilFound<AutomationElement>(
-                () => MainWindow!.FindFirstDescendant(cf =>
-                    cf.ByAutomationId("RandomNameGeneratorPage")),
-                "RandomNameGeneratorPage should be loaded");
+            _rngPage = VerifyPageLoaded("RandomNameGeneratorPage");
 
             // Add a class file
             OpenClassFile("8xCs2.txt");
-            Thread.Sleep(1000);
 
             // Get the name display element
-            var nameDisplay = _rngPage!.FindFirstDescendant(cf =>
-                cf.ByAutomationId("NameDisplay"));
-            Assert.That(nameDisplay, Is.Not.Null, "NameDisplay should exist");
+            var nameDisplay = WaitUntilFound<AutomationElement>(
+                () => _rngPage!.FindFirstDescendant(cf =>
+                    cf.ByAutomationId("NameDisplay")),
+                "NameDisplay should exist");
 
             var textPattern = nameDisplay.Patterns.Text.Pattern;
             var initialName = textPattern.DocumentRange.GetText(-1);
 
             // Press F9 to generate a new name
             Keyboard.Press(VirtualKeyShort.F9);
-            Thread.Sleep(500);
+            Wait.UntilInputIsProcessed();
+
+            // Wait for name to change
+            WaitUntilCondition(
+                () => textPattern.DocumentRange.GetText(-1) != initialName,
+                "Name should change after F9",
+                TimeSpan.FromSeconds(2));
 
             // Get the new name
             var newName = textPattern.DocumentRange.GetText(-1);
@@ -120,51 +113,60 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
         {
             // Set up the random name generator with a class
             NavigateToPage("Random Name Generator");
-            Thread.Sleep(500);
 
-            _rngPage = WaitUntilFound<AutomationElement>(
-                () => MainWindow!.FindFirstDescendant(cf =>
-                    cf.ByAutomationId("RandomNameGeneratorPage")),
-                "RandomNameGeneratorPage should be loaded");
+            _rngPage = VerifyPageLoaded("RandomNameGeneratorPage");
 
             OpenClassFile("8xCs2.txt");
-            Thread.Sleep(1000);
 
             // Start notepad to take focus away from the app
             var notepadProcess = Process.Start("notepad.exe");
-            Thread.Sleep(1000);
 
             try
             {
-                // Verify notepad has focus
-                var notepadWindow = Automation!.GetDesktop()
-                    .FindFirstChild(cf => cf.ByName("Untitled - Notepad")
-                        .Or(cf.ByName("*Untitled - Notepad")));
+                // Wait for notepad to be ready
+                var notepadWindow = WaitUntilFound<AutomationElement>(
+                    () => {
+                        var window = Automation!.GetDesktop()
+                            .FindFirstChild(cf => cf.ByName("Untitled - Notepad")
+                                .Or(cf.ByName("*Untitled - Notepad")));
 
-                if (notepadWindow == null)
-                {
-                    // Try alternative notepad window names
-                    notepadWindow = Automation!.GetDesktop()
-                        .FindFirstChild(cf => cf.ByClassName("Notepad"));
-                }
+                        if (window == null)
+                        {
+                            window = Automation!.GetDesktop()
+                                .FindFirstChild(cf => cf.ByClassName("Notepad"));
+                        }
 
-                Assert.That(notepadWindow, Is.Not.Null,
-                    "Notepad window should be open");
+                        return window;
+                    },
+                    "Notepad window should be open",
+                    TimeSpan.FromSeconds(5));
+
+                Wait.UntilResponsive(notepadWindow);
 
                 // Get the name display before pressing F9
-                var nameDisplay = _rngPage!.FindFirstDescendant(cf =>
-                    cf.ByAutomationId("NameDisplay"));
+                var nameDisplay = WaitUntilFound<AutomationElement>(
+                    () => _rngPage!.FindFirstDescendant(cf =>
+                        cf.ByAutomationId("NameDisplay")),
+                    "NameDisplay should exist");
+
                 var textPattern = nameDisplay.Patterns.Text.Pattern;
                 var initialName = textPattern.DocumentRange.GetText(-1);
 
                 // Press F9 while notepad has focus
                 Keyboard.Press(VirtualKeyShort.F9);
-                Thread.Sleep(1000);
+                Wait.UntilInputIsProcessed();
 
-                // Verify that our app now has focus (F9 should activate it)
-                var isAppFocused = !MainWindow!.Properties.IsOffscreen;
-                Assert.That(isAppFocused, Is.True,
-                    "F9 should activate the main window");
+                // Wait for our app to be activated
+                WaitUntilCondition(
+                    () => !MainWindow!.Properties.IsOffscreen,
+                    "F9 should activate the main window",
+                    TimeSpan.FromSeconds(3));
+
+                // Wait for name to change
+                WaitUntilCondition(
+                    () => textPattern.DocumentRange.GetText(-1) != initialName,
+                    "Name should change after F9",
+                    TimeSpan.FromSeconds(2));
 
                 // Verify a name was generated
                 var newName = textPattern.DocumentRange.GetText(-1);
@@ -190,9 +192,7 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
             Keyboard.Press(VirtualKeyShort.KEY_0);
             Keyboard.Release(VirtualKeyShort.KEY_0);
             Keyboard.Release(VirtualKeyShort.LWIN);
-
-            // Wait for timer window to appear
-            Thread.Sleep(1500);
+            Wait.UntilInputIsProcessed();
 
             // Find the timer window
             var timerElement = WaitUntilFound<AutomationElement>(
@@ -201,24 +201,22 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
                 "Timer window should appear after Win+0",
                 TimeSpan.FromSeconds(5));
 
-            Assert.That(timerElement, Is.Not.Null,
-                "Win+0 should open a timer window");
-
             var timerWindow = timerElement.AsWindow();
+            Wait.UntilResponsive(timerWindow);
 
             // Verify the timer is set to 30 seconds
-            var timeDisplay = timerWindow.FindFirstDescendant(cf =>
-                cf.ByAutomationId("TimeDisplay"));
+            var timeDisplay = WaitUntilFound<AutomationElement>(
+                () => timerWindow.FindFirstDescendant(cf =>
+                    cf.ByAutomationId("TimeDisplay")),
+                "TimeDisplay should be found",
+                TimeSpan.FromSeconds(2));
 
-            if (timeDisplay != null)
-            {
-                var textPattern = timeDisplay.Patterns.Text.Pattern;
-                var timeText = textPattern.DocumentRange.GetText(-1);
+            var textPattern = timeDisplay.Patterns.Text.Pattern;
+            var timeText = textPattern.DocumentRange.GetText(-1);
 
-                // Should show something like "00:30" or "0:30"
-                Assert.That(timeText, Does.Contain("30"),
-                    "Timer should be set to 30 seconds");
-            }
+            // Should show something like "00:30" or "0:30"
+            Assert.That(timeText, Does.Contain("30"),
+                "Timer should be set to 30 seconds");
 
             // Close the timer window
             timerWindow.Close();
@@ -232,9 +230,7 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
             Keyboard.Press(VirtualKeyShort.KEY_1);
             Keyboard.Release(VirtualKeyShort.KEY_1);
             Keyboard.Release(VirtualKeyShort.LWIN);
-
-            // Wait for timer window to appear
-            Thread.Sleep(1500);
+            Wait.UntilInputIsProcessed();
 
             // Find the timer window
             var timerElement = WaitUntilFound<AutomationElement>(
@@ -243,24 +239,22 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
                 "Timer window should appear after Win+1",
                 TimeSpan.FromSeconds(5));
 
-            Assert.That(timerElement, Is.Not.Null,
-                "Win+1 should open a timer window");
-
             var timerWindow = timerElement.AsWindow();
+            Wait.UntilResponsive(timerWindow);
 
             // Verify the timer is set to 1 minute (60 seconds)
-            var timeDisplay = timerWindow.FindFirstDescendant(cf =>
-                cf.ByAutomationId("TimeDisplay"));
+            var timeDisplay = WaitUntilFound<AutomationElement>(
+                () => timerWindow.FindFirstDescendant(cf =>
+                    cf.ByAutomationId("TimeDisplay")),
+                "TimeDisplay should be found",
+                TimeSpan.FromSeconds(2));
 
-            if (timeDisplay != null)
-            {
-                var textPattern = timeDisplay.Patterns.Text.Pattern;
-                var timeText = textPattern.DocumentRange.GetText(-1);
+            var textPattern = timeDisplay.Patterns.Text.Pattern;
+            var timeText = textPattern.DocumentRange.GetText(-1);
 
-                // Should show something like "01:00" or "1:00"
-                Assert.That(timeText, Does.Match("0?1:00"),
-                    "Timer should be set to 1 minute");
-            }
+            // Should show something like "01:00" or "1:00"
+            Assert.That(timeText, Does.Match("0?1:00"),
+                "Timer should be set to 1 minute");
 
             // Close the timer window
             timerWindow.Close();
@@ -274,9 +268,7 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
             Keyboard.Press(VirtualKeyShort.KEY_9);
             Keyboard.Release(VirtualKeyShort.KEY_9);
             Keyboard.Release(VirtualKeyShort.LWIN);
-
-            // Wait for timer window to appear
-            Thread.Sleep(1500);
+            Wait.UntilInputIsProcessed();
 
             // Find the timer window
             var timerElement = WaitUntilFound<AutomationElement>(
@@ -285,24 +277,22 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
                 "Timer window should appear after Win+9",
                 TimeSpan.FromSeconds(5));
 
-            Assert.That(timerElement, Is.Not.Null,
-                "Win+9 should open a timer window");
-
             var timerWindow = timerElement.AsWindow();
+            Wait.UntilResponsive(timerWindow);
 
             // Verify we're in manual mode (timer should be at 00:00)
-            var timeDisplay = timerWindow.FindFirstDescendant(cf =>
-                cf.ByAutomationId("TimeDisplay"));
+            var timeDisplay = WaitUntilFound<AutomationElement>(
+                () => timerWindow.FindFirstDescendant(cf =>
+                    cf.ByAutomationId("TimeDisplay")),
+                "TimeDisplay should be found",
+                TimeSpan.FromSeconds(2));
 
-            if (timeDisplay != null)
-            {
-                var textPattern = timeDisplay.Patterns.Text.Pattern;
-                var timeText = textPattern.DocumentRange.GetText(-1);
+            var textPattern = timeDisplay.Patterns.Text.Pattern;
+            var timeText = textPattern.DocumentRange.GetText(-1);
 
-                // Should show "00:00" for manual timer
-                Assert.That(timeText, Does.Contain("00:00"),
-                    "Manual timer should start at 00:00");
-            }
+            // Should show "00:00" for manual timer
+            Assert.That(timeText, Does.Contain("00:00"),
+                "Manual timer should start at 00:00");
 
             // Close the timer window
             timerWindow.Close();
@@ -313,18 +303,35 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
         {
             // Start notepad to take focus away from the app
             var notepadProcess = Process.Start("notepad.exe");
-            Thread.Sleep(1000);
 
             try
             {
+                // Wait for notepad to be ready
+                var notepadWindow = WaitUntilFound<AutomationElement>(
+                    () => {
+                        var window = Automation!.GetDesktop()
+                            .FindFirstChild(cf => cf.ByName("Untitled - Notepad")
+                                .Or(cf.ByName("*Untitled - Notepad")));
+
+                        if (window == null)
+                        {
+                            window = Automation!.GetDesktop()
+                                .FindFirstChild(cf => cf.ByClassName("Notepad"));
+                        }
+
+                        return window;
+                    },
+                    "Notepad window should be open",
+                    TimeSpan.FromSeconds(5));
+
+                Wait.UntilResponsive(notepadWindow);
+
                 // Press Win+1 while notepad has focus
                 Keyboard.Press(VirtualKeyShort.LWIN);
                 Keyboard.Press(VirtualKeyShort.KEY_1);
                 Keyboard.Release(VirtualKeyShort.KEY_1);
                 Keyboard.Release(VirtualKeyShort.LWIN);
-
-                // Wait for timer window to appear
-                Thread.Sleep(1500);
+                Wait.UntilInputIsProcessed();
 
                 // Find the timer window - it should appear even though app didn't have focus
                 var timerElement = WaitUntilFound<AutomationElement>(
@@ -333,10 +340,11 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
                     "Timer window should appear after Win+1 even when app not focused",
                     TimeSpan.FromSeconds(5));
 
-                Assert.That(timerElement, Is.Not.Null,
-                    "Win+1 should open a timer window even when app is not focused");
-
                 var timerWindow = timerElement.AsWindow();
+                Wait.UntilResponsive(timerWindow);
+
+                Assert.That(timerWindow, Is.Not.Null,
+                    "Win+1 should open a timer window even when app is not focused");
 
                 // Close the timer window
                 timerWindow.Close();
@@ -399,9 +407,10 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
 
             filenameInput.Focus();
             Keyboard.Type(path);
+            Wait.UntilInputIsProcessed();
 
-            Thread.Sleep(200);
             Keyboard.Press(VirtualKeyShort.RETURN);
+            Wait.UntilInputIsProcessed();
 
             // Wait for dialog to close
             WaitUntilCondition(
