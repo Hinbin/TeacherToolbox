@@ -45,11 +45,20 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
         [Test]
         public void F9_NavigatesToRandomNameGenerator()
         {
-            // First, navigate away from RandomNameGenerator to ensure F9 brings us back
+
+            // First, set up a class with students
+            NavigateToPage("Random Name Generator");
+
+            _rngPage = VerifyPageLoaded("RandomNameGeneratorPage");
+
+            // Add a class file
+            OpenClassFile("8xCs2.txt");
+
+            // Navigate away from RandomNameGenerator to ensure F9 brings us back
             NavigateToPage("Timer");
 
             // Verify we're on Timer page
-            var timerPage = VerifyPageLoaded("TimerPage");
+            var timerPage = VerifyPageLoaded("TimerSelectionPage");
 
             // Press F9
             Keyboard.Press(VirtualKeyShort.F9);
