@@ -22,10 +22,31 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
         [SetUp]
         public void ShortcutWatcherSetUp()
         {
-            // Wait for ShortcutWatcher process to start and connect
+            // Wait for ShortcutWatcher process to start
             WaitUntilCondition(
                 () => Process.GetProcessesByName("ShortcutWatcher").Length > 0,
                 "ShortcutWatcher.exe should be running",
+                TimeSpan.FromSeconds(5));
+
+            // Give the ShortcutWatcher additional time to fully initialize
+            // (register global hooks, connect named pipes, etc.)
+            WaitUntilCondition(
+                () => {
+                    var watcherProcess = Process.GetProcessesByName("ShortcutWatcher");
+                    if (watcherProcess.Length == 0) return false;
+
+                    // Ensure process has been running for at least a short time
+                    // This gives time for hooks to register and pipes to connect
+                    try
+                    {
+                        return (DateTime.Now - watcherProcess[0].StartTime).TotalMilliseconds > 500;
+                    }
+                    catch
+                    {
+                        return false;
+                    }
+                },
+                "ShortcutWatcher should be fully initialized",
                 TimeSpan.FromSeconds(5));
         }
 
