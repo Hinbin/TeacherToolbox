@@ -208,11 +208,7 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
             finally
             {
                 // Clean up notepad
-                if (notepadProcess != null && !notepadProcess.HasExited)
-                {
-                    notepadProcess.Kill();
-                    notepadProcess.WaitForExit(1000);
-                }
+                CleanupNotepadProcess(notepadProcess);
             }
         }
 
@@ -377,11 +373,7 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
             finally
             {
                 // Clean up notepad
-                if (notepadProcess != null && !notepadProcess.HasExited)
-                {
-                    notepadProcess.Kill();
-                    notepadProcess.WaitForExit(1000);
-                }
+                CleanupNotepadProcess(notepadProcess);
             }
         }
 
@@ -489,6 +481,77 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
             {
                 System.Diagnostics.Debug.WriteLine($"Error in window search: {ex.Message}");
                 return null;
+            }
+        }
+
+        // Helper method to properly cleanup Notepad process
+        private void CleanupNotepadProcess(Process? notepadProcess)
+        {
+            if (notepadProcess == null)
+                return;
+
+            try
+            {
+                // First, try to find and close the Notepad window gracefully
+                try
+                {
+                    using var automation = new UIA3Automation();
+                    var desktop = automation.GetDesktop();
+                    var notepadWindow = desktop.FindFirstChild(cf =>
+                        cf.ByClassName("Notepad"));
+
+                    if (notepadWindow != null)
+                    {
+                        Debug.WriteLine("Closing Notepad window gracefully");
+                        notepadWindow.AsWindow().Close();
+                        Wait.UntilInputIsProcessed();
+
+                        // Wait a bit for the window to close
+                        if (!notepadProcess.WaitForExit(2000))
+                        {
+                            Debug.WriteLine("Notepad didn't close gracefully, forcing termination");
+                        }
+                        else
+                        {
+                            Debug.WriteLine("Notepad closed successfully");
+                            return;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Failed to close Notepad window gracefully: {ex.Message}");
+                }
+
+                // If graceful close failed, force kill the process
+                if (!notepadProcess.HasExited)
+                {
+                    Debug.WriteLine("Force killing Notepad process");
+                    notepadProcess.Kill(entireProcessTree: true);
+                    notepadProcess.WaitForExit(3000);
+                }
+
+                // Verify it's really gone
+                if (!notepadProcess.HasExited)
+                {
+                    Debug.WriteLine("WARNING: Notepad process still running after cleanup attempt");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error during Notepad cleanup: {ex.Message}");
+                // Try one last time with just Kill
+                try
+                {
+                    if (!notepadProcess.HasExited)
+                    {
+                        notepadProcess.Kill();
+                    }
+                }
+                catch
+                {
+                    // Ignore final cleanup errors
+                }
             }
         }
     }
