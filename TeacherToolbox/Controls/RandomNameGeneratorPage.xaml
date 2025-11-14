@@ -22,8 +22,8 @@
 
     <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" Tapped="Page_Tapped">
         <Grid.RowDefinitions>
-            <RowDefinition Height="2*" />
-            <RowDefinition Height="1*" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <!--  Main Display Area  -->
@@ -72,7 +72,6 @@
         <!--  Class Selection Panel  -->
         <Viewbox
             Grid.Row="1"
-            Margin="0,-40,0,0"
             HorizontalAlignment="Center"
             VerticalAlignment="Top"
             Stretch="Uniform"
