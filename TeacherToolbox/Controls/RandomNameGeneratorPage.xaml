@@ -22,7 +22,7 @@
 
     <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" Tapped="Page_Tapped">
         <Grid.RowDefinitions>
-            <RowDefinition Height="3*" />
+            <RowDefinition Height="2*" />
             <RowDefinition Height="1*" />
         </Grid.RowDefinitions>
 
