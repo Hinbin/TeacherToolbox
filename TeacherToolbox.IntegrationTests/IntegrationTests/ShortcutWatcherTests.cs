@@ -1,8 +1,10 @@
 using FlaUI.Core;
 using FlaUI.Core.AutomationElements;
+using FlaUI.Core.Definitions;
 using FlaUI.Core.Input;
 using FlaUI.Core.WindowsAPI;
 using FlaUI.Core.Tools;
+using FlaUI.UIA3;
 using NUnit.Framework;
 using System;
 using System.Diagnostics;
@@ -194,28 +196,26 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
             Keyboard.Release(VirtualKeyShort.LWIN);
             Wait.UntilInputIsProcessed();
 
-            // Find the timer window
-            var timerElement = WaitUntilFound<AutomationElement>(
-                () => Automation!.GetDesktop().FindFirstChild(cf =>
-                    cf.ByName("Timer").And(cf.ByClassName("WinUIDesktopWin32WindowClass"))),
+            // Find the timer window using the same method as TimerTests
+            var timerWindow = WaitUntilFound<Window>(
+                () => FindTimerWindow(),
                 "Timer window should appear after Win+0",
                 TimeSpan.FromSeconds(5));
 
-            var timerWindow = timerElement.AsWindow();
-            Wait.UntilResponsive(timerWindow);
+            Assert.That(timerWindow, Is.Not.Null, "Win+0 should open a timer window");
+            Wait.UntilResponsive(timerWindow!);
 
-            // Verify the timer is set to 30 seconds
-            var timeDisplay = WaitUntilFound<AutomationElement>(
+            // Verify the timer is set to 30 seconds (using same element ID as TimerTests)
+            var timerText = WaitUntilFound<AutomationElement>(
                 () => timerWindow.FindFirstDescendant(cf =>
-                    cf.ByAutomationId("TimeDisplay")),
-                "TimeDisplay should be found",
+                    cf.ByAutomationId("timerText")),
+                "Timer text should be found",
                 TimeSpan.FromSeconds(2));
 
-            var textPattern = timeDisplay.Patterns.Text.Pattern;
-            var timeText = textPattern.DocumentRange.GetText(-1);
+            var displayedTime = timerText.AsTextBox().Text;
 
-            // Should show something like "00:30" or "0:30"
-            Assert.That(timeText, Does.Contain("30"),
+            // Should show "30" for 30 seconds
+            Assert.That(displayedTime, Is.EqualTo("30"),
                 "Timer should be set to 30 seconds");
 
             // Close the timer window
@@ -232,28 +232,26 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
             Keyboard.Release(VirtualKeyShort.LWIN);
             Wait.UntilInputIsProcessed();
 
-            // Find the timer window
-            var timerElement = WaitUntilFound<AutomationElement>(
-                () => Automation!.GetDesktop().FindFirstChild(cf =>
-                    cf.ByName("Timer").And(cf.ByClassName("WinUIDesktopWin32WindowClass"))),
+            // Find the timer window using the same method as TimerTests
+            var timerWindow = WaitUntilFound<Window>(
+                () => FindTimerWindow(),
                 "Timer window should appear after Win+1",
                 TimeSpan.FromSeconds(5));
 
-            var timerWindow = timerElement.AsWindow();
-            Wait.UntilResponsive(timerWindow);
+            Assert.That(timerWindow, Is.Not.Null, "Win+1 should open a timer window");
+            Wait.UntilResponsive(timerWindow!);
 
-            // Verify the timer is set to 1 minute (60 seconds)
-            var timeDisplay = WaitUntilFound<AutomationElement>(
+            // Verify the timer is set to 1 minute (60 seconds) (using same element ID as TimerTests)
+            var timerText = WaitUntilFound<AutomationElement>(
                 () => timerWindow.FindFirstDescendant(cf =>
-                    cf.ByAutomationId("TimeDisplay")),
-                "TimeDisplay should be found",
+                    cf.ByAutomationId("timerText")),
+                "Timer text should be found",
                 TimeSpan.FromSeconds(2));
 
-            var textPattern = timeDisplay.Patterns.Text.Pattern;
-            var timeText = textPattern.DocumentRange.GetText(-1);
+            var displayedTime = timerText.AsTextBox().Text;
 
-            // Should show something like "01:00" or "1:00"
-            Assert.That(timeText, Does.Match("0?1:00"),
+            // Should show "1:00" for 1 minute
+            Assert.That(displayedTime, Is.EqualTo("1:00"),
                 "Timer should be set to 1 minute");
 
             // Close the timer window
@@ -270,29 +268,34 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
             Keyboard.Release(VirtualKeyShort.LWIN);
             Wait.UntilInputIsProcessed();
 
-            // Find the timer window
-            var timerElement = WaitUntilFound<AutomationElement>(
-                () => Automation!.GetDesktop().FindFirstChild(cf =>
-                    cf.ByName("Timer").And(cf.ByClassName("WinUIDesktopWin32WindowClass"))),
+            // Find the timer window using the same method as TimerTests
+            var timerWindow = WaitUntilFound<Window>(
+                () => FindTimerWindow(),
                 "Timer window should appear after Win+9",
                 TimeSpan.FromSeconds(5));
 
-            var timerWindow = timerElement.AsWindow();
-            Wait.UntilResponsive(timerWindow);
+            Assert.That(timerWindow, Is.Not.Null, "Win+9 should open a timer window");
+            Wait.UntilResponsive(timerWindow!);
 
-            // Verify we're in manual mode (timer should be at 00:00)
-            var timeDisplay = WaitUntilFound<AutomationElement>(
+            // Verify manual timer mode - should have time selector controls
+            var intervalsListView = WaitUntilFound<AutomationElement>(
                 () => timerWindow.FindFirstDescendant(cf =>
-                    cf.ByAutomationId("TimeDisplay")),
-                "TimeDisplay should be found",
+                    cf.ByAutomationId("intervalsListView")),
+                "Time selector should be present for manual timer",
                 TimeSpan.FromSeconds(2));
 
-            var textPattern = timeDisplay.Patterns.Text.Pattern;
-            var timeText = textPattern.DocumentRange.GetText(-1);
+            var startButton = timerWindow.FindFirstDescendant(cf =>
+                cf.ByAutomationId("startButton"));
 
-            // Should show "00:00" for manual timer
-            Assert.That(timeText, Does.Contain("00:00"),
-                "Manual timer should start at 00:00");
+            Assert.Multiple(() =>
+            {
+                Assert.That(intervalsListView, Is.Not.Null,
+                    "Manual timer should have time selector");
+                Assert.That(intervalsListView!.IsOffscreen, Is.False,
+                    "Time selector should be visible");
+                Assert.That(startButton, Is.Not.Null,
+                    "Manual timer should have start button");
+            });
 
             // Close the timer window
             timerWindow.Close();
@@ -333,18 +336,15 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
                 Keyboard.Release(VirtualKeyShort.LWIN);
                 Wait.UntilInputIsProcessed();
 
-                // Find the timer window - it should appear even though app didn't have focus
-                var timerElement = WaitUntilFound<AutomationElement>(
-                    () => Automation!.GetDesktop().FindFirstChild(cf =>
-                        cf.ByName("Timer").And(cf.ByClassName("WinUIDesktopWin32WindowClass"))),
+                // Find the timer window using the same method as TimerTests
+                var timerWindow = WaitUntilFound<Window>(
+                    () => FindTimerWindow(),
                     "Timer window should appear after Win+1 even when app not focused",
                     TimeSpan.FromSeconds(5));
 
-                var timerWindow = timerElement.AsWindow();
-                Wait.UntilResponsive(timerWindow);
-
                 Assert.That(timerWindow, Is.Not.Null,
                     "Win+1 should open a timer window even when app is not focused");
+                Wait.UntilResponsive(timerWindow!);
 
                 // Close the timer window
                 timerWindow.Close();
@@ -428,6 +428,43 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
                 },
                 "File dialog should be closed",
                 TimeSpan.FromSeconds(10));
+        }
+
+        // Helper method to find timer window using the same approach as TimerTests
+        private Window? FindTimerWindow()
+        {
+            try
+            {
+                using var automation = new UIA3Automation();
+                var desktop = automation.GetDesktop();
+                var windows = desktop.FindAllChildren(cf =>
+                    cf.ByControlType(ControlType.Window));
+
+                // More specific window identification
+                var timerWindow = windows.FirstOrDefault(w =>
+                    w.Name.Contains("Timer") && // Check name
+                    !w.Name.Contains("Visual Studio") && // Exclude VS
+                    w != MainWindow); // Exclude main window
+
+                if (timerWindow != null)
+                {
+                    Debug.WriteLine($"Found timer window: Name={timerWindow.Name}, Class={timerWindow.ClassName}");
+                    try
+                    {
+                        return timerWindow.AsWindow(); // Convert to Window type
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"Failed to convert to Window: {ex.Message}");
+                    }
+                }
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error in window search: {ex.Message}");
+                return null;
+            }
         }
     }
 }
