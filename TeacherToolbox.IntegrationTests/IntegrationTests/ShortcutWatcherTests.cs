@@ -195,14 +195,16 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
             Thread.Sleep(1500);
 
             // Find the timer window
-            var timerWindow = WaitUntilFound<Window>(
+            var timerElement = WaitUntilFound<AutomationElement>(
                 () => Automation!.GetDesktop().FindFirstChild(cf =>
                     cf.ByName("Timer").And(cf.ByClassName("WinUIDesktopWin32WindowClass"))),
                 "Timer window should appear after Win+0",
                 TimeSpan.FromSeconds(5));
 
-            Assert.That(timerWindow, Is.Not.Null,
+            Assert.That(timerElement, Is.Not.Null,
                 "Win+0 should open a timer window");
+
+            var timerWindow = timerElement.AsWindow();
 
             // Verify the timer is set to 30 seconds
             var timeDisplay = timerWindow.FindFirstDescendant(cf =>
@@ -235,14 +237,16 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
             Thread.Sleep(1500);
 
             // Find the timer window
-            var timerWindow = WaitUntilFound<Window>(
+            var timerElement = WaitUntilFound<AutomationElement>(
                 () => Automation!.GetDesktop().FindFirstChild(cf =>
                     cf.ByName("Timer").And(cf.ByClassName("WinUIDesktopWin32WindowClass"))),
                 "Timer window should appear after Win+1",
                 TimeSpan.FromSeconds(5));
 
-            Assert.That(timerWindow, Is.Not.Null,
+            Assert.That(timerElement, Is.Not.Null,
                 "Win+1 should open a timer window");
+
+            var timerWindow = timerElement.AsWindow();
 
             // Verify the timer is set to 1 minute (60 seconds)
             var timeDisplay = timerWindow.FindFirstDescendant(cf =>
@@ -275,14 +279,16 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
             Thread.Sleep(1500);
 
             // Find the timer window
-            var timerWindow = WaitUntilFound<Window>(
+            var timerElement = WaitUntilFound<AutomationElement>(
                 () => Automation!.GetDesktop().FindFirstChild(cf =>
                     cf.ByName("Timer").And(cf.ByClassName("WinUIDesktopWin32WindowClass"))),
                 "Timer window should appear after Win+9",
                 TimeSpan.FromSeconds(5));
 
-            Assert.That(timerWindow, Is.Not.Null,
+            Assert.That(timerElement, Is.Not.Null,
                 "Win+9 should open a timer window");
+
+            var timerWindow = timerElement.AsWindow();
 
             // Verify we're in manual mode (timer should be at 00:00)
             var timeDisplay = timerWindow.FindFirstDescendant(cf =>
@@ -321,14 +327,16 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
                 Thread.Sleep(1500);
 
                 // Find the timer window - it should appear even though app didn't have focus
-                var timerWindow = WaitUntilFound<Window>(
+                var timerElement = WaitUntilFound<AutomationElement>(
                     () => Automation!.GetDesktop().FindFirstChild(cf =>
                         cf.ByName("Timer").And(cf.ByClassName("WinUIDesktopWin32WindowClass"))),
                     "Timer window should appear after Win+1 even when app not focused",
                     TimeSpan.FromSeconds(5));
 
-                Assert.That(timerWindow, Is.Not.Null,
+                Assert.That(timerElement, Is.Not.Null,
                     "Win+1 should open a timer window even when app is not focused");
+
+                var timerWindow = timerElement.AsWindow();
 
                 // Close the timer window
                 timerWindow.Close();
