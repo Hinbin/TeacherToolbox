@@ -39,7 +39,7 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
                     // This gives time for hooks to register and pipes to connect
                     try
                     {
-                        return (DateTime.Now - watcherProcess[0].StartTime).TotalMilliseconds > 500;
+                        return (DateTime.Now - watcherProcess[0].StartTime).TotalMilliseconds > 1000;
                     }
                     catch
                     {
@@ -219,11 +219,9 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
         [Test]
         public void WinPlusZero_StartsThirtySecondTimer()
         {
+            Wait.UntilResponsive(MainWindow);
             // Press Win+0 to start 30 second timer
-            Keyboard.Press(VirtualKeyShort.LWIN);
-            Keyboard.Press(VirtualKeyShort.KEY_0);
-            Keyboard.Release(VirtualKeyShort.KEY_0);
-            Keyboard.Release(VirtualKeyShort.LWIN);
+            Keyboard.TypeSimultaneously(VirtualKeyShort.LWIN, VirtualKeyShort.KEY_0);
             Wait.UntilInputIsProcessed();
 
             // Find the timer window using the same method as TimerTests
@@ -256,10 +254,7 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
         public void WinPlusOne_StartsOneMinuteTimer()
         {
             // Press Win+1 to start 1 minute timer
-            Keyboard.Press(VirtualKeyShort.LWIN);
-            Keyboard.Press(VirtualKeyShort.KEY_1);
-            Keyboard.Release(VirtualKeyShort.KEY_1);
-            Keyboard.Release(VirtualKeyShort.LWIN);
+            Keyboard.TypeSimultaneously(VirtualKeyShort.LWIN, VirtualKeyShort.KEY_1);
             Wait.UntilInputIsProcessed();
 
             // Find the timer window using the same method as TimerTests
@@ -478,21 +473,21 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
 
                 if (timerWindow != null)
                 {
-                    Debug.WriteLine($"Found timer window: Name={timerWindow.Name}, Class={timerWindow.ClassName}");
+                    System.Diagnostics.Debug.WriteLine($"Found timer window: Name={timerWindow.Name}, Class={timerWindow.ClassName}");
                     try
                     {
                         return timerWindow.AsWindow(); // Convert to Window type
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine($"Failed to convert to Window: {ex.Message}");
+                        System.Diagnostics.Debug.WriteLine($"Failed to convert to Window: {ex.Message}");
                     }
                 }
                 return null;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error in window search: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Error in window search: {ex.Message}");
                 return null;
             }
         }
