@@ -33,7 +33,7 @@
                 x:Name="NameViewbox"
                 MaxWidth="800"
                 HorizontalAlignment="Center"
-                VerticalAlignment="Center"
+                VerticalAlignment="Bottom"
                 Visibility="{x:Bind ViewModel.IsNameVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
                 <TextBlock
                     x:Name="NameDisplay"
@@ -50,7 +50,7 @@
                 MaxWidth="600"
                 Padding="12"
                 HorizontalAlignment="Center"
-                VerticalAlignment="Center"
+                VerticalAlignment="Bottom"
                 CornerRadius="8"
                 Visibility="{x:Bind ViewModel.IsTipVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
                 <StackPanel Spacing="16">
@@ -73,7 +73,7 @@
         <Viewbox
             Grid.Row="1"
             HorizontalAlignment="Center"
-            VerticalAlignment="Center"
+            VerticalAlignment="Top"
             Stretch="Uniform"
             StretchDirection="DownOnly">
             <StackPanel
