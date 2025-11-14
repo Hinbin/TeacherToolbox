@@ -72,6 +72,7 @@
         <!--  Class Selection Panel  -->
         <Viewbox
             Grid.Row="1"
+            Margin="0,-40,0,0"
             HorizontalAlignment="Center"
             VerticalAlignment="Top"
             Stretch="Uniform"
