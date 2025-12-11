@@ -66,10 +66,11 @@ namespace TeacherToolbox.Controls
         private int currentIntervalTotal;
         private int intervalNumber = 0;
 
+        // Flag to prevent multiple close operations
+        private bool isClosing = false;
 
         public TimerWindow(int seconds)
         {
-
             var services = App.Current.Services;
             _settingsService = services.GetRequiredService<ISettingsService>();
             _themeService = services.GetRequiredService<IThemeService>();
@@ -79,15 +80,6 @@ namespace TeacherToolbox.Controls
             this.InitializeComponent();
             InitializeUIElements();
             InitializeWindowAsync(seconds);
-
-            // First initialize the intervalsList to prevent null reference
-            intervalsList = new ObservableCollection<IntervalTimeViewModel>();
-
-            this.InitializeComponent();
-            InitializeUIElements();
-            InitializeWindowAsync(seconds);
-
-
         }
 
         private void InitializeUIElements()
@@ -596,6 +588,25 @@ namespace TeacherToolbox.Controls
             }
         }
 
+        /// <summary>
+        /// Centralized method to close the window safely, preventing multiple close operations
+        /// </summary>
+        private void CloseWindow()
+        {
+            // Prevent multiple close operations
+            if (isClosing) return;
+            isClosing = true;
+
+            try
+            {
+                this.Close();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error closing window: {ex.Message}");
+            }
+        }
+
         private void HandleTimerFinish(TimerFinishBehavior behavior)
         {
             switch (behavior)
@@ -605,7 +616,10 @@ namespace TeacherToolbox.Controls
                     timer.Stop();
 
                     // Set text color to red to indicate it's finished
-                    timerText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red);
+                    if (timerText != null)
+                    {
+                        timerText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red);
+                    }
 
                     // Play the sound and wait for it to complete before closing
                     if (isSoundAvailable && player != null)
@@ -613,14 +627,22 @@ namespace TeacherToolbox.Controls
                         try
                         {
                             // Subscribe to MediaEnded event to close window after sound completes
-                            player.MediaEnded += (s, args) =>
+                            EventHandler<object> mediaEndedHandler = null;
+                            mediaEndedHandler = (s, args) =>
                             {
+                                // Unsubscribe immediately to prevent multiple calls
+                                if (player != null)
+                                {
+                                    player.MediaEnded -= mediaEndedHandler;
+                                }
+
                                 // Use dispatcher to ensure we run on UI thread
                                 DispatcherQueue.TryEnqueue(() =>
                                 {
-                                    this.Close();
+                                    CloseWindow();
                                 });
                             };
+                            player.MediaEnded += mediaEndedHandler;
 
                             // Play the sound
                             player.Play();
@@ -631,7 +653,7 @@ namespace TeacherToolbox.Controls
                             fallbackTimer.Tick += (s, args) =>
                             {
                                 fallbackTimer.Stop();
-                                this.Close();
+                                CloseWindow();
                             };
                             fallbackTimer.Start();
                         }
@@ -639,7 +661,7 @@ namespace TeacherToolbox.Controls
                         {
                             Debug.WriteLine($"Error playing sound: {ex.Message}");
                             // Close window immediately if there was an error playing sound
-                            this.Close();
+                            CloseWindow();
                         }
                     }
                     else
@@ -650,7 +672,7 @@ namespace TeacherToolbox.Controls
                         closeTimer.Tick += (s, args) =>
                         {
                             closeTimer.Stop();
-                            this.Close();
+                            CloseWindow();
                         };
                         closeTimer.Start();
                     }
@@ -658,7 +680,10 @@ namespace TeacherToolbox.Controls
 
                 case TimerFinishBehavior.CountUp:
                     // Timer continues counting (negative values)
-                    timerText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red);
+                    if (timerText != null)
+                    {
+                        timerText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red);
+                    }
                     break;
 
                 case TimerFinishBehavior.StayAtZero:
@@ -666,7 +691,10 @@ namespace TeacherToolbox.Controls
                     timer.Stop();
 
                     // Set text color to red to indicate it's finished
-                    timerText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red);
+                    if (timerText != null)
+                    {
+                        timerText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red);
+                    }
 
                     // Reset secondsLeft to 0 to ensure it displays as 0
                     secondsLeft = 0;
@@ -712,6 +740,12 @@ namespace TeacherToolbox.Controls
 
         private void SetTimerText()
         {
+            // Safety check: Don't update UI if window is closing or UI elements are null
+            if (isClosing || timerText == null || this.Content == null)
+            {
+                return;
+            }
+
             int secondsToShow = Math.Abs(secondsLeft);
             string timeText;
 
@@ -738,42 +772,65 @@ namespace TeacherToolbox.Controls
             }
 
             // Update the timer text
-            timerText.Text = timeText;
+            try
+            {
+                timerText.Text = timeText;
 
-            // Set text color to red if we're in overtime
-            if (secondsLeft < 0)
-            {
-                timerText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red);
-                intervalInfoText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red);
-            }
-            else
-            {
-                // Use a resource that properly adapts to theme changes
-                var currentTheme = ((FrameworkElement)this.Content).ActualTheme;
-                if (currentTheme == ElementTheme.Dark)
+                // Set text color to red if we're in overtime
+                if (secondsLeft < 0)
                 {
-                    // Use white text in dark theme
-                    timerText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.White);
-                    intervalInfoText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.White);
+                    timerText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red);
+                    if (intervalInfoText != null)
+                    {
+                        intervalInfoText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red);
+                    }
                 }
                 else
                 {
-                    // Use dark text in light theme
-                    timerText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Black);
-                    intervalInfoText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Black);
+                    // Use a resource that properly adapts to theme changes
+                    if (this.Content is FrameworkElement content)
+                    {
+                        var currentTheme = content.ActualTheme;
+                        if (currentTheme == ElementTheme.Dark)
+                        {
+                            // Use white text in dark theme
+                            timerText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.White);
+                            if (intervalInfoText != null)
+                            {
+                                intervalInfoText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.White);
+                            }
+                        }
+                        else
+                        {
+                            // Use dark text in light theme
+                            timerText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Black);
+                            if (intervalInfoText != null)
+                            {
+                                intervalInfoText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Black);
+                            }
+                        }
+                    }
+                }
+
+                // Update interval info if applicable
+                if (intervalInfoText != null)
+                {
+                    if (intervals != null && intervalCount > 1 && secondsLeft >= 0)
+                    {
+                        intervalInfoText.Text = $"Interval {intervalNumber}/{intervalCount}";
+                        intervalInfoText.Visibility = Visibility.Visible;
+                    }
+                    else
+                    {
+                        intervalInfoText.Text = "";
+                        intervalInfoText.Visibility = Visibility.Collapsed;
+                    }
                 }
             }
-
-            // Update interval info if applicable
-            if (intervals != null && intervalCount > 1 && secondsLeft >= 0)
+            catch (Exception ex)
             {
-                intervalInfoText.Text = $"Interval {intervalNumber}/{intervalCount}";
-                intervalInfoText.Visibility = Visibility.Visible;
-            }
-            else
-            {
-                intervalInfoText.Text = "";
-                intervalInfoText.Visibility = Visibility.Collapsed;
+                // Log but don't crash if UI update fails during window closing
+                Debug.WriteLine($"Error updating timer text: {ex.Message}");
             }
         }
 
@@ -817,9 +874,14 @@ namespace TeacherToolbox.Controls
         {
             try
             {
+                // Unsubscribe all event handlers
                 this.SizeChanged -= TimerWindow_SizeChanged;
                 this.Activated -= Window_Activated;
-                ((FrameworkElement)this.Content).ActualThemeChanged -= Window_ThemeChanged;
+                this.Closed -= Window_Closed;
+                if (this.Content is FrameworkElement content)
+                {
+                    content.ActualThemeChanged -= Window_ThemeChanged;
+                }
 
                 // Dispose the acrylic controller
                 if (m_acrylicController != null)
