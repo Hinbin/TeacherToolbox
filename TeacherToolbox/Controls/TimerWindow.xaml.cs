@@ -627,7 +627,7 @@ namespace TeacherToolbox.Controls
                         try
                         {
                             // Subscribe to MediaEnded event to close window after sound completes
-                            EventHandler<object> mediaEndedHandler = null;
+                            Windows.Foundation.TypedEventHandler<MediaPlayer, object> mediaEndedHandler = null;
                             mediaEndedHandler = (s, args) =>
                             {
                                 // Unsubscribe immediately to prevent multiple calls
