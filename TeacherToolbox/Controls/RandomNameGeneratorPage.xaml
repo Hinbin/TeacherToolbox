@@ -22,7 +22,7 @@
 
     <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" Tapped="Page_Tapped">
         <Grid.RowDefinitions>
-            <RowDefinition Height="3*" />
+            <RowDefinition Height="4*" />
             <RowDefinition Height="1*" />
         </Grid.RowDefinitions>
 
@@ -31,15 +31,13 @@
             <!--  Name Display  -->
             <Viewbox
                 x:Name="NameViewbox"
-                MaxWidth="800"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 Visibility="{x:Bind ViewModel.IsNameVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
                 <TextBlock
                     x:Name="NameDisplay"
                     AutomationProperties.AutomationId="NameDisplay"
-                    FontSize="72"
-                    FontWeight="Bold"
+                    FontWeight="SemiBold"
                     Text="{x:Bind ViewModel.NameDisplay, Mode=OneWay}"
                     TextAlignment="Center" />
             </Viewbox>
