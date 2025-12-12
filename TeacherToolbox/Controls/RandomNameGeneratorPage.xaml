@@ -22,60 +22,61 @@
 
     <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" Tapped="Page_Tapped">
         <Grid.RowDefinitions>
-            <RowDefinition Height="4*" />
+            <RowDefinition Height="3*" />
             <RowDefinition Height="1*" />
         </Grid.RowDefinitions>
 
         <!--  Main Display Area  -->
         <Grid Grid.Row="0">
             <!--  Name Display  -->
-            <Viewbox
-                x:Name="NameViewbox"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Center"
-                Visibility="{x:Bind ViewModel.IsNameVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Viewbox x:Name="NameViewbox" Visibility="{x:Bind ViewModel.IsNameVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+
                 <TextBlock
                     x:Name="NameDisplay"
                     AutomationProperties.AutomationId="NameDisplay"
+                    FontSize="3"
                     FontWeight="SemiBold"
                     Text="{x:Bind ViewModel.NameDisplay, Mode=OneWay}"
                     TextAlignment="Center" />
             </Viewbox>
 
-            <!--  Tip Display  -->
-            <Border
-                x:Name="TipContainer"
-                MaxWidth="600"
-                Padding="12"
+            <Viewbox
+                x:Name="TipViewbox"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
-                CornerRadius="8"
                 Visibility="{x:Bind ViewModel.IsTipVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
-                <StackPanel Spacing="16">
-                    <TextBlock
-                        HorizontalAlignment="Center"
-                        Style="{StaticResource SubtitleTextBlockStyle}"
-                        Text="💡 Tip of the Day" />
-                    <TextBlock
-                        AutomationProperties.AutomationId="TipContent"
-                        AutomationProperties.Name="TipContent"
-                        Style="{StaticResource BodyTextBlockStyle}"
-                        Text="{x:Bind ViewModel.TipText, Mode=OneWay}"
-                        TextAlignment="Center"
-                        TextWrapping="Wrap" />
-                </StackPanel>
-            </Border>
+
+                <Border
+                    x:Name="TipContainer"
+                    MaxWidth="600"
+                    Padding="12"
+                    CornerRadius="8">
+
+                    <StackPanel Spacing="16">
+
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            FontSize="24"
+                            FontWeight="SemiBold"
+                            Text="💡 Tip of the Day" />
+
+                        <TextBlock
+                            AutomationProperties.AutomationId="TipContent"
+                            AutomationProperties.Name="TipContent"
+                            FontSize="18"
+                            Text="{x:Bind ViewModel.TipText, Mode=OneWay}"
+                            TextAlignment="Center"
+                            TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+            </Viewbox>
         </Grid>
 
         <!--  Class Selection Panel  -->
-        <Viewbox
-            Grid.Row="1"
-            HorizontalAlignment="Center"
-            VerticalAlignment="Center"
-            Stretch="Uniform"
-            StretchDirection="DownOnly">
+        <Viewbox Grid.Row="1" Stretch="Uniform">
+
             <StackPanel
-                Padding="5"
+                Padding="5,0,5,5"
                 AutomationProperties.AutomationId="ClassesViewer"
                 AutomationProperties.Name="ClassesViewer"
                 Orientation="Horizontal"

@@ -59,8 +59,11 @@
             <Viewbox
                 Grid.Row="1"
                 Grid.Column="1"
+                MaxHeight="200"
+                MaxWidth="300"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
+                Stretch="Uniform"
                 Visibility="{Binding ElementName=timerGauge, Path=Visibility}">
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                     <TextBlock
@@ -97,8 +100,8 @@
             <Grid Grid.Row="0" Margin="4,4,4,2">
                 <!--  Column Headers  -->
                 <Grid
-                    Height="16"
-                    Margin="30,0,20,0"
+                    Height="20"
+                    Margin="30,4,20,0"
                     VerticalAlignment="Top">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
@@ -111,29 +114,32 @@
                     <TextBlock
                         Grid.Column="0"
                         HorizontalAlignment="Center"
-                        FontSize="10"
+                        FontSize="12"
+                        FontWeight="SemiBold"
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        Text="h" />
+                        Text="Hours" />
 
                     <TextBlock
                         Grid.Column="2"
                         HorizontalAlignment="Center"
-                        FontSize="10"
+                        FontSize="12"
+                        FontWeight="SemiBold"
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        Text="m" />
+                        Text="Minutes" />
 
                     <TextBlock
                         Grid.Column="4"
                         HorizontalAlignment="Center"
-                        FontSize="10"
+                        FontSize="12"
+                        FontWeight="SemiBold"
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        Text="s" />
+                        Text="Seconds" />
                 </Grid>
 
                 <!--  Intervals ListView  -->
                 <ListView
                     x:Name="intervalsListView"
-                    Margin="0,16,0,0"
+                    Margin="0,24,0,0"
                     HorizontalAlignment="Stretch"
                     VerticalAlignment="Center"
                     IsItemClickEnabled="False"

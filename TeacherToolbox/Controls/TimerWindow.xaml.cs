@@ -236,8 +236,8 @@ namespace TeacherToolbox.Controls
             }
             else
             {
-                this.Width = 200;
-                this.Height = 200;
+                this.Width = 300;
+                this.Height = 300;
                 this.CenterOnScreen();
             }
 
