@@ -36,6 +36,9 @@ namespace TeacherToolbox.Model
 
         public async Task LoadClasses()
         {
+            // Check for and migrate old classes.json if it exists
+            await MigrateOldClassesFile();
+
             // Load classes.json
             string filePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TeacherToolbox", "classes.json");
 
@@ -119,6 +122,58 @@ namespace TeacherToolbox.Model
         {
             studentClasses[day].Add(studentClass);
             SaveClasses();
+        }
+
+        /// <summary>
+        /// Migrates classes.json from the old location (LocalApplicationData root) to the new location (LocalApplicationData/TeacherToolbox).
+        /// This ensures backward compatibility when upgrading from older versions.
+        /// </summary>
+        private async Task MigrateOldClassesFile()
+        {
+            string oldFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "classes.json");
+            string newFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TeacherToolbox", "classes.json");
+
+            // Only migrate if old file exists and new file doesn't exist
+            if (File.Exists(oldFilePath) && !File.Exists(newFilePath))
+            {
+                try
+                {
+                    Debug.WriteLine($"Migrating classes.json from {oldFilePath} to {newFilePath}");
+
+                    // Ensure the TeacherToolbox directory exists
+                    string newDirectory = Path.GetDirectoryName(newFilePath);
+                    if (!Directory.Exists(newDirectory))
+                    {
+                        Directory.CreateDirectory(newDirectory);
+                    }
+
+                    // Read the old file
+                    string json = await File.ReadAllTextAsync(oldFilePath);
+
+                    // Validate it can be deserialized (ensures it's valid data)
+                    var testDeserialize = JsonSerializer.Deserialize<List<StudentClass>[]>(json);
+
+                    if (testDeserialize != null)
+                    {
+                        // Write to new location
+                        await File.WriteAllTextAsync(newFilePath, json);
+
+                        // Rename old file as backup instead of deleting
+                        string backupPath = oldFilePath + ".migrated";
+                        File.Move(oldFilePath, backupPath);
+
+                        Debug.WriteLine($"Migration successful. Old file backed up to {backupPath}");
+                    }
+                    else
+                    {
+                        Debug.WriteLine("Migration failed: Could not deserialize old classes.json");
+                    }
+                }
+                catch (Exception e)
+                {
+                    Debug.WriteLine($"Error migrating classes.json: {e.Message}");
+                }
+            }
         }
 
     }
