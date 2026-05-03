@@ -10,6 +10,16 @@ using TeacherToolbox.Model;
 namespace TeacherToolbox.Helpers
 {
     /// <summary>
+    /// Window type for position storage
+    /// </summary>
+    public enum WindowType
+    {
+        MainWindow,
+        TimerWindow,
+        ScreenRulerWindow
+    }
+
+    /// <summary>
     /// Helper class for drag-based window movement
     /// </summary>
     public class WindowDragHelper
@@ -20,7 +30,7 @@ namespace TeacherToolbox.Helpers
         private bool isClicked = false;
         private bool onlyVertical = false;
         private readonly ISettingsService _settingsService; // Updated to use interface
-        private readonly bool _useMainWindowPosition; // Whether to use main or timer window position
+        private readonly WindowType _windowType; // Type of window for position storage
 
         [DllImport("User32.dll", CharSet = CharSet.Auto, SetLastError = true)]
         public static extern bool GetCursorPos(out Windows.Graphics.PointInt32 lpPoint);
@@ -30,12 +40,12 @@ namespace TeacherToolbox.Helpers
         /// </summary>
         /// <param name="window">The window to enable dragging on</param>
         /// <param name="settingsService">The settings service for persisting window position</param>
-        /// <param name="isTimerWindow">Whether this is a timer window (uses different position storage)</param>
+        /// <param name="windowType">The type of window for position storage</param>
         /// <param name="onlyAllowVertical">Whether to only allow vertical dragging</param>
         public WindowDragHelper(
             Window window,
             ISettingsService settingsService,
-            bool isTimerWindow = false,
+            WindowType windowType = WindowType.MainWindow,
             bool onlyAllowVertical = false)
         {
             IntPtr hWnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
@@ -43,7 +53,7 @@ namespace TeacherToolbox.Helpers
             _apw = Microsoft.UI.Windowing.AppWindow.GetFromWindowId(myWndId);
             onlyVertical = onlyAllowVertical;
             _settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
-            _useMainWindowPosition = !isTimerWindow;
+            _windowType = windowType;
         }
 
         /// <summary>
@@ -81,14 +91,18 @@ namespace TeacherToolbox.Helpers
                     displayId.Value
                 );
 
-                // Save either to main window or timer window position
-                if (_useMainWindowPosition)
+                // Save to appropriate position storage based on window type
+                switch (_windowType)
                 {
-                    _settingsService.SetLastWindowPosition(windowPosition);
-                }
-                else
-                {
-                    _settingsService.SetLastTimerWindowPosition(windowPosition);
+                    case WindowType.MainWindow:
+                        _settingsService.SetLastWindowPosition(windowPosition);
+                        break;
+                    case WindowType.TimerWindow:
+                        _settingsService.SetLastTimerWindowPosition(windowPosition);
+                        break;
+                    case WindowType.ScreenRulerWindow:
+                        _settingsService.SetLastScreenRulerWindowPosition(windowPosition);
+                        break;
                 }
             }
 

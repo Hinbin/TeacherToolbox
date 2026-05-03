@@ -191,7 +191,7 @@ namespace TeacherToolbox.Controls
                 }
 
                 // Set up drag helper
-                dragHelper = new WindowDragHelper(this, _settingsService);
+                dragHelper = new WindowDragHelper(this, _settingsService, WindowType.TimerWindow);
 
                 // Initialize display manager
                 displayManager = new DisplayManager();

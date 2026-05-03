@@ -110,6 +110,18 @@ namespace TeacherToolbox.Services
         /// <param name="position">The timer window position to save</param>
         void SetLastTimerWindowPosition(Model.WindowPosition position);
 
+        /// <summary>
+        /// Gets the last saved screen ruler window position
+        /// </summary>
+        /// <returns>The screen ruler window position</returns>
+        Model.WindowPosition GetLastScreenRulerWindowPosition();
+
+        /// <summary>
+        /// Sets the last screen ruler window position
+        /// </summary>
+        /// <param name="position">The screen ruler window position to save</param>
+        void SetLastScreenRulerWindowPosition(Model.WindowPosition position);
+
         #endregion
 
         #region Interval Configurations

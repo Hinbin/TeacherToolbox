@@ -71,8 +71,9 @@ namespace TeacherToolbox
             _themeService = services.GetRequiredService<IThemeService>();
 
             _presenter = this.AppWindow.Presenter as OverlappedPresenter;
-            Windows.Graphics.SizeInt32 size = new(_Width: 600, _Height: 200);
-            this.AppWindow.ResizeClient(size);
+
+            // Restore saved window position or use default size
+            RestoreWindowPosition();
 
             this.ExtendsContentIntoTitleBar = true;
             UpdateTitleBarTheme();
@@ -81,7 +82,7 @@ namespace TeacherToolbox
             NavView.IsPaneOpen = false;
             pipeFailedChecks = 0;
 
-            pipeServer = new NamedPipeServerStream("ShotcutWatcher", PipeDirection.In);
+            pipeServer = new NamedPipeServerStream("ShortcutWatcher", PipeDirection.In);
             ListenForKeyPresses();
 
             this.SetIsAlwaysOnTop(true);
@@ -100,6 +101,17 @@ namespace TeacherToolbox
 
             this.Closed += MainWindow_Closed;
             this.SizeChanged += MainWindow_SizeChanged;
+            this.AppWindow.Changed += AppWindow_Changed;
+        }
+
+        private void AppWindow_Changed(AppWindow sender, AppWindowChangedEventArgs args)
+        {
+            // When the window moves (e.g., dragged to a different monitor),
+            // we need to recalculate the title bar regions for the new DPI
+            if (args.DidPositionChange)
+            {
+                SetRegionsForCustomTitleBar();
+            }
         }
 
         private void OnShortcutWatcherExited(object sender, EventArgs e)
@@ -514,7 +526,7 @@ namespace TeacherToolbox
             {
                 // Try to create a pipe specifically named for this process ID
                 // Try the default pipe first - this is the most likely to work
-                using (NamedPipeClientStream pipeClient = new NamedPipeClientStream(".", "ShotcutWatcherShutdown", PipeDirection.Out))
+                using (NamedPipeClientStream pipeClient = new NamedPipeClientStream(".", "ShortcutWatcherShutdown", PipeDirection.Out))
                 {
                     // Short timeout for connection attempt
                     pipeClient.Connect(500);
@@ -552,7 +564,7 @@ namespace TeacherToolbox
                     {
                         // Always dispose and recreate the pipe server to ensure a clean state
                         pipeServer?.Dispose();
-                        pipeServer = new NamedPipeServerStream("ShotcutWatcher", PipeDirection.In, 1);
+                        pipeServer = new NamedPipeServerStream("ShortcutWatcher", PipeDirection.In, 1);
                         ListenForKeyPresses();
                         Debug.WriteLine("Pipe server setup complete");
                     }
@@ -565,7 +577,7 @@ namespace TeacherToolbox
                             try
                             {
                                 pipeServer?.Dispose();
-                                pipeServer = new NamedPipeServerStream("ShotcutWatcher", PipeDirection.In, 1);
+                                pipeServer = new NamedPipeServerStream("ShortcutWatcher", PipeDirection.In, 1);
                                 ListenForKeyPresses();
                                 Debug.WriteLine("Pipe server setup retry successful");
                             }
@@ -650,10 +662,182 @@ namespace TeacherToolbox
             SetRegionsForCustomTitleBar();
         }
 
+        private void RestoreWindowPosition()
+        {
+            try
+            {
+                var savedPosition = _settingsService.GetLastWindowPosition();
+
+                if (!savedPosition.IsEmpty)
+                {
+                    // Verify the saved display still exists and the position is valid
+                    bool positionIsValid = false;
+                    double targetScaleFactor = 1.0;
+
+                    try
+                    {
+                        // Get all display areas and check if the saved position is within any of them
+                        var displayAreas = Microsoft.UI.Windowing.DisplayArea.FindAll();
+
+                        foreach (var display in displayAreas)
+                        {
+                            var workArea = display.WorkArea;
+
+                            // Check if the saved position's top-left corner is within this display's work area
+                            // Allow some tolerance for windows that might be partially off-screen
+                            if (savedPosition.X >= workArea.X - 100 &&
+                                savedPosition.X < workArea.X + workArea.Width &&
+                                savedPosition.Y >= workArea.Y - 100 &&
+                                savedPosition.Y < workArea.Y + workArea.Height)
+                            {
+                                positionIsValid = true;
+
+                                // Get the DPI scale factor for this display
+                                // We calculate it from the ratio of outer bounds to work area
+                                // or use a more direct method if available
+                                try
+                                {
+                                    // Get DPI for target monitor using its bounds
+                                    uint dpiX = 96, dpiY = 96;
+                                    var monitorHandle = MonitorFromPoint(
+                                        new POINT { x = savedPosition.X, y = savedPosition.Y },
+                                        MONITOR_DEFAULTTONEAREST);
+
+                                    if (monitorHandle != IntPtr.Zero)
+                                    {
+                                        GetDpiForMonitor(monitorHandle, MDT_EFFECTIVE_DPI, out dpiX, out dpiY);
+                                        targetScaleFactor = dpiX / 96.0;
+                                        Debug.WriteLine($"Target monitor DPI: {dpiX}, scale factor: {targetScaleFactor}");
+                                    }
+                                }
+                                catch (Exception dpiEx)
+                                {
+                                    Debug.WriteLine($"Could not get DPI for target monitor: {dpiEx.Message}");
+                                    // Fall back to current window's scale factor
+                                    if (Content?.XamlRoot != null)
+                                    {
+                                        targetScaleFactor = Content.XamlRoot.RasterizationScale;
+                                    }
+                                }
+
+                                break;
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"Error checking display areas: {ex.Message}");
+                        // If we can't check displays, assume position is valid
+                        positionIsValid = true;
+                    }
+
+                    if (positionIsValid)
+                    {
+                        // Convert saved DIP size to physical pixels for the target monitor
+                        int physicalWidth = (int)(savedPosition.Width * targetScaleFactor);
+                        int physicalHeight = (int)(savedPosition.Height * targetScaleFactor);
+
+                        // Ensure minimum size
+                        physicalWidth = Math.Max(physicalWidth, (int)(400 * targetScaleFactor));
+                        physicalHeight = Math.Max(physicalHeight, (int)(150 * targetScaleFactor));
+
+                        // Restore position and size
+                        this.AppWindow.MoveAndResize(new Windows.Graphics.RectInt32(
+                            savedPosition.X,
+                            savedPosition.Y,
+                            physicalWidth,
+                            physicalHeight
+                        ));
+
+                        Debug.WriteLine($"Restored window position: {savedPosition.X}, {savedPosition.Y}, {physicalWidth}x{physicalHeight} physical pixels (from {savedPosition.Width}x{savedPosition.Height} DIPs, scale: {targetScaleFactor})");
+                    }
+                    else
+                    {
+                        // Saved position is not valid (display may have been disconnected), use default
+                        Debug.WriteLine("Saved window position is not on any current display, using default");
+                        Windows.Graphics.SizeInt32 size = new(_Width: 600, _Height: 200);
+                        this.AppWindow.ResizeClient(size);
+                    }
+                }
+                else
+                {
+                    // No saved position, use default size
+                    Windows.Graphics.SizeInt32 size = new(_Width: 600, _Height: 200);
+                    this.AppWindow.ResizeClient(size);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error restoring window position: {ex.Message}");
+                // Fall back to default size
+                Windows.Graphics.SizeInt32 size = new(_Width: 600, _Height: 200);
+                this.AppWindow.ResizeClient(size);
+            }
+        }
+
+        #region DPI Helper P/Invoke
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern IntPtr MonitorFromPoint(POINT pt, uint dwFlags);
+
+        [System.Runtime.InteropServices.DllImport("shcore.dll")]
+        private static extern int GetDpiForMonitor(IntPtr hmonitor, int dpiType, out uint dpiX, out uint dpiY);
+
+        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+        private struct POINT
+        {
+            public int x;
+            public int y;
+        }
+
+        private const uint MONITOR_DEFAULTTONEAREST = 2;
+        private const int MDT_EFFECTIVE_DPI = 0;
+
+        #endregion
+
+        private void SaveWindowPosition()
+        {
+            try
+            {
+                var position = this.AppWindow.Position;
+                var size = this.AppWindow.Size;
+                var displayId = Microsoft.UI.Windowing.DisplayArea.GetFromWindowId(
+                    this.AppWindow.Id,
+                    Microsoft.UI.Windowing.DisplayAreaFallback.Primary).DisplayId;
+
+                // Get the current DPI scale factor to convert physical pixels to DIPs
+                // This ensures the size is stored in a DPI-independent way
+                double scaleFactor = 1.0;
+                if (Content?.XamlRoot != null)
+                {
+                    scaleFactor = Content.XamlRoot.RasterizationScale;
+                }
+
+                // Store size in DIPs (device-independent pixels) for cross-DPI compatibility
+                var windowPosition = new Model.WindowPosition(
+                    position.X,
+                    position.Y,
+                    size.Width / scaleFactor,  // Convert to DIPs
+                    size.Height / scaleFactor, // Convert to DIPs
+                    displayId.Value
+                );
+
+                _settingsService.SetLastWindowPosition(windowPosition);
+                Debug.WriteLine($"Saved window position: {position.X}, {position.Y}, {size.Width / scaleFactor}x{size.Height / scaleFactor} DIPs (scale: {scaleFactor})");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error saving window position: {ex.Message}");
+            }
+        }
+
         private void MainWindow_Closed(object sender, WindowEventArgs e)
         {
             try
             {
+                // Save window position before closing
+                SaveWindowPosition();
+
                 // Dispose the watchdog timer
                 watchdogTimer?.Dispose();
                 watchdogTimer = null;
@@ -691,7 +875,7 @@ namespace TeacherToolbox
         {
             try
             {
-                using (NamedPipeClientStream pipeClient = new NamedPipeClientStream(".", "ShotcutWatcherShutdown", PipeDirection.Out))
+                using (NamedPipeClientStream pipeClient = new NamedPipeClientStream(".", "ShortcutWatcherShutdown", PipeDirection.Out))
                 {
                     pipeClient.Connect(1000); // 1 second timeout
                     using (StreamWriter writer = new StreamWriter(pipeClient))
@@ -759,7 +943,7 @@ namespace TeacherToolbox
 
                         // Create a new pipe server
                         Debug.WriteLine("Creating new pipe server instance");
-                        pipeServer = new NamedPipeServerStream("ShotcutWatcher", PipeDirection.In, 1,
+                        pipeServer = new NamedPipeServerStream("ShortcutWatcher", PipeDirection.In, 1,
                             PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
 
                         // Keep a local reference to the pipe
@@ -1062,23 +1246,31 @@ namespace TeacherToolbox
                 InputNonClientPointerSource nonClientInputSrc =
                     InputNonClientPointerSource.GetForWindowId(this.AppWindow.Id);
 
-                // Get the title bar height
+                // Get the scale factor for proper DPI handling
+                double scaleFactor = 1.0;
+                if (Content?.XamlRoot != null)
+                {
+                    scaleFactor = Content.XamlRoot.RasterizationScale;
+                }
+
+                // Get the title bar height (already in physical pixels)
                 int titleBarHeight = this.AppWindow.TitleBar.Height;
                 if (titleBarHeight == 0)
                 {
-                    // Fallback to typical title bar height if not available
-                    titleBarHeight = 32;
+                    // Fallback to typical title bar height (32 DIPs) scaled for DPI
+                    titleBarHeight = (int)(32 * scaleFactor);
                 }
 
-                // Get window dimensions
+                // Get window dimensions (in physical pixels)
                 var windowSize = this.AppWindow.Size;
 
                 // Set empty caption regions to disable title bar dragging
                 nonClientInputSrc.SetRegionRects(NonClientRegionKind.Caption,
                     new Windows.Graphics.RectInt32[] { });
 
-                // Calculate the window control buttons area (typically ~168px wide for all three buttons)
-                int controlButtonsWidth = 168;
+                // Calculate the window control buttons area
+                // Base width is ~138px at 100% scale (46px per button x 3 buttons), add margin for safety
+                int controlButtonsWidth = (int)(150 * scaleFactor);
                 int contentAreaWidth = windowSize.Width - controlButtonsWidth;
 
                 // Only set passthrough for the content area, excluding the window control buttons
@@ -1095,7 +1287,7 @@ namespace TeacherToolbox
                     nonClientInputSrc.SetRegionRects(NonClientRegionKind.Passthrough,
                         new Windows.Graphics.RectInt32[] { passthroughRect });
 
-                    Debug.WriteLine($"Title bar regions set - Passthrough area: {passthroughRect.Width}x{passthroughRect.Height}, Control buttons preserved");
+                    Debug.WriteLine($"Title bar regions set - Passthrough area: {passthroughRect.Width}x{passthroughRect.Height}, Scale: {scaleFactor}, Control buttons preserved");
                 }
                 else
                 {

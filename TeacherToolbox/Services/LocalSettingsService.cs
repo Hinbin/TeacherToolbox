@@ -26,6 +26,7 @@ namespace TeacherToolbox.Services
         private const string CentreTextKey = "CentreText";
         private const string LastWindowPositionKey = "LastWindowPosition";
         private const string LastTimerWindowPositionKey = "LastTimerWindowPosition";
+        private const string LastScreenRulerWindowPositionKey = "LastScreenRulerWindowPosition";
         private const string HasShownClockInstructionsKey = "HasShownClockInstructions";
         private const string MockModeKey = "Clock_MockMode";
         private const string SoundEnabledKey = "Clock_SoundEnabled";
@@ -34,6 +35,7 @@ namespace TeacherToolbox.Services
         private string centreText;
         private WindowPosition lastWindowPosition;
         private WindowPosition lastTimerWindowPosition;
+        private WindowPosition lastScreenRulerWindowPosition;
         private Dictionary<string, object> settings;
         private readonly string filePath;
         private List<SavedIntervalConfig> savedIntervalConfigs;
@@ -50,6 +52,7 @@ namespace TeacherToolbox.Services
             centreText = "Centre";
             lastWindowPosition = new WindowPosition(0, 0, 0, 0, 0);
             lastTimerWindowPosition = new WindowPosition(0, 0, 350, 300, 0);
+            lastScreenRulerWindowPosition = new WindowPosition(0, 0, 0, 100, 0);
             settings = new Dictionary<string, object>();
             savedIntervalConfigs = new List<SavedIntervalConfig>();
             savedCustomTimerConfigs = new List<SavedIntervalConfig>();
@@ -131,6 +134,7 @@ namespace TeacherToolbox.Services
                         { CentreTextKey, centreText },
                         { LastWindowPositionKey, lastWindowPosition },
                         { LastTimerWindowPositionKey, lastTimerWindowPosition },
+                        { LastScreenRulerWindowPositionKey, lastScreenRulerWindowPosition },
                         { IntervalConfigsKey, savedIntervalConfigs ?? new List<SavedIntervalConfig>() },
                         { HasShownClockInstructionsKey, hasShownClockInstructions },
                         { CustomTimerConfigsKey, savedCustomTimerConfigs ?? new List<SavedIntervalConfig>() },
@@ -214,6 +218,16 @@ namespace TeacherToolbox.Services
                                     catch
                                     {
                                         lastTimerWindowPosition = new WindowPosition(0, 0, 200, 200, 0);
+                                    }
+                                    break;
+                                case LastScreenRulerWindowPositionKey:
+                                    try
+                                    {
+                                        lastScreenRulerWindowPosition = kvp.Value.Deserialize<WindowPosition>(options);
+                                    }
+                                    catch
+                                    {
+                                        lastScreenRulerWindowPosition = new WindowPosition(0, 0, 0, 100, 0);
                                     }
                                     break;
                                 case IntervalConfigsKey:
@@ -364,6 +378,16 @@ namespace TeacherToolbox.Services
                                         lastTimerWindowPosition = new WindowPosition(0, 0, 200, 200, 0);
                                     }
                                     break;
+                                case LastScreenRulerWindowPositionKey:
+                                    try
+                                    {
+                                        lastScreenRulerWindowPosition = kvp.Value.Deserialize<WindowPosition>(options);
+                                    }
+                                    catch
+                                    {
+                                        lastScreenRulerWindowPosition = new WindowPosition(0, 0, 0, 100, 0);
+                                    }
+                                    break;
                                 case IntervalConfigsKey:
                                     try
                                     {
@@ -484,6 +508,18 @@ namespace TeacherToolbox.Services
         public void SetLastTimerWindowPosition(WindowPosition position)
         {
             SetAndSave(ref lastTimerWindowPosition, position);
+        }
+
+        /// <inheritdoc/>
+        public WindowPosition GetLastScreenRulerWindowPosition()
+        {
+            return lastScreenRulerWindowPosition;
+        }
+
+        /// <inheritdoc/>
+        public void SetLastScreenRulerWindowPosition(WindowPosition position)
+        {
+            SetAndSave(ref lastScreenRulerWindowPosition, position);
         }
 
         #endregion

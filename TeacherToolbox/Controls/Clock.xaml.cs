@@ -65,6 +65,7 @@ namespace TeacherToolbox.Controls
             // Create ViewModel with all services
             ViewModel = App.Current.Services.GetRequiredService<ClockViewModel>();
             this.DataContext = ViewModel;
+            
 
             // Subscribe to ViewModel events
             ViewModel.TimeSliceAdded += OnTimeSliceAdded;

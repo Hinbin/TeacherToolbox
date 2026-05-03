@@ -56,7 +56,7 @@ namespace TeacherToolbox.Controls
             this.IsResizable = false;
             this.SystemBackdrop = blurredBackdrop;
 
-            dragHelper = new WindowDragHelper(this, _settingsService, true);
+            dragHelper = new WindowDragHelper(this, _settingsService, WindowType.ScreenRulerWindow, true);
 
             screenRulerPage = fromPage;
 

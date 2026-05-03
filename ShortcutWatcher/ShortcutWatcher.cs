@@ -167,7 +167,7 @@ class ShortcutWatcher
                     }
 
                     // Create new pipe client
-                    pipeClient = new NamedPipeClientStream(".", "ShotcutWatcher", PipeDirection.Out);
+                    pipeClient = new NamedPipeClientStream(".", "ShortcutWatcher", PipeDirection.Out);
 
                     // Use shorter timeout for initial attempts to avoid long delays
                     var timeout = (attempt <= 3) ? 1000 : PIPE_CONNECTION_TIMEOUT_MS;
@@ -585,7 +585,7 @@ class ShortcutWatcher
             }
 
             // Create new pipe client
-            pipeClient = new NamedPipeClientStream(".", "ShotcutWatcher", PipeDirection.Out);
+            pipeClient = new NamedPipeClientStream(".", "ShortcutWatcher", PipeDirection.Out);
 
             // Try to connect with a timeout
             pipeClient.Connect(PIPE_CONNECTION_TIMEOUT_MS); // Increased timeout
