@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -12,27 +12,33 @@ using TeacherToolbox.Helpers;
 using Windows.Media.Playback;
 using Windows.Media.Core;
 
-namespace TeacherToolbox.Tests.ViewModels
+namespace TeacherToolbox.UnitTests.ViewModels
 {
     [TestFixture]
     public class SettingsViewModelTests
     {
         private Mock<ISettingsService> _mockSettingsService;
+        private Mock<ITelemetryService> _mockTelemetry;
+        private Mock<IFilePickerService> _mockFilePicker;
+        private Mock<IWindowService> _mockWindowService;
         private SettingsViewModel _viewModel;
 
         [SetUp]
         public void Setup()
         {
-            // Setup mock settings service
+            // Setup mock services
             _mockSettingsService = new Mock<ISettingsService>();
+            _mockTelemetry = new Mock<ITelemetryService>();
+            _mockFilePicker = new Mock<IFilePickerService>();
+            _mockWindowService = new Mock<IWindowService>();
 
             // Default settings service return values
             _mockSettingsService.Setup(s => s.GetTheme()).Returns(0); // System
             _mockSettingsService.Setup(s => s.GetTimerSound()).Returns(0);
             _mockSettingsService.Setup(s => s.GetTimerFinishBehavior()).Returns(TimerFinishBehavior.CloseTimer);
 
-            // Create the view model with the mock service
-            _viewModel = new SettingsViewModel(_mockSettingsService.Object);
+            // Create the view model with the mock services
+            _viewModel = new SettingsViewModel(_mockSettingsService.Object, _mockTelemetry.Object, _mockFilePicker.Object, _mockWindowService.Object);
         }
 
         [TearDown]
@@ -53,7 +59,7 @@ namespace TeacherToolbox.Tests.ViewModels
             _mockSettingsService.Setup(s => s.GetTimerFinishBehavior()).Returns(TimerFinishBehavior.CountUp);
 
             // Act
-            var viewModel = new SettingsViewModel(_mockSettingsService.Object);
+            var viewModel = new SettingsViewModel(_mockSettingsService.Object, _mockTelemetry.Object, _mockFilePicker.Object, _mockWindowService.Object);
 
             // Assert
             Assert.That(viewModel.SelectedThemeIndex, Is.EqualTo(1));
@@ -68,7 +74,10 @@ namespace TeacherToolbox.Tests.ViewModels
         public void Constructor_WithNullService_ThrowsArgumentNullException()
         {
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new SettingsViewModel(null));
+            Assert.Throws<ArgumentNullException>(() => new SettingsViewModel(null, _mockTelemetry.Object, _mockFilePicker.Object, _mockWindowService.Object));
+            Assert.Throws<ArgumentNullException>(() => new SettingsViewModel(_mockSettingsService.Object, null, _mockFilePicker.Object, _mockWindowService.Object));
+            Assert.Throws<ArgumentNullException>(() => new SettingsViewModel(_mockSettingsService.Object, _mockTelemetry.Object, null, _mockWindowService.Object));
+            Assert.Throws<ArgumentNullException>(() => new SettingsViewModel(_mockSettingsService.Object, _mockTelemetry.Object, _mockFilePicker.Object, null));
         }
 
         [Test]
@@ -112,7 +121,7 @@ namespace TeacherToolbox.Tests.ViewModels
 
             // Initialize with value 0
             _mockSettingsService.Setup(s => s.GetTheme()).Returns(0);
-            _viewModel = new SettingsViewModel(_mockSettingsService.Object);
+            _viewModel = new SettingsViewModel(_mockSettingsService.Object, _mockTelemetry.Object, _mockFilePicker.Object, _mockWindowService.Object);
 
             // Reset verification counts
             _mockSettingsService.Invocations.Clear();
@@ -130,7 +139,7 @@ namespace TeacherToolbox.Tests.ViewModels
         {
             // Arrange - start with a different theme value
             _mockSettingsService.Setup(s => s.GetTheme()).Returns(1); // Light theme
-            var viewModel = new SettingsViewModel(_mockSettingsService.Object);
+            var viewModel = new SettingsViewModel(_mockSettingsService.Object, _mockTelemetry.Object, _mockFilePicker.Object, _mockWindowService.Object);
 
             ElementTheme capturedTheme = ElementTheme.Dark;
             viewModel.ThemeChanged += (theme) => { capturedTheme = theme; };
@@ -189,7 +198,7 @@ namespace TeacherToolbox.Tests.ViewModels
         {
             // Arrange
             _mockSettingsService.Setup(s => s.GetTimerSound()).Returns(1);
-            _viewModel = new SettingsViewModel(_mockSettingsService.Object);
+            _viewModel = new SettingsViewModel(_mockSettingsService.Object, _mockTelemetry.Object, _mockFilePicker.Object, _mockWindowService.Object);
 
             // Reset verification counts
             _mockSettingsService.Invocations.Clear();
@@ -220,7 +229,7 @@ namespace TeacherToolbox.Tests.ViewModels
         {
             // Arrange
             _mockSettingsService.Setup(s => s.GetTimerFinishBehavior()).Returns(TimerFinishBehavior.CountUp);
-            _viewModel = new SettingsViewModel(_mockSettingsService.Object);
+            _viewModel = new SettingsViewModel(_mockSettingsService.Object, _mockTelemetry.Object, _mockFilePicker.Object, _mockWindowService.Object);
 
             // Reset verification counts
             _mockSettingsService.Invocations.Clear();

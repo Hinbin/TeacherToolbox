@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -11,6 +11,7 @@ using TeacherToolbox.Services;
 using Windows.Media.Core;
 using Windows.Media.Playback;
 using System.IO;
+using System.IO.Compression;
 using System.Diagnostics;
 
 namespace TeacherToolbox.ViewModels
@@ -24,6 +25,9 @@ namespace TeacherToolbox.ViewModels
 
         // Private fields
         private readonly ISettingsService _settingsService;
+        private readonly ITelemetryService _telemetry;
+        private readonly IFilePickerService _filePicker;
+        private readonly IWindowService _windowService;
         private MediaPlayer _testPlayer;
         private int _selectedThemeIndex;
         private int _selectedTimerSoundIndex;
@@ -69,10 +73,21 @@ namespace TeacherToolbox.ViewModels
 
         public List<Helpers.SoundSettings.SoundOption> SoundOptions => _soundOptions;
 
+        public string AppVersion => VersionHelper.GetAppVersion();
+
         // Commands
         public IRelayCommand TestSoundCommand { get; }
         public IRelayCommand SendFeedbackCommand { get; }
         public IRelayCommand ViewFeedbackCommand { get; }
+        public IAsyncRelayCommand SaveLogsCommand { get; }
+        public IRelayCommand TestCrashCommand { get; }
+
+        public Visibility DebugOnlyVisibility =>
+#if DEBUG
+            Visibility.Visible;
+#else
+            Visibility.Collapsed;
+#endif
 
         // Events for view interaction
         public event Action<ElementTheme> ThemeChanged;
@@ -80,10 +95,12 @@ namespace TeacherToolbox.ViewModels
         /// <summary>
         /// Constructor that uses dependency injection for the settings service
         /// </summary>
-        /// <param name="settingsService">The settings service to use</param>
-        public SettingsViewModel(ISettingsService settingsService)
+        public SettingsViewModel(ISettingsService settingsService, ITelemetryService telemetry, IFilePickerService filePicker, IWindowService windowService)
         {
             _settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
+            _telemetry = telemetry ?? throw new ArgumentNullException(nameof(telemetry));
+            _filePicker = filePicker ?? throw new ArgumentNullException(nameof(filePicker));
+            _windowService = windowService ?? throw new ArgumentNullException(nameof(windowService));
 
             // Initialize sound options from SoundSettings helper
             _soundOptions = new List<Helpers.SoundSettings.SoundOption>();
@@ -93,12 +110,19 @@ namespace TeacherToolbox.ViewModels
             }
 
             // Initialize commands
-            TestSoundCommand = new AsyncRelayCommand(TestSoundAsync);
+            TestSoundCommand = new RelayCommand(TestSound);
             SendFeedbackCommand = new AsyncRelayCommand(SendFeedbackAsync);
             ViewFeedbackCommand = new AsyncRelayCommand(ViewFeedbackAsync);
+            SaveLogsCommand = new AsyncRelayCommand(SaveLogsAsync);
+            TestCrashCommand = new RelayCommand(ExecuteTestCrash);
 
             // Initialize settings
             InitializeSettings();
+        }
+
+        private void ExecuteTestCrash()
+        {
+            throw new InvalidOperationException("Test crash to verify telemetry pipeline.");
         }
 
         private void InitializeSettings()
@@ -117,7 +141,7 @@ namespace TeacherToolbox.ViewModels
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error initializing settings: {ex.Message}");
+                _telemetry.LogError("Error initializing settings", ex);
             }
         }
 
@@ -161,7 +185,7 @@ namespace TeacherToolbox.ViewModels
             return (TimerFinishBehavior)SelectedTimerFinishBehaviorIndex;
         }
 
-        private async Task TestSoundAsync()
+        private void TestSound()
         {
             try
             {
@@ -179,7 +203,7 @@ namespace TeacherToolbox.ViewModels
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error playing test sound: {ex.Message}");
+                _telemetry.LogWarning("Error playing test sound", ex);
             }
         }
 
@@ -192,7 +216,7 @@ namespace TeacherToolbox.ViewModels
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error launching feedback URL: {ex.Message}");
+                _telemetry.LogWarning("Error launching feedback URL", ex);
             }
         }
 
@@ -205,7 +229,55 @@ namespace TeacherToolbox.ViewModels
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error launching feedback URL: {ex.Message}");
+                _telemetry.LogWarning("Error launching feedback URL", ex);
+            }
+        }
+
+        public IntPtr WindowHandle => _windowService.WindowHandle;
+
+        private async Task SaveLogsAsync()
+        {
+            try
+            {
+                string logsDir = _telemetry.LogsDirectory;
+                if (!Directory.Exists(logsDir))
+                {
+                    _telemetry.LogWarning("Logs directory does not exist: " + logsDir);
+                    return;
+                }
+
+                // Create a temporary zip file
+                string tempZipPath = Path.Combine(Path.GetTempPath(), $"TeacherToolbox_Logs_{DateTime.Now:yyyyMMdd_HHmmss}.zip");
+                
+                if (File.Exists(tempZipPath))
+                {
+                    File.Delete(tempZipPath);
+                }
+
+                ZipFile.CreateFromDirectory(logsDir, tempZipPath);
+
+                // Prompt user to save the file
+                string fileName = $"TeacherToolbox_Logs_{DateTime.Now:yyyyMMdd}.zip";
+                var file = await _filePicker.SaveFileAsync(WindowHandle, fileName, new[] { ".zip" });
+
+                if (file != null)
+                {
+                    using (var stream = await file.OpenStreamForWriteAsync())
+                    using (var tempStream = File.OpenRead(tempZipPath))
+                    {
+                        await tempStream.CopyToAsync(stream);
+                    }
+                }
+
+                // Clean up temp file
+                if (File.Exists(tempZipPath))
+                {
+                    File.Delete(tempZipPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                _telemetry.LogError("Failed to save diagnostic logs", ex);
             }
         }
 

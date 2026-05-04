@@ -12,7 +12,7 @@ using TeacherToolbox.ViewModels;
 using TeacherToolbox.Helpers;
 using Windows.Foundation;
 
-namespace TeacherToolbox.Tests.ViewModels
+namespace TeacherToolbox.UnitTests.ViewModels
 {
     [TestFixture]
     public class ClockViewModelTests

@@ -8,7 +8,7 @@ using TeacherToolbox.Model;
 using TeacherToolbox.Services;
 using TeacherToolbox.Helpers;
 
-namespace TeacherToolbox.Tests.Services
+namespace TeacherToolbox.UnitTests.Services
 {
     [TestFixture]
     public class LocalSettingsServiceTests
@@ -533,6 +533,6 @@ namespace TeacherToolbox.Tests.Services
         }
 
         // Override the file path property to use our test path
-        public string FilePath => _testFilePath;
+        protected override string FilePath => _testFilePath;
     }
 }

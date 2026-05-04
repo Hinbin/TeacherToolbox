@@ -7,5 +7,6 @@ namespace TeacherToolbox.Services
     public interface IFilePickerService
     {
         Task<StorageFile> PickTextFileAsync(IntPtr windowHandle);
+        Task<StorageFile> SaveFileAsync(IntPtr windowHandle, string suggestedFileName, string[] fileTypes);
     }
 }

@@ -149,9 +149,20 @@
                 BorderThickness="1"
                 CornerRadius="4">
 
-                <local:ExpanderItem Header="Teacher Toolbox">
+                <local:ExpanderItem Header="About">
                     <local:ExpanderItem.ItemContent>
-                        <TextBlock Style="{StaticResource CaptionTextBlockStyle}" Text="{x:Bind AppVersion, Mode=OneTime}" />
+                        <StackPanel Spacing="10">
+                            <TextBlock Style="{StaticResource BodyTextBlockStyle}" Text="Teacher Toolbox" FontWeight="Bold" />
+                            <TextBlock Style="{StaticResource BodyTextBlockStyle}" Text="{x:Bind ViewModel.AppVersion, Mode=OneTime}" />
+                            <Button Content="Save diagnostic logs"
+                                    Command="{x:Bind ViewModel.SaveLogsCommand}"
+                                    Margin="0,10,0,0" />
+                            <Button Content="Test Crash"
+                                    Command="{x:Bind ViewModel.TestCrashCommand}"
+                                    Visibility="{x:Bind ViewModel.DebugOnlyVisibility, Mode=OneTime}"
+                                    Background="OrangeRed" Foreground="White"
+                                    Margin="0,10,0,0" />
+                        </StackPanel>
                     </local:ExpanderItem.ItemContent>
                 </local:ExpanderItem>
             </StackPanel>

@@ -41,6 +41,7 @@ namespace TeacherToolbox
         private readonly ISleepPreventer _sleepPreventer;
         private readonly ISettingsService _settingsService;
         private readonly IThemeService _themeService;
+        private readonly ITelemetryService _telemetry;
 
         private readonly OverlappedPresenter _presenter;
         private NamedPipeServerStream pipeServer;
@@ -69,6 +70,7 @@ namespace TeacherToolbox
             _settingsService = services.GetRequiredService<ISettingsService>();
             _sleepPreventer = services.GetRequiredService<ISleepPreventer>();
             _themeService = services.GetRequiredService<IThemeService>();
+            _telemetry = services.GetRequiredService<ITelemetryService>();
 
             _presenter = this.AppWindow.Presenter as OverlappedPresenter;
 
@@ -96,7 +98,7 @@ namespace TeacherToolbox
             }
             catch (Exception e)
             {
-                Debug.WriteLine(e.Message);
+                _telemetry.LogWarning("Failed to start ShortcutWatcher from MainWindow ctor", e);
             }
 
             this.Closed += MainWindow_Closed;
@@ -171,11 +173,11 @@ namespace TeacherToolbox
                     }
                     catch (TimeoutException)
                     {
-                        Debug.WriteLine("ShortcutWatcher shutdown pipe connection timed out");
+                        _telemetry.LogWarning("ShortcutWatcher shutdown pipe connection timed out");
                     }
                     catch (Exception innerEx)
                     {
-                        Debug.WriteLine($"Error during verification: {innerEx.Message}");
+                        _telemetry.LogWarning("Error during ShortcutWatcher verification", innerEx);
                     }
                 }
 
@@ -196,7 +198,7 @@ namespace TeacherToolbox
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"ShortcutWatcher pipe connection test failed: {ex.Message}");
+                _telemetry.LogError("ShortcutWatcher pipe connection test failed", ex);
                 isShortcutWatcherRunning = false;
                 AttemptRestartIfNeeded();
             }
@@ -257,7 +259,7 @@ namespace TeacherToolbox
                     }
                     catch (Exception pipeEx)
                     {
-                        Debug.WriteLine($"Watchdog: Error checking pipe status: {pipeEx.Message}");
+                        _telemetry.LogWarning("Watchdog: Error checking pipe status", pipeEx);
                     }
 
                     // Make decision based on both process and pipe status
@@ -277,7 +279,10 @@ namespace TeacherToolbox
                                     shortcutWatcherProcess.Kill();
                                 }
                             }
-                            catch { }
+                            catch (Exception ex)
+                            {
+                                _telemetry.LogWarning("Watchdog: failed to kill unresponsive ShortcutWatcher", ex);
+                            }
 
                             isShortcutWatcherRunning = false;
                             AttemptRestartIfNeeded();
@@ -302,7 +307,7 @@ namespace TeacherToolbox
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"Error in watchdog: {ex.Message}");
+                    _telemetry.LogError("Error in watchdog", ex);
 
                     // If an exception occurs in watchdog, try restarting
                     try
@@ -310,7 +315,10 @@ namespace TeacherToolbox
                         isShortcutWatcherRunning = false;
                         AttemptRestartIfNeeded();
                     }
-                    catch { }
+                    catch (Exception nestEx)
+                    {
+                        _telemetry.LogWarning("Watchdog: nested error during AttemptRestartIfNeeded", nestEx);
+                    }
                 }
             });
         }
@@ -335,7 +343,10 @@ namespace TeacherToolbox
                             {
                                 shortcutWatcherProcess.Exited -= OnShortcutWatcherExited;
                             }
-                            catch { }
+                            catch (Exception ex)
+                            {
+                                _telemetry.LogWarning("Failed to unsubscribe ShortcutWatcher Exited handler", ex);
+                            }
 
                             // Then try to terminate if it's still running
                             try
@@ -349,12 +360,15 @@ namespace TeacherToolbox
                             }
                             catch (Exception ex)
                             {
-                                Debug.WriteLine($"Error killing process: {ex.Message}");
+                                _telemetry.LogWarning("Error killing ShortcutWatcher process during restart", ex);
                             }
 
                             // Clean up
                             try { shortcutWatcherProcess.Dispose(); }
-                            catch { }
+                            catch (Exception ex)
+                            {
+                                _telemetry.LogWarning("Failed to dispose ShortcutWatcher process", ex);
+                            }
 
                             shortcutWatcherProcess = null;
                         }
@@ -401,7 +415,7 @@ namespace TeacherToolbox
                         }
                         catch (Exception ex)
                         {
-                            Debug.WriteLine($"Error finding ShortcutWatcher.exe: {ex.Message}");
+                            _telemetry.LogError("Error finding ShortcutWatcher.exe", ex);
                             return;
                         }
 
@@ -439,7 +453,7 @@ namespace TeacherToolbox
                         }
                         catch (Exception ex)
                         {
-                            Debug.WriteLine($"Error starting ShortcutWatcher process: {ex.Message}");
+                            _telemetry.LogError("Error starting ShortcutWatcher process", ex);
                         }
                     }
                     else
@@ -450,7 +464,7 @@ namespace TeacherToolbox
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"Critical error in restart: {ex.Message}");
+                    _telemetry.LogError("Critical error in ShortcutWatcher restart", ex);
                 }
             });
         }
@@ -491,7 +505,7 @@ namespace TeacherToolbox
                         }
                         catch (Exception ex)
                         {
-                            Debug.WriteLine($"Error shutting down process {process.Id}: {ex.Message}");
+                            _telemetry.LogWarning($"Error shutting down process {process.Id}", ex);
 
                             // If graceful shutdown fails, force termination
                             try
@@ -504,7 +518,7 @@ namespace TeacherToolbox
                             }
                             catch (Exception killEx)
                             {
-                                Debug.WriteLine($"Failed to forcibly terminate process {process.Id}: {killEx.Message}");
+                                _telemetry.LogWarning($"Failed to forcibly terminate process {process.Id}", killEx);
                             }
                         }
                         finally
@@ -516,7 +530,7 @@ namespace TeacherToolbox
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error during existing process cleanup: {ex.Message}");
+                _telemetry.LogError("Error during existing ShortcutWatcher process cleanup", ex);
             }
         }
 
@@ -545,7 +559,7 @@ namespace TeacherToolbox
 
             catch (Exception ex)
             {
-                Debug.WriteLine($"Failed to send shutdown signal to process {processId}: {ex.Message}");
+                _telemetry.LogWarning($"Failed to send shutdown signal to process {processId}", ex);
                 // Just log the error - we'll fall back to Kill() if needed
             }
         }
@@ -570,7 +584,7 @@ namespace TeacherToolbox
                     }
                     catch (Exception pipeEx)
                     {
-                        Debug.WriteLine($"Error setting up pipe server: {pipeEx.Message}, will retry");
+                        _telemetry.LogWarning("Error setting up pipe server, will retry", pipeEx);
 
                         // Retry after a short delay
                         Task.Delay(1000).ContinueWith(_ => {
@@ -583,7 +597,7 @@ namespace TeacherToolbox
                             }
                             catch (Exception retryEx)
                             {
-                                Debug.WriteLine($"Retry failed: {retryEx.Message}");
+                                _telemetry.LogError("Pipe server setup retry failed", retryEx);
                             }
                         });
                     }
@@ -651,7 +665,7 @@ namespace TeacherToolbox
                 }
                 catch (Exception e)
                 {
-                    Debug.WriteLine($"Error starting ShortcutWatcher: {e.Message}");
+                    _telemetry.LogError("Error starting ShortcutWatcher", e);
                     AttemptRestartIfNeeded();
                 }
             });
@@ -712,7 +726,7 @@ namespace TeacherToolbox
                                 }
                                 catch (Exception dpiEx)
                                 {
-                                    Debug.WriteLine($"Could not get DPI for target monitor: {dpiEx.Message}");
+                                    _telemetry.LogWarning("Could not get DPI for target monitor", dpiEx);
                                     // Fall back to current window's scale factor
                                     if (Content?.XamlRoot != null)
                                     {
@@ -726,7 +740,7 @@ namespace TeacherToolbox
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine($"Error checking display areas: {ex.Message}");
+                        _telemetry.LogWarning("Error checking display areas during window position restoration", ex);
                         // If we can't check displays, assume position is valid
                         positionIsValid = true;
                     }
@@ -768,7 +782,7 @@ namespace TeacherToolbox
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error restoring window position: {ex.Message}");
+                _telemetry.LogError("Error restoring window position", ex);
                 // Fall back to default size
                 Windows.Graphics.SizeInt32 size = new(_Width: 600, _Height: 200);
                 this.AppWindow.ResizeClient(size);
@@ -827,7 +841,7 @@ namespace TeacherToolbox
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error saving window position: {ex.Message}");
+                _telemetry.LogError("Error saving window position", ex);
             }
         }
 
@@ -860,14 +874,14 @@ namespace TeacherToolbox
                         }
                         catch (Exception ex)
                         {
-                            Debug.WriteLine($"Error killing ShortcutWatcher: {ex}");
+                            _telemetry.LogWarning("Error killing ShortcutWatcher during window close", ex);
                         }
                     }
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error during cleanup: {ex}");
+                _telemetry.LogError("Error during MainWindow cleanup", ex);
             }
         }
 
@@ -887,7 +901,7 @@ namespace TeacherToolbox
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error sending shutdown signal: {ex.Message}");
+                _telemetry.LogWarning("Error sending shutdown signal to ShortcutWatcher", ex);
             }
         }
         private async void ListenForKeyPresses()
@@ -995,7 +1009,7 @@ namespace TeacherToolbox
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine($"Error in ListenForKeyPresses: {ex.Message}");
+                        _telemetry.LogError("Error in ListenForKeyPresses", ex);
 
                         // Check process status and decide what to do
                         bool processRunning = shortcutWatcherProcess != null && !shortcutWatcherProcess.HasExited;
@@ -1061,7 +1075,7 @@ namespace TeacherToolbox
                             }
                             catch (Exception cleanupEx)
                             {
-                                Debug.WriteLine($"Error during cleanup: {cleanupEx.Message}");
+                                _telemetry.LogWarning("Error during cleanup in ListenForKeyPresses", cleanupEx);
                             }
                         }
                     }
@@ -1072,7 +1086,10 @@ namespace TeacherToolbox
                         {
                             reader?.Dispose();
                         }
-                        catch { }
+                        catch (Exception ex)
+                        {
+                            _telemetry.LogWarning("Error disposing pipe reader in finally", ex);
+                        }
 
                         try
                         {
@@ -1081,7 +1098,10 @@ namespace TeacherToolbox
                                 localPipeServer.Dispose();
                             }
                         }
-                        catch { }
+                        catch (Exception ex)
+                        {
+                            _telemetry.LogWarning("Error disposing local pipe server in finally", ex);
+                        }
                     }
 
                     // Wait a bit before retrying to avoid tight loops
@@ -1102,11 +1122,11 @@ namespace TeacherToolbox
                     }
                     catch (SemaphoreFullException)
                     {
-                        Debug.WriteLine("Warning: Tried to release semaphore when it was already released");
+                        _telemetry.LogWarning("Tried to release semaphore when it was already released");
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine($"Error releasing semaphore: {ex.Message}");
+                        _telemetry.LogError("Error releasing semaphore", ex);
                     }
                 }
 
@@ -1300,7 +1320,7 @@ namespace TeacherToolbox
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error setting title bar regions: {ex.Message}");
+                _telemetry.LogWarning("Error setting title bar regions", ex);
             }
         }
 
@@ -1312,7 +1332,7 @@ namespace TeacherToolbox
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error updating title bar theme: {ex.Message}");
+                _telemetry.LogWarning("Error updating title bar theme", ex);
             }
         }
 
@@ -1371,13 +1391,13 @@ namespace TeacherToolbox
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine($"Error processing UI action: {ex.Message}");
+                        _telemetry.LogError("Error processing UI action for key press", ex);
                     }
                 });
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error dispatching key press {message}: {ex.Message}");
+                _telemetry.LogError($"Error dispatching key press {message}", ex);
             }
         }
 
@@ -1406,7 +1426,7 @@ namespace TeacherToolbox
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine($"Error killing process: {ex.Message}");
+                        _telemetry.LogWarning("Error killing process during force restart", ex);
                     }
                 }
 
@@ -1422,7 +1442,7 @@ namespace TeacherToolbox
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error during force restart: {ex.Message}");
+                _telemetry.LogError("Error during ShortcutWatcher force restart", ex);
             }
         }
 

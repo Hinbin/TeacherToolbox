@@ -1,7 +1,7 @@
 ﻿using NUnit.Framework;
 using TeacherToolbox.Model;
 
-namespace TeacherToolbox.Tests.Model;
+namespace TeacherToolbox.UnitTests.Model;
 
 [TestFixture]
 public class StudentTests

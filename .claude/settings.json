@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(dotnet build TeacherToolbox/TeacherToolbox.csproj -p:Platform=x86 --nologo)",
+      "PowerShell(dotnet test TeacherToolbox.UnitTests/TeacherToolbox.UnitTests.csproj --nologo --verbosity minimal)"
+    ]
+  }
+}

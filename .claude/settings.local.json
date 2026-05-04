@@ -1,7 +1,18 @@
 {
   "permissions": {
     "allow": [
-      "Bash(dotnet build:*)"
+      "Bash(dotnet build:*)",
+      "PowerShell(dotnet test TeacherToolbox.UnitTests/TeacherToolbox.UnitTests.csproj -p:Platform=x86 --nologo --verbosity minimal 2>&1)",
+      "PowerShell(dotnet build TeacherToolbox.UnitTests/TeacherToolbox.UnitTests.csproj -p:Platform=x86 --nologo --verbosity minimal 2>&1)",
+      "PowerShell(where.exe msbuild; & \"${env:ProgramFiles}\\\\Microsoft Visual Studio\\\\2022\\\\Community\\\\MSBuild\\\\Current\\\\Bin\\\\MSBuild.exe\" /version 2>$null; & \"${env:ProgramFiles}\\\\Microsoft Visual Studio\\\\2022\\\\Professional\\\\MSBuild\\\\Current\\\\Bin\\\\MSBuild.exe\" /version 2>$null; & \"${env:ProgramFiles}\\\\Microsoft Visual Studio\\\\2022\\\\Enterprise\\\\MSBuild\\\\Current\\\\Bin\\\\MSBuild.exe\" /version 2>$null)",
+      "PowerShell($msb = \"${env:ProgramFiles}\\\\Microsoft Visual Studio\\\\2022\\\\Community\\\\MSBuild\\\\Current\\\\Bin\\\\MSBuild.exe\"; & $msb \"TeacherToolbox.UnitTests\\\\TeacherToolbox.UnitTests.csproj\" /p:Platform=x86 /p:Configuration=Debug /t:Build /nologo /v:m /restore 2>&1 | Select-Object -Last 30)",
+      "PowerShell(dotnet test TeacherToolbox.UnitTests/TeacherToolbox.UnitTests.csproj -p:Platform=x86 --no-build --nologo --verbosity minimal 2>&1)",
+      "PowerShell($x86dotnet = \"${env:ProgramFiles\\(x86\\)}\\\\dotnet\\\\dotnet.exe\"; if \\(Test-Path $x86dotnet\\) { Write-Output \"FOUND: $x86dotnet\"; & $x86dotnet --info | Select-String \"x86\" | Select-Object -First 5 } else { Write-Output \"Not found x86 dotnet\" })",
+      "PowerShell($x86dotnet = \"${env:ProgramFiles\\(x86\\)}\\\\dotnet\\\\dotnet.exe\"; & $x86dotnet test TeacherToolbox.UnitTests/TeacherToolbox.UnitTests.csproj -p:Platform=x86 --no-build --nologo --verbosity minimal 2>&1 | Select-Object -Last 40)",
+      "PowerShell(dotnet test TeacherToolbox.UnitTests/TeacherToolbox.UnitTests.csproj -p:Platform=x86 --arch x86 --no-build --nologo --verbosity minimal 2>&1)",
+      "PowerShell(Get-ChildItem -Path \"${env:ProgramFiles\\(x86\\)}\\\\dotnet\\\\host\\\\fxr\" -ErrorAction SilentlyContinue; Write-Output \"---\"; Write-Output \"DOTNET_ROOT=$env:DOTNET_ROOT\"; Write-Output \"DOTNET_ROOT\\(x86\\)=${env:DOTNET_ROOT\\(x86\\)}\")",
+      "Bash(DOTNET_ROOT_X86=\"C:\\\\\\\\Program Files \\(x86\\)\\\\\\\\dotnet\" \"DOTNET_ROOT\\(x86\\)=C:\\\\\\\\Program Files \\(x86\\)\\\\\\\\dotnet\" dotnet test TeacherToolbox.UnitTests/TeacherToolbox.UnitTests.csproj -p:Platform=x86 --arch x86 --no-build --nologo --verbosity minimal)",
+      "PowerShell($x86Root = \"C:\\\\Program Files \\(x86\\)\\\\dotnet\"; [Environment]::SetEnvironmentVariable\\(\"DOTNET_ROOT\\(x86\\)\", $x86Root, \"Process\"\\); [Environment]::SetEnvironmentVariable\\(\"DOTNET_ROOT_X86\", $x86Root, \"Process\"\\); dotnet test TeacherToolbox.UnitTests/TeacherToolbox.UnitTests.csproj -p:Platform=x86 --arch x86 --no-build --nologo --verbosity minimal 2>&1 | Select-Object -Last 50)"
     ]
   }
 }
