@@ -77,7 +77,7 @@ namespace TeacherToolbox.Controls
             }
         }
 
-        private async void Clock_Loaded(object sender, RoutedEventArgs e)
+        private void Clock_Loaded(object sender, RoutedEventArgs e)
         {
             // Initialize Composition visuals
             InitializeCompositionVisuals();

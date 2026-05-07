@@ -77,7 +77,7 @@ namespace TeacherToolbox.Controls
 
             this.InitializeComponent();
             InitializeUIElements();
-            InitializeWindowAsync(seconds);
+            _ = InitializeWindowAsync(seconds);
         }
 
         private void InitializeUIElements()
@@ -95,7 +95,7 @@ namespace TeacherToolbox.Controls
             }
         }
 
-        private async void InitializeWindowAsync(int seconds)
+        private async Task InitializeWindowAsync(int seconds)
         {
             try
             {
@@ -109,7 +109,7 @@ namespace TeacherToolbox.Controls
                 ConfigureWindowProperties();
 
                 // Initialize all resources
-                await InitializeResourcesAsync();
+                InitializeResources();
 
                 // Position and show the window
                 await FinalizeWindowSetupAsync(seconds);
@@ -156,7 +156,7 @@ namespace TeacherToolbox.Controls
 
 
 
-        private async Task InitializeResourcesAsync()
+        private void InitializeResources()
         {
             try
             {
@@ -196,7 +196,7 @@ namespace TeacherToolbox.Controls
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error in InitializeResourcesAsync: {ex.Message}");
+                Console.WriteLine($"Error in InitializeResources: {ex.Message}");
                 Console.WriteLine($"Stack trace: {ex.StackTrace}");
 
                 if (displayManager == null)
@@ -255,7 +255,7 @@ namespace TeacherToolbox.Controls
                 SetupCustomTimerSelection(seconds);
             }
         }
-        private async void SetupCustomTimerSelection(int timerType)
+        private void SetupCustomTimerSelection(int timerType)
         {
             // Ensure intervalsList is initialized
             if (intervalsList == null)
@@ -458,7 +458,7 @@ namespace TeacherToolbox.Controls
             timer.Start();
         }
 
-        private async Task LoadSoundFileAsync()
+        private void LoadSoundFile()
         {
             try
             {
@@ -496,7 +496,7 @@ namespace TeacherToolbox.Controls
             }
         }
 
-        private async Task InitializeWindowPositionAsync()
+        private void InitializeWindowPosition()
         {
             PointInt32 lastPosition = new PointInt32(_settingsService.GetLastTimerWindowPosition().X, _settingsService.GetLastTimerWindowPosition().Y);
             ulong lastDisplayIdValue = _settingsService.GetLastTimerWindowPosition().DisplayID;
@@ -1037,7 +1037,7 @@ namespace TeacherToolbox.Controls
             }
         }
 
-        private async void StartTimer_FromCustomSelection()
+        private void StartTimer_FromCustomSelection()
         {
             intervals = new Queue<IntervalTime>();
             var savedConfigs = new List<SavedIntervalConfig>();

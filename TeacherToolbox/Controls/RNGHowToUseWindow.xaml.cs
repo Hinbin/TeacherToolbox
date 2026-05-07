@@ -40,8 +40,6 @@ public sealed partial class RNGHowToUseWindow : WindowEx
 
     DisplayManager displayManager;
 
-    private PointInt32 lastPosition;
-
     public RNGHowToUseWindow()
     {
         this.InitializeComponent();

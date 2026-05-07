@@ -64,9 +64,9 @@ namespace TeacherToolbox.Services
             Directory.CreateDirectory(Path.GetDirectoryName(filePath));
         }
 
-        public async Task InitializeAsync()
+        public Task InitializeAsync()
         {
-            await LoadSettings();
+            return LoadSettings();
         }
 
         public void InitializeSync()

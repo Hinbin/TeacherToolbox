@@ -194,7 +194,7 @@ namespace TeacherToolbox.ViewModels
 
         #region Timer Initialization
 
-        private async void InitializeSound()
+        private void InitializeSound()
         {
             try
             {
