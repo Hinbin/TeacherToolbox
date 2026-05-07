@@ -493,13 +493,20 @@ class ShortcutWatcher
                 if (key == Keys.LWin || key == Keys.RWin)
                 {
                     lastWindowsKeyPress = DateTime.Now;
+
+                    var numberKey = keysBeingPressed.FirstOrDefault(IsNumberKey);
+                    if (numberKey != Keys.None)
+                    {
+                        SendKeyPress(numberKey);
+                        return (IntPtr)1;
+                    }
                 }
 
                 // Check if Windows key is pressed
                 if (keysBeingPressed.Contains(Keys.LWin) || keysBeingPressed.Contains(Keys.RWin))
                 {
                     // Check if the key is a number key
-                    if ((key >= Keys.D0 && key <= Keys.D9) || (key >= Keys.NumPad0 && key <= Keys.NumPad9))
+                    if (IsNumberKey(key))
                     {
                         SendKeyPress(key);
 
@@ -519,6 +526,11 @@ class ShortcutWatcher
         }
 
         return CallNextHookEx(_hookID, nCode, wParam, lParam);
+    }
+
+    private static bool IsNumberKey(Keys key)
+    {
+        return (key >= Keys.D0 && key <= Keys.D9) || (key >= Keys.NumPad0 && key <= Keys.NumPad9);
     }
 
     private static void SendKeyPress(Keys key)

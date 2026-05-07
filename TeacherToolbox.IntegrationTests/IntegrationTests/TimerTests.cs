@@ -15,11 +15,34 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
         [TearDown]
         public void TimerTearDown()
         {
-            if (_timerWindow != null && !_timerWindow.IsOffscreen)
+            if (_timerWindow == null)
+            {
+                return;
+            }
+
+            try
             {
                 _timerWindow.Close();
-                WaitUntilCondition(() => _timerWindow.IsOffscreen || _timerWindow.Properties.IsOffscreen, "Timer window should close", TimeSpan.FromSeconds(3));
             }
+            catch
+            {
+                return;
+            }
+
+            WaitUntilCondition(
+                () =>
+                {
+                    try
+                    {
+                        return _timerWindow.IsOffscreen || _timerWindow.Properties.IsOffscreen;
+                    }
+                    catch
+                    {
+                        return true;
+                    }
+                },
+                "Timer window should close",
+                TimeSpan.FromSeconds(3));
         }
 
         [Test]

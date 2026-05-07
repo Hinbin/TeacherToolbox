@@ -87,6 +87,12 @@ namespace TeacherToolbox
 
             pipeServer = new NamedPipeServerStream("ShortcutWatcher", PipeDirection.In);
             ListenForKeyPresses();
+#if DEBUG
+            if (Environment.GetEnvironmentVariable("TEACHER_TOOLBOX_TEST_SHORTCUT_PIPE") == "1")
+            {
+                ListenForTestShortcutMessages();
+            }
+#endif
 
             this.SetIsAlwaysOnTop(true);
 
@@ -696,6 +702,12 @@ namespace TeacherToolbox
 
                         foreach (var display in displayAreas)
                         {
+                            if (savedPosition.DisplayID != 0 &&
+                                display.DisplayId.Value != savedPosition.DisplayID)
+                            {
+                                continue;
+                            }
+
                             var workArea = display.WorkArea;
 
                             // Check if the saved position's top-left corner is within this display's work area
@@ -742,8 +754,7 @@ namespace TeacherToolbox
                     catch (Exception ex)
                     {
                         _telemetry.LogWarning("Error checking display areas during window position restoration", ex);
-                        // If we can't check displays, assume position is valid
-                        positionIsValid = true;
+                        positionIsValid = IsPositionOnMonitor(savedPosition.X, savedPosition.Y);
                     }
 
                     if (positionIsValid)
@@ -770,24 +781,37 @@ namespace TeacherToolbox
                     {
                         // Saved position is not valid (display may have been disconnected), use default
                         Debug.WriteLine("Saved window position is not on any current display, using default");
-                        Windows.Graphics.SizeInt32 size = new(_Width: 600, _Height: 200);
-                        this.AppWindow.ResizeClient(size);
+                        ApplyDefaultWindowBounds();
                     }
                 }
                 else
                 {
                     // No saved position, use default size
-                    Windows.Graphics.SizeInt32 size = new(_Width: 600, _Height: 200);
-                    this.AppWindow.ResizeClient(size);
+                    ApplyDefaultWindowBounds();
                 }
             }
             catch (Exception ex)
             {
                 _telemetry.LogError("Error restoring window position", ex);
                 // Fall back to default size
-                Windows.Graphics.SizeInt32 size = new(_Width: 600, _Height: 200);
-                this.AppWindow.ResizeClient(size);
+                ApplyDefaultWindowBounds();
             }
+        }
+
+        private void ApplyDefaultWindowBounds()
+        {
+            var workArea = DisplayArea.Primary.WorkArea;
+            const int defaultWidth = 700;
+            const int defaultHeight = 220;
+
+            var x = workArea.X + Math.Max(0, (workArea.Width - defaultWidth) / 2);
+            var y = workArea.Y + Math.Max(0, (workArea.Height - defaultHeight) / 2);
+
+            this.AppWindow.MoveAndResize(new Windows.Graphics.RectInt32(
+                x,
+                y,
+                defaultWidth,
+                defaultHeight));
         }
 
         #region DPI Helper P/Invoke
@@ -806,7 +830,13 @@ namespace TeacherToolbox
         }
 
         private const uint MONITOR_DEFAULTTONEAREST = 2;
+        private const uint MONITOR_DEFAULTTONULL = 0;
         private const int MDT_EFFECTIVE_DPI = 0;
+
+        private static bool IsPositionOnMonitor(int x, int y)
+        {
+            return MonitorFromPoint(new POINT { x = x, y = y }, MONITOR_DEFAULTTONULL) != IntPtr.Zero;
+        }
 
         #endregion
 
@@ -1134,6 +1164,36 @@ namespace TeacherToolbox
                 Debug.WriteLine("ListenForKeyPresses exited");
             }
         }
+
+#if DEBUG
+        private async void ListenForTestShortcutMessages()
+        {
+            while (true)
+            {
+                try
+                {
+                    using var testPipe = new NamedPipeServerStream(
+                        "TeacherToolboxShortcutTest",
+                        PipeDirection.In,
+                        1,
+                        PipeTransmissionMode.Byte,
+                        PipeOptions.Asynchronous);
+                    await testPipe.WaitForConnectionAsync();
+                    using var reader = new StreamReader(testPipe);
+                    var message = await reader.ReadLineAsync();
+                    if (!string.IsNullOrWhiteSpace(message))
+                    {
+                        ProcessKeyPress(message);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _telemetry.LogWarning("Test shortcut pipe listener stopped", ex);
+                    break;
+                }
+            }
+        }
+#endif
 
         private void NavView_Loaded(object sender, RoutedEventArgs e)
         {

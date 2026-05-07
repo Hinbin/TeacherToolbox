@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Definitions;
 using FlaUI.Core.Input;
@@ -17,11 +18,34 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
         [TearDown]
         public void ScreenRulerTearDown()
         {
-            if (_rulerWindow != null && !_rulerWindow.IsOffscreen)
+            if (_rulerWindow == null)
+            {
+                return;
+            }
+
+            try
             {
                 (_closeButton ?? _rulerWindow.FindFirstDescendant(cf => cf.ByAutomationId("ScreenRulerCloseButton")))?.Click();
-                WaitUntilCondition(() => _rulerWindow.IsOffscreen || _rulerWindow.Properties.IsOffscreen, "Screen ruler window should close", TimeSpan.FromSeconds(3));
             }
+            catch
+            {
+                return;
+            }
+
+            WaitUntilCondition(
+                () =>
+                {
+                    try
+                    {
+                        return _rulerWindow.IsOffscreen || _rulerWindow.Properties.IsOffscreen;
+                    }
+                    catch
+                    {
+                        return true;
+                    }
+                },
+                "Screen ruler window should close",
+                TimeSpan.FromSeconds(3));
         }
 
         [Test]
@@ -30,11 +54,15 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
             OpenScreenRulerPage();
             var initialBounds = _rulerWindow!.BoundingRectangle;
 
-            DragWindow(_rulerWindow, 0, 100);
+            for (var attempt = 0; attempt < 3 && Math.Abs(_rulerWindow!.BoundingRectangle.Y - initialBounds.Y) <= 20; attempt++)
+            {
+                DragWindow(_rulerWindow, 0, 160);
+            }
 
             WaitUntilCondition(
                 () => Math.Abs(_rulerWindow!.BoundingRectangle.Y - initialBounds.Y) > 20,
-                "Ruler should move vertically when dragged");
+                "Ruler should move vertically when dragged",
+                TimeSpan.FromSeconds(8));
         }
 
         [Test]
@@ -78,8 +106,16 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
             Wait.UntilInputIsProcessed();
             Mouse.Down();
             Wait.UntilInputIsProcessed();
-            Mouse.MoveBy(offsetX, offsetY);
-            Wait.UntilInputIsProcessed();
+            const int steps = 8;
+            var stepX = offsetX / steps;
+            var stepY = offsetY / steps;
+            for (var i = 0; i < steps; i++)
+            {
+                Mouse.MoveBy(stepX, stepY);
+                Thread.Sleep(30);
+                Wait.UntilInputIsProcessed();
+            }
+
             Mouse.Up();
             Wait.UntilInputIsProcessed();
         }

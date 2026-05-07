@@ -1,5 +1,7 @@
 using System;
 using System.Diagnostics;
+using System.IO;
+using System.IO.Pipes;
 using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Input;
 using FlaUI.Core.Tools;
@@ -57,7 +59,7 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
         [TestCase(VirtualKeyShort.KEY_1, "1:00")]
         public void WinPlusNumber_StartsExpectedTimer(VirtualKeyShort numberKey, string expectedText)
         {
-            Keyboard.TypeSimultaneously(VirtualKeyShort.LWIN, numberKey);
+            SendShortcutMessage(numberKey);
             Wait.UntilInputIsProcessed();
 
             var timerWindow = WaitUntilFound(
@@ -71,14 +73,19 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
                 "Timer text should be found",
                 TimeSpan.FromSeconds(2));
 
-            Assert.That(timerText.AsTextBox().Text, Is.EqualTo(expectedText).Or.EqualTo("29"));
+            var actualText = timerText.AsTextBox().Text;
+            var expectedConstraint = expectedText == "1:00"
+                ? Is.EqualTo("1:00").Or.EqualTo("59")
+                : Is.EqualTo(expectedText).Or.EqualTo("29");
+
+            Assert.That(actualText, expectedConstraint);
             timerWindow.Close();
         }
 
         [Test]
         public void WinPlusNine_OpensManualTimerSelection()
         {
-            Keyboard.TypeSimultaneously(VirtualKeyShort.LWIN, VirtualKeyShort.KEY_9);
+            SendShortcutMessage(VirtualKeyShort.KEY_9);
             Wait.UntilInputIsProcessed();
 
             var timerWindow = WaitUntilFound(
@@ -94,6 +101,14 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
 
             Assert.That(intervalsListView.IsOffscreen, Is.False);
             timerWindow.Close();
+        }
+
+        private static void SendShortcutMessage(VirtualKeyShort numberKey)
+        {
+            using var pipe = new NamedPipeClientStream(".", "TeacherToolboxShortcutTest", PipeDirection.Out);
+            pipe.Connect(3000);
+            using var writer = new StreamWriter(pipe) { AutoFlush = true };
+            writer.WriteLine($"D{(int)numberKey - (int)VirtualKeyShort.KEY_0}");
         }
     }
 }

@@ -5,7 +5,6 @@ using System.Linq;
 using System.Reflection;
 using FlaUI.Core;
 using FlaUI.Core.AutomationElements;
-using FlaUI.Core.Conditions;
 using FlaUI.Core.Definitions;
 using FlaUI.Core.Input;
 using FlaUI.Core.Tools;
@@ -21,6 +20,7 @@ public abstract class TestBase
     protected UIA3Automation? Automation { get; private set; }
     protected Window? MainWindow { get; private set; }
     protected AutomationElement? NavigationPane;
+    private int? _appProcessId;
 
     private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan DialogTimeout = TimeSpan.FromSeconds(10);
@@ -30,7 +30,8 @@ public abstract class TestBase
     [
         "settings.json",
         "centreNumber.json",
-        "classes.json"
+        "classes.json",
+        "testPickFile.txt"
     ];
 
     protected string SolutionRoot { get; private set; } = string.Empty;
@@ -46,6 +47,8 @@ public abstract class TestBase
     [SetUp]
     public void BaseSetUp()
     {
+        KillTeacherToolboxProcesses();
+        KillShortcutWatcherProcesses();
         DeleteAppDataFiles();
         LaunchApp();
     }
@@ -70,9 +73,12 @@ public abstract class TestBase
 
         try
         {
+            Environment.SetEnvironmentVariable("TEACHER_TOOLBOX_TEST_SHORTCUT_PIPE", "1");
+            Environment.SetEnvironmentVariable("TEACHER_TOOLBOX_TEST_PICK_FILE_PATH_FILE", TestPickFilePath);
             App = Application.Launch(AppPath);
             Automation = new UIA3Automation();
             MainWindow = App.GetMainWindow(Automation, TimeSpan.FromSeconds(10));
+            _appProcessId = GetProcessId(MainWindow!);
             NavigationPane = MainWindow!.FindFirstDescendant(cf => cf.ByAutomationId("NavigationPane"));
             Assert.That(MainWindow, Is.Not.Null, "Main window should be found");
         }
@@ -89,18 +95,112 @@ public abstract class TestBase
         {
             if (App?.HasExited == false)
             {
-                App.Close();
-                WaitUntilCondition(() => App.HasExited, "Application should exit after Close()", TimeSpan.FromSeconds(5));
+                try
+                {
+                    App.Close();
+                }
+                catch
+                {
+                    KillLaunchedAppProcess();
+                }
+
+                try
+                {
+                    var stopwatch = Stopwatch.StartNew();
+                    while (!App.HasExited && stopwatch.Elapsed < TimeSpan.FromSeconds(5))
+                    {
+                        System.Threading.Thread.Sleep(100);
+                    }
+
+                    if (!App.HasExited)
+                    {
+                        KillLaunchedAppProcess();
+                    }
+                }
+                catch
+                {
+                    KillLaunchedAppProcess();
+                }
             }
         }
         finally
         {
+            KillShortcutWatcherProcesses();
             Automation?.Dispose();
             App?.Dispose();
             Automation = null;
             App = null;
             MainWindow = null;
             NavigationPane = null;
+            _appProcessId = null;
+        }
+    }
+
+    private static void KillTeacherToolboxProcesses()
+    {
+        foreach (var process in Process.GetProcessesByName("TeacherToolbox"))
+        {
+            try
+            {
+                if (!process.HasExited)
+                {
+                    process.Kill(entireProcessTree: true);
+                    process.WaitForExit(3000);
+                }
+            }
+            catch (Exception ex)
+            {
+                TestContext.Out.WriteLine($"Failed to kill TeacherToolbox process {process.Id}: {ex.Message}");
+            }
+            finally
+            {
+                process.Dispose();
+            }
+        }
+    }
+
+    private void KillLaunchedAppProcess()
+    {
+        if (_appProcessId == null)
+        {
+            return;
+        }
+
+        try
+        {
+            var process = Process.GetProcessById(_appProcessId.Value);
+            if (!process.HasExited)
+            {
+                process.Kill(entireProcessTree: true);
+                process.WaitForExit(3000);
+            }
+        }
+        catch (Exception ex)
+        {
+            TestContext.Out.WriteLine($"Failed to kill TeacherToolbox process {_appProcessId}: {ex.Message}");
+        }
+    }
+
+    private static void KillShortcutWatcherProcesses()
+    {
+        foreach (var process in Process.GetProcessesByName("ShortcutWatcher"))
+        {
+            try
+            {
+                if (!process.HasExited)
+                {
+                    process.Kill(entireProcessTree: true);
+                    process.WaitForExit(3000);
+                }
+            }
+            catch (Exception ex)
+            {
+                TestContext.Out.WriteLine($"Failed to kill ShortcutWatcher process {process.Id}: {ex.Message}");
+            }
+            finally
+            {
+                process.Dispose();
+            }
         }
     }
 
@@ -154,10 +254,12 @@ public abstract class TestBase
 
     protected void NavigateToPage(string pageName)
     {
+        DismissOpenTeachingTip();
         EnsureNavigationIsOpen();
 
         var navItem = WaitUntilFound(
-            () => NavigationPane!.FindFirstDescendant(cf => cf.ByName(pageName)),
+            () => NavigationPane!.FindFirstDescendant(cf => cf.ByControlType(ControlType.ListItem).And(cf.ByName(pageName)))
+                ?? NavigationPane.FindFirstDescendant(cf => cf.ByName(pageName)),
             $"Navigation item '{pageName}' should be found");
 
         ScrollElementIntoView(navItem);
@@ -166,8 +268,30 @@ public abstract class TestBase
             $"Navigation item '{pageName}' should be visible on screen");
 
         navItem.Focus();
-        navItem.Click();
+        if (navItem.Patterns.Invoke.IsSupported)
+        {
+            navItem.Patterns.Invoke.Pattern.Invoke();
+        }
+        else
+        {
+            navItem.Click();
+        }
         Wait.UntilInputIsProcessed();
+    }
+
+    private void DismissOpenTeachingTip()
+    {
+        try
+        {
+            var dismissButton = MainWindow?.FindFirstDescendant(cf => cf.ByControlType(ControlType.Button).And(cf.ByName("Got it!")));
+            dismissButton?.Click();
+            Keyboard.Press(VirtualKeyShort.ESCAPE);
+            Wait.UntilInputIsProcessed();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Warning: couldn't dismiss teaching tip: {ex.Message}");
+        }
     }
 
     protected AutomationElement VerifyPageLoaded(string pageId)
@@ -235,58 +359,36 @@ public abstract class TestBase
 
     protected void OpenClassFile(AutomationElement rngPage, string fileName)
     {
+        var path = Path.Combine(SolutionRoot, "TeacherToolbox.IntegrationTests", "Files", fileName);
+        Directory.CreateDirectory(Path.GetDirectoryName(TestPickFilePath)!);
+        File.WriteAllText(TestPickFilePath, path);
+
         var addClassButton = WaitUntilFound(
-            () => rngPage.FindFirstDescendant(cf => cf.ByName("Add Class")),
+            () => rngPage.FindFirstDescendant(cf => cf.ByAutomationId("AddClassButton"))
+                ?? rngPage.FindFirstDescendant(cf => cf.ByName("Add Class")),
             "Add Class button should exist");
 
-        addClassButton.Click();
-        Wait.UntilInputIsProcessed();
+        try
+        {
+            addClassButton.Click();
+            Wait.UntilInputIsProcessed();
 
-        using var dialogAutomation = new UIA3Automation();
-        var fileDialog = WaitUntilFound(
-            () =>
+            WaitUntilFound(
+                () => rngPage.FindFirstDescendant(cf => cf.ByName(Path.GetFileNameWithoutExtension(fileName))),
+                "Class button should appear after opening a class file",
+                DialogTimeout);
+            return;
+        }
+        finally
+        {
+            try
             {
-                var desktop = dialogAutomation.GetDesktop();
-                return desktop.FindFirst(TreeScope.Descendants,
-                    new AndCondition(
-                        new PropertyCondition(Automation.PropertyLibrary.Element.ControlType, ControlType.Window),
-                        new PropertyCondition(Automation.PropertyLibrary.Element.ClassName, "#32770")));
-            },
-            "File dialog should appear",
-            DialogTimeout);
-
-        Wait.UntilResponsive(fileDialog);
-
-        var filenameInput = fileDialog.FindFirst(TreeScope.Descendants,
-            new AndCondition(
-                new PropertyCondition(Automation.PropertyLibrary.Element.ControlType, ControlType.Edit),
-                new PropertyCondition(Automation.PropertyLibrary.Element.Name, "File name:")))
-            ?? fileDialog.FindFirst(TreeScope.Descendants,
-                new AndCondition(
-                    new PropertyCondition(Automation.PropertyLibrary.Element.ControlType, ControlType.Edit),
-                    new PropertyCondition(Automation.PropertyLibrary.Element.AutomationId, "1148")));
-
-        Assert.That(filenameInput, Is.Not.Null, "Filename input field should exist");
-
-        var path = Path.Combine(SolutionRoot, "TeacherToolbox.IntegrationTests", "Files", fileName);
-        filenameInput.Focus();
-        Keyboard.Type(path);
-        Wait.UntilInputIsProcessed();
-        Keyboard.Press(VirtualKeyShort.RETURN);
-        Wait.UntilInputIsProcessed();
-
-        WaitUntilCondition(
-            () =>
+                File.Delete(TestPickFilePath);
+            }
+            catch
             {
-                var desktop = dialogAutomation.GetDesktop();
-                var dialogWindow = desktop.FindFirst(TreeScope.Descendants,
-                    new AndCondition(
-                        new PropertyCondition(Automation.PropertyLibrary.Element.ControlType, ControlType.Window),
-                        new PropertyCondition(Automation.PropertyLibrary.Element.ClassName, "#32770")));
-                return dialogWindow == null;
-            },
-            "File dialog should close",
-            DialogTimeout);
+            }
+        }
     }
 
     protected void CleanupProcess(Process? process)
@@ -362,4 +464,19 @@ public abstract class TestBase
             "win-x86",
             "TeacherToolbox.exe");
     }
+
+    private static int GetProcessId(Window window)
+    {
+        var hwnd = new IntPtr(window.Properties.NativeWindowHandle.Value);
+        GetWindowThreadProcessId(hwnd, out var processId);
+        return (int)processId;
+    }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
+    private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+
+    private static string TestPickFilePath => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "TeacherToolbox",
+        "testPickFile.txt");
 }

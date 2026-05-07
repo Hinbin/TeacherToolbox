@@ -1,4 +1,5 @@
-﻿using System;
+using System;
+using System.IO;
 using System.Threading.Tasks;
 using Windows.Storage;
 using Windows.Storage.Pickers;
@@ -9,6 +10,23 @@ namespace TeacherToolbox.Services
     {
         public async Task<StorageFile> PickTextFileAsync(IntPtr windowHandle)
         {
+#if DEBUG
+            var testFilePath = Environment.GetEnvironmentVariable("TEACHER_TOOLBOX_TEST_PICK_FILE");
+            var testFilePathFile = Environment.GetEnvironmentVariable("TEACHER_TOOLBOX_TEST_PICK_FILE_PATH_FILE");
+            if (string.IsNullOrWhiteSpace(testFilePath) &&
+                !string.IsNullOrWhiteSpace(testFilePathFile) &&
+                File.Exists(testFilePathFile))
+            {
+                testFilePath = await File.ReadAllTextAsync(testFilePathFile);
+            }
+
+            testFilePath = testFilePath?.Trim();
+            if (!string.IsNullOrWhiteSpace(testFilePath) && File.Exists(testFilePath))
+            {
+                return await StorageFile.GetFileFromPathAsync(testFilePath);
+            }
+#endif
+
             var openPicker = new FileOpenPicker();
             WinRT.Interop.InitializeWithWindow.Initialize(openPicker, windowHandle);
             openPicker.FileTypeFilter.Add(".txt");

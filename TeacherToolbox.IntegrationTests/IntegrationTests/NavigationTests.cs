@@ -11,10 +11,10 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
             var navigationOrder = new[]
             {
                 ("Timer", "TimerSelectionPage"),
-                ("Screen Ruler", "ScreenRulerPage"),
                 ("Exam Clock", "Clock"),
                 ("Random Name Generator", "RandomNameGeneratorPage"),
-                ("Settings", "SettingsPage")
+                ("Settings", "SettingsPage"),
+                ("Screen Ruler", "ScreenRulerPage")
             };
 
             foreach (var (pageName, pageId) in navigationOrder)

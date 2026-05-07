@@ -115,12 +115,16 @@
 
                 <!--  Add Class Button (shown directly when 3 or fewer classes)  -->
                 <Button
+                    AutomationProperties.AutomationId="AddClassButton"
+                    AutomationProperties.Name="Add Class"
                     Command="{x:Bind ViewModel.AddClassCommand}"
                     Content="Add Class"
                     Visibility="{x:Bind ViewModel.ShowAddRemoveButtonsDirectly, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
 
                 <!--  Remove Class Button (shown directly when 3 or fewer classes)  -->
                 <Button
+                    AutomationProperties.AutomationId="RemoveClassButton"
+                    AutomationProperties.Name="Remove Class"
                     Command="{x:Bind ViewModel.RemoveClassCommand}"
                     Content="Remove Class"
                     Visibility="{x:Bind ViewModel.ShowAddRemoveButtonsDirectly, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
