@@ -9,14 +9,9 @@
     xmlns:local="using:TeacherToolbox.Controls"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:model="using:TeacherToolbox.Model"
-    xmlns:viewmodels="using:TeacherToolbox.ViewModels"
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
+    DataContext="{Binding Source={StaticResource Locator}, Path=Clock}"
     mc:Ignorable="d">
-
-    <!--  Design-time DataContext  -->
-    <d:Page.DataContext>
-        <viewmodels:ClockViewModel />
-    </d:Page.DataContext>
 
     <Grid
         x:Name="MainGrid"

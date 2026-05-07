@@ -1,5 +1,4 @@
 using CommunityToolkit.WinUI.UI.Controls;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI;
 using Microsoft.UI.Composition;
 using Microsoft.UI.Xaml;
@@ -33,39 +32,28 @@ namespace TeacherToolbox.Controls
         private CompositionScopedBatch _batch;
 
         // ViewModel and visual elements
-        public ClockViewModel ViewModel { get; private set; }
+        public ClockViewModel ViewModel => (ClockViewModel)this.DataContext;
         private readonly Dictionary<string, RadialGauge> _gauges = new Dictionary<string, RadialGauge>();
         private string _selectedGaugeName;
         private int _selectedGaugeRadialLevel = -1; // Track the radial level of selected gauge
         private readonly string[] _colorPalette;
 
-        // Services
-        private readonly IThemeService _themeService;
-
         public Clock()
         {
-
             this.InitializeComponent();
             this.Loaded += Clock_Loaded;
 
-            // Get theme service from DI
-            _themeService = App.Current.Services.GetRequiredService<IThemeService>();
-
             _colorPalette = new[]
-                {
-            "#FF0072B2", "#FFCC79A7", "#FFF0E442", "#FF009E73", "#FF785EF0",
-            "#FFD55E00", "#FF56B4E9", _themeService.IsDarkTheme ? "#FFFFFFFF" : "#FF000000",
-            "#FFDC267F", "#FF117733"
-        };
+            {
+                "#FF0072B2", "#FFCC79A7", "#FFF0E442", "#FF009E73", "#FF785EF0",
+                "#FFD55E00", "#FF56B4E9", ThemeService.IsDarkTheme ? "#FFFFFFFF" : "#FF000000",
+                "#FFDC267F", "#FF117733"
+            };
         }
-        protected override async void OnNavigatedTo(NavigationEventArgs e)
+
+        protected override void OnNavigatedTo(NavigationEventArgs e)
         {
             base.OnNavigatedTo(e);
-
-            // Create ViewModel with all services
-            ViewModel = App.Current.Services.GetRequiredService<ClockViewModel>();
-            this.DataContext = ViewModel;
-            
 
             // Subscribe to ViewModel events
             ViewModel.TimeSliceAdded += OnTimeSliceAdded;
@@ -120,7 +108,7 @@ namespace TeacherToolbox.Controls
         private void CreateClockHands()
         {
             // Get theme service from DI
-            var handColor = _themeService?.IsDarkTheme == true ? Colors.White : Colors.Black;
+            var handColor = ThemeService?.IsDarkTheme == true ? Colors.White : Colors.Black;
 
             // Use ViewModel's brush if available, otherwise use theme service color
             if (ViewModel?.HandColorBrush?.Color != null)
@@ -161,7 +149,7 @@ namespace TeacherToolbox.Controls
         private void LoadClockBackgroundImage()
         {
             // Get theme service from DI
-            var isDarkTheme = _themeService?.IsDarkTheme ?? false;
+            var isDarkTheme = ThemeService?.IsDarkTheme ?? false;
 
             string imagePath = System.IO.Path.Combine(
                 AppContext.BaseDirectory,
@@ -519,7 +507,7 @@ namespace TeacherToolbox.Controls
 
             // If all palette colors are used, generate a random color that contrasts with the theme
             Random random = new Random();
-            bool isDarkTheme = _themeService?.IsDarkTheme ?? false;
+            bool isDarkTheme = ThemeService?.IsDarkTheme ?? false;
 
             if (isDarkTheme)
             {

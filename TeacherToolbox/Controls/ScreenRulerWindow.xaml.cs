@@ -1,4 +1,3 @@
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Input;
@@ -28,11 +27,10 @@ namespace TeacherToolbox.Controls
         private static BlurredBackdrop blurredBackdrop = new BlurredBackdrop();
         private ScreenRulerPage screenRulerPage;
 
-        public ScreenRulerWindow(ScreenRulerPage fromPage,ulong displayId = 0)
+        public ScreenRulerWindow(ScreenRulerPage fromPage, ISettingsService settingsService, IThemeService themeService, ulong displayId = 0)
         {
-            var services = App.Current.Services;
-            _settingsService = services.GetRequiredService<ISettingsService>();
-            _themeService = services.GetRequiredService<IThemeService>();
+            _settingsService = settingsService;
+            _themeService = themeService;
 
             this.InitializeComponent();
 

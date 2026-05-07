@@ -60,17 +60,18 @@ namespace TeacherToolbox
             throw new Exception("Failed to load Page " + e.SourcePageType.FullName);
         }
 
-        public MainWindow()
+        public MainWindow(
+            ISettingsService settingsService,
+            ISleepPreventer sleepPreventer,
+            IThemeService themeService,
+            ITelemetryService telemetry)
         {
             this.InitializeComponent();
 
-            // Get services from the App's service provider
-            var services = App.Current.Services;
-
-            _settingsService = services.GetRequiredService<ISettingsService>();
-            _sleepPreventer = services.GetRequiredService<ISleepPreventer>();
-            _themeService = services.GetRequiredService<IThemeService>();
-            _telemetry = services.GetRequiredService<ITelemetryService>();
+            _settingsService = settingsService;
+            _sleepPreventer = sleepPreventer;
+            _themeService = themeService;
+            _telemetry = telemetry;
 
             _presenter = this.AppWindow.Presenter as OverlappedPresenter;
 
@@ -1356,15 +1357,15 @@ namespace TeacherToolbox
                                 // If the number is 0, start a 30 second timer.  Otherwise do it for that number of minutes
                                 if (timeInt == 0)
                                 {
-                                    timerWindow = new TimerWindow(30);
+                                    timerWindow = new TimerWindow(30, _settingsService, _themeService);
                                 }
                                 else if (timeInt == 9)
                                 {
-                                    timerWindow = new TimerWindow(0);
+                                    timerWindow = new TimerWindow(0, _settingsService, _themeService);
                                 }
                                 else
                                 {
-                                    timerWindow = new TimerWindow(timeInt * 60);
+                                    timerWindow = new TimerWindow(timeInt * 60, _settingsService, _themeService);
                                 }
 
                                 timerWindow.Activate();

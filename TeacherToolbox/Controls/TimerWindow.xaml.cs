@@ -1,4 +1,3 @@
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Windowing;
@@ -69,11 +68,10 @@ namespace TeacherToolbox.Controls
         // Flag to prevent multiple close operations
         private bool isClosing = false;
 
-        public TimerWindow(int seconds)
+        public TimerWindow(int seconds, ISettingsService settingsService, IThemeService themeService)
         {
-            var services = App.Current.Services;
-            _settingsService = services.GetRequiredService<ISettingsService>();
-            _themeService = services.GetRequiredService<IThemeService>();
+            _settingsService = settingsService;
+            _themeService = themeService;
 
             intervalsList = new ObservableCollection<IntervalTimeViewModel>();
 

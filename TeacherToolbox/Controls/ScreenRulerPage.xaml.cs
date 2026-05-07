@@ -28,7 +28,7 @@ namespace TeacherToolbox.Controls
 
             // Create a new instance of the ruler
 
-            screenRulerWindow = new ScreenRulerWindow(this);
+            screenRulerWindow = new ScreenRulerWindow(this, SettingsService, ThemeService);
             screenRulerWindow.Closed += ScreenRulerWindow_Closed;   
             
             displayManager = new DisplayManager();
@@ -47,7 +47,7 @@ namespace TeacherToolbox.Controls
 
         public void Open_Ruler_Window_Click(object sender, RoutedEventArgs e)
         {
-            screenRulerWindow = new ScreenRulerWindow(this);
+            screenRulerWindow = new ScreenRulerWindow(this, SettingsService, ThemeService);
             OpenRulerWindowButton.Visibility = Visibility.Collapsed;
             CloseRulerWindowButton.Visibility = Visibility.Visible;
         }
@@ -75,7 +75,7 @@ namespace TeacherToolbox.Controls
             }
 
             // Create a new window on the next display
-            screenRulerWindow = new ScreenRulerWindow(this, displayManager.DisplayAreas[currentDisplayIndex].DisplayId.Value);
+            screenRulerWindow = new ScreenRulerWindow(this, SettingsService, ThemeService, displayManager.DisplayAreas[currentDisplayIndex].DisplayId.Value);
 
         }
     }

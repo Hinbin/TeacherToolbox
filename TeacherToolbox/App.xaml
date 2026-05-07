@@ -20,6 +20,7 @@
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
             <!--  Other app resources here  -->
+            <local:ViewModelLocator x:Key="Locator" />
             <SolidColorBrush x:Key="darkPurpleBrush" Color="#5b3493" />
             <toolkit:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
         </ResourceDictionary>

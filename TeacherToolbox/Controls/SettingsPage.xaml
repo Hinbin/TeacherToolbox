@@ -5,14 +5,9 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:local="using:TeacherToolbox.Controls"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:viewmodels="using:TeacherToolbox.ViewModels"
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
+    DataContext="{Binding Source={StaticResource Locator}, Path=Settings}"
     mc:Ignorable="d">
-
-    <!--  Design-time DataContext  -->
-    <d:Page.DataContext>
-        <viewmodels:SettingsViewModel />
-    </d:Page.DataContext>
 
     <Page.Resources>
         <!--  Spacing between cards  -->

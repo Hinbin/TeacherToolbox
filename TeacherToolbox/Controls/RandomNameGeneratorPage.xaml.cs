@@ -1,4 +1,3 @@
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Automation.Peers;
@@ -11,21 +10,13 @@ using TeacherToolbox.ViewModels;
 
 namespace TeacherToolbox.Controls
 {
-    public sealed partial class RandomNameGeneratorPage
+    public sealed partial class RandomNameGeneratorPage : AutomatedPage
     {
-        public RandomNameGeneratorViewModel ViewModel { get; }
+        public RandomNameGeneratorViewModel ViewModel => (RandomNameGeneratorViewModel)this.DataContext;
 
         public RandomNameGeneratorPage()
         {
             this.InitializeComponent();
-
-            // Get the ViewModel from dependency injection
-            ViewModel = App.Current.Services.GetRequiredService<RandomNameGeneratorViewModel>();
-
-            // Set the window handle for file picker
-            var window = App.MainWindow;
-            var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
-            ViewModel.WindowHandle = hWnd;
 
             // Set DataContext for data binding
             this.Loaded += RandomNameGenerator_Loaded;
@@ -33,9 +24,13 @@ namespace TeacherToolbox.Controls
 
         private async void RandomNameGenerator_Loaded(object sender, RoutedEventArgs e)
         {
+            // Set the window handle for file picker
+            var window = App.MainWindow;
+            var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
+            ViewModel.WindowHandle = hWnd;
+
             // Initialize the ViewModel
             await ViewModel.InitializeAsync();
-            this.DataContext = ViewModel;
 
             // Subscribe to events
             ViewModel.InstructionsRequested += OnInstructionsRequested;

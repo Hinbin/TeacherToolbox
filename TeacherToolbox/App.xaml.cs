@@ -93,7 +93,7 @@ namespace TeacherToolbox
 
         protected override async void OnLaunched(LaunchActivatedEventArgs args)
         {
-            MainWindow = new MainWindow();
+            MainWindow = ActivatorUtilities.CreateInstance<MainWindow>(Services);
 
             // Register main window with window service
             Services.GetRequiredService<IWindowService>().SetWindow(MainWindow);

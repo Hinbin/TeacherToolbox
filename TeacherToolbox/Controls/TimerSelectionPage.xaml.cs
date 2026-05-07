@@ -31,17 +31,17 @@ namespace TeacherToolbox.Controls
                 // Create window based on button type
                 if (buttonContent.Contains("Custom"))
                 {
-                    timerWindow = new TimerWindow(0);
+                    timerWindow = new TimerWindow(0, SettingsService, ThemeService);
                 }
                 else if (buttonContent.Contains("Interval"))
                 {
-                    timerWindow = new TimerWindow(-1);
+                    timerWindow = new TimerWindow(-1, SettingsService, ThemeService);
                 }
                 else
                 {
                     // Parse "30 seconds" to 30, "1 minute" to 60, "2 minutes" to 120, etc.    
                     int seconds = int.Parse(buttonContent.Split(' ')[0]) * (buttonContent.Contains("min") ? 60 : 1);
-                    timerWindow = new TimerWindow(seconds);
+                    timerWindow = new TimerWindow(seconds, SettingsService, ThemeService);
                 }
 
                 // Ensure window is created before activating
