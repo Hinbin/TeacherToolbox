@@ -40,20 +40,36 @@ namespace TeacherToolbox.Controls
 
         public void Close_Ruler_Window_Click(object sender, RoutedEventArgs e)
         {
-            screenRulerWindow.Close();
+            screenRulerWindow?.Close();
+            screenRulerWindow = null;
             OpenRulerWindowButton.Visibility = Visibility.Visible;
             CloseRulerWindowButton.Visibility = Visibility.Collapsed;
         }
 
         public void Open_Ruler_Window_Click(object sender, RoutedEventArgs e)
         {
-            screenRulerWindow = new ScreenRulerWindow(this, SettingsService, ThemeService);
+            EnsureRulerWindowOpen();
+        }
+
+        public void EnsureRulerWindowOpen()
+        {
+            if (screenRulerWindow == null)
+            {
+                screenRulerWindow = new ScreenRulerWindow(this, SettingsService, ThemeService);
+                screenRulerWindow.Closed += ScreenRulerWindow_Closed;
+            }
+
             OpenRulerWindowButton.Visibility = Visibility.Collapsed;
             CloseRulerWindowButton.Visibility = Visibility.Visible;
         }
 
         private void ScreenRulerWindow_Closed(object sender, WindowEventArgs e)
         {
+            if (ReferenceEquals(sender, screenRulerWindow))
+            {
+                screenRulerWindow = null;
+            }
+
             OpenRulerWindowButton.Visibility = Visibility.Visible;
             CloseRulerWindowButton.Visibility = Visibility.Collapsed;
         }
@@ -61,7 +77,8 @@ namespace TeacherToolbox.Controls
         private void ChangeDisplayButton_Click(object sender, RoutedEventArgs e)
         {
             // Close the current window
-            screenRulerWindow.Close();
+            screenRulerWindow?.Close();
+            screenRulerWindow = null;
             OpenRulerWindowButton.Visibility = Visibility.Collapsed;
             CloseRulerWindowButton.Visibility = Visibility.Visible;
 
@@ -76,6 +93,7 @@ namespace TeacherToolbox.Controls
 
             // Create a new window on the next display
             screenRulerWindow = new ScreenRulerWindow(this, SettingsService, ThemeService, displayManager.DisplayAreas[currentDisplayIndex].DisplayId.Value);
+            screenRulerWindow.Closed += ScreenRulerWindow_Closed;
 
         }
     }
