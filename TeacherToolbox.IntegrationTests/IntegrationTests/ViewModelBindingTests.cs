@@ -6,8 +6,15 @@ using NUnit.Framework;
 namespace TeacherToolbox.IntegrationTests.IntegrationTests
 {
     [TestFixture]
+    [FixtureLifeCycle(LifeCycle.SingleInstance)]
     public class ViewModelBindingTests : TestBase
     {
+        [OneTimeSetUp]
+        public void ClassSetUp() => EnableSharedLaunch();
+
+        [OneTimeTearDown]
+        public void ClassTearDown() => TearDownSharedLaunch();
+
         [Test]
         public void Clock_ViewModelBinding_PopulatesTimeDisplay()
         {

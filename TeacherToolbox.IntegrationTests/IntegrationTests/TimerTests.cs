@@ -8,8 +8,15 @@ using NUnit.Framework;
 namespace TeacherToolbox.IntegrationTests.IntegrationTests
 {
     [TestFixture]
+    [FixtureLifeCycle(LifeCycle.SingleInstance)]
     public class TimerTests : TestBase
     {
+        [OneTimeSetUp]
+        public void ClassSetUp() => EnableSharedLaunch();
+
+        [OneTimeTearDown]
+        public void ClassTearDown() => TearDownSharedLaunch();
+
         private Window? _timerWindow;
 
         [TearDown]

@@ -21,6 +21,7 @@ public abstract class TestBase
     protected Window? MainWindow { get; private set; }
     protected AutomationElement? NavigationPane;
     private int? _appProcessId;
+    private bool _sharedLaunchActive;
 
     private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan DialogTimeout = TimeSpan.FromSeconds(10);
@@ -44,9 +45,28 @@ public abstract class TestBase
         ResolvePaths();
     }
 
+    // Call from [OneTimeSetUp] in a [FixtureLifeCycle(SingleInstance)] fixture to launch
+    // the app once for all tests in the fixture instead of once per test.
+    protected void EnableSharedLaunch()
+    {
+        _sharedLaunchActive = true;
+        KillTeacherToolboxProcesses();
+        KillShortcutWatcherProcesses();
+        DeleteAppDataFiles();
+        LaunchApp();
+    }
+
+    // Call from [OneTimeTearDown] to close the shared app instance.
+    protected void TearDownSharedLaunch()
+    {
+        _sharedLaunchActive = false;
+        CloseApp();
+    }
+
     [SetUp]
     public void BaseSetUp()
     {
+        if (_sharedLaunchActive) return;
         KillTeacherToolboxProcesses();
         KillShortcutWatcherProcesses();
         DeleteAppDataFiles();
@@ -56,6 +76,7 @@ public abstract class TestBase
     [TearDown]
     public void BaseTearDown()
     {
+        if (_sharedLaunchActive) return;
         CloseApp();
     }
 

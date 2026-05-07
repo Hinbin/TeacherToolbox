@@ -3,6 +3,7 @@ param(
     [string]$Configuration = "Debug",
     [string]$Filter,
     [switch]$NoBuild,
+    [switch]$Coverage,
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$DotnetArgs
 )
@@ -64,6 +65,15 @@ if ($NoBuild) {
 
 if (-not [string]::IsNullOrWhiteSpace($Filter)) {
     $arguments += @("--filter", $Filter)
+}
+
+if ($Coverage) {
+    $arguments += @(
+        "--collect", "XPlat Code Coverage",
+        "--",
+        "DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Include=[TeacherToolbox]*",
+        "DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.ExcludeByAttribute=GeneratedCodeAttribute"
+    )
 }
 
 if ($DotnetArgs) {

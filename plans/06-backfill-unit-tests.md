@@ -1,115 +1,65 @@
 # Plan 06 — Backfill unit tests for ViewModels and Settings
 
-## Why
+> **Status (2026-05-07): mostly done.** Phases A (Models, except `StudentClass`), B (Services, except the `SettingsServiceFactory` singleton check), C (ViewModels — all six), and D (`scripts/test-unit.ps1` wrapper, with `-Coverage` support) are in place. The unit test project (`TeacherToolbox.UnitTests`) is ~2,200 lines across 8 test files. Integration tests have grown alongside in `TeacherToolbox.IntegrationTests` (~1,100 lines, 10 files including a substantial `TestBase`).
+>
+> **What this plan now is:** a short remaining-work list, plus a check on whether the leftovers are worth doing at all.
 
-Coverage today is one file: `ClockViewModelTests.cs` (in the unit-test project). The unmerged `clock-viewmodel-test-fixes.patch` (deleted in Plan 01) shows that previous test attempts hit a wall on WinUI types in ViewModels. Plan 02 removes that obstacle. With a 500-teacher user base and one developer, regression detection has to come from automated tests — manual testing won't scale.
+## What's left
 
-The goal is not 100% coverage. It's **enough tests on the load-bearing logic that a regression is caught before release**. That means:
+Three concrete gaps and one open question.
 
-- ViewModels that contain non-trivial logic (random selection, time-slice calculation, settings persistence).
-- The `LocalSettingsService` (file IO, atomic writes, deserialization fallback, sync vs async paths).
-- The `Student` / `StudentClass` weighting and selection logic mentioned in CLAUDE.md.
+### 1. `StudentClassTests.cs` (done)
 
-## Prerequisites
+`Student` is well-covered. `StudentClass` — which holds the weighted random-selection logic, the no-consecutive-pick guarantee, and day-of-week assignment — has zero unit tests. This is the most consequential model in the app: a regression here means a teacher gets the same kid picked twice in a row in front of a class.
 
-- **Plan 01** (cleanup) — single, clearly-named test project.
-- **Plan 02** (decouple ViewModels) — required, otherwise `SolidColorBrush` will block any ViewModel construction in tests.
-- **Plan 04** (constructor injection) — strongly recommended. ViewModels are easier to test when their dependencies are explicit constructor parameters.
+Cover at minimum:
+- Weighted selection respects weights over many trials (statistical, not exact).
+- No two consecutive picks are identical when class size > 1.
+- Single-student class returns that student deterministically.
+- Day-of-week assignment is stable for the same date.
 
-## Scope
+`StudentClass.CreateAsync` reads from disk via `Windows.Storage`. Test the in-memory selection logic by constructing a `StudentClass` directly and using `AddStudent` — don't try to mock the file load.
 
-**In:**
-- ViewModel tests for: `ClockViewModel`, `TimerWindowViewModel`, `RandomNameGeneratorViewModel`, `SettingsViewModel`, `IntervalTimerViewModel`, `TimerPageViewModel`.
-- Service tests for: `LocalSettingsService`, `SettingsServiceFactory`.
-- Model tests for: `Student` (punctuation stripping, weight extraction), `StudentClass` (weighted selection, no-consecutive-pick guarantee, day-of-week assignment).
+### 2. `SettingsServiceFactoryTests.cs` (done)
 
-**Out:**
-- UI/integration tests (those live in `TeacherToolbox.IntegrationTests/` and are out of scope here).
-- Tests for `MainWindow` or any code that requires a running WinUI dispatcher.
-- Tests for `ShortcutWatcher.exe` internals (Plan 05 covers a possible test there).
+The factory in [TeacherToolbox/Services/SettingServiceFactory.cs](../TeacherToolbox/Services/SettingServiceFactory.cs) is a double-checked singleton with both sync and async creation paths. One test each:
+- `CreateSync` returns the same instance on repeat calls.
+- `CreateAsync` returns the same instance on repeat calls.
+- `CreateSync` followed by `CreateAsync` returns the same instance (and vice versa).
 
-## Approach
+The factory currently constructs a real `LocalSettingsService` internally, which writes to `%LocalAppData%`. **Don't add tests that touch that path.** Either (a) refactor the factory to take an `ISettingsService` factory delegate so tests can inject a fake, or (b) skip these tests. Option (a) is ~10 lines; option (b) is also fine — the factory is small enough to read.
 
-- **Framework:** NUnit (already in the project).
-- **Mocking:** Moq (already in the project).
-- **File-IO tests:** use a temp directory per test (`Path.Combine(Path.GetTempPath(), $"ttb-test-{Guid.NewGuid()}")`); clean up in `[TearDown]`.
-- **Determinism for randomness:** ViewModels using `Random` should accept an `IRandom` (or `Func<int, int, int>`) interface so tests can pin the values. If they don't today, refactor minimally: introduce a constructor overload that accepts a seed. Do not add a feature-flag system.
-- **Async tests:** use NUnit's async-friendly attributes; don't `.Result` on tasks.
-- **Test naming:** `MethodUnderTest_Scenario_ExpectedOutcome`. Existing tests follow this pattern.
+### 3. CI workflow (optional)
 
-## Steps
+There is no `.github/workflows/` directory. `scripts/test-unit.ps1` exists and works locally. For a one-developer project shipping to ~500 users, a manual pre-release `./scripts/test-unit.ps1` run is defensible. A GitHub Actions workflow that runs unit tests on push would be nice-to-have, not need-to-have. **Stop and ask before adding one** — it requires self-hosted Windows runners or `windows-latest` minutes, and this isn't on GitHub-hosted CI today.
 
-### Phase A — Models (highest leverage, lowest risk)
+## What's deliberately *not* on the list
 
-1. **`StudentTests.cs`** — verify:
-   - `"O'Brien"` keeps the apostrophe.
-   - `"Mary-Jane"` keeps the hyphen.
-   - `"John... Smith"` strips dots.
-   - `"Alice 3"` extracts a weight of 3.
-   - `"a a apple"` removes the doubled `"a"`.
-   - Empty / null / whitespace input handled.
+These were in the original plan; on review they're not worth doing for this codebase:
 
-2. **`StudentClassTests.cs`** — verify:
-   - Weighted selection respects weights (over many trials).
-   - No two consecutive picks are identical (when class size > 1).
-   - Day-of-week assignment is stable for the same date.
-   - Large class (e.g., 30 students) selection completes in <50ms.
+- **Concurrent-save stress tests for `LocalSettingsService`** (100 parallel writes). The settings service is called from UI event handlers and app startup — there is no realistic concurrent-write workload. Existing `_settingsLock` protects the simple case. Skip.
+- **Atomic-write / `File.Move` mocking.** Would require either an IO abstraction layer or `System.IO.Abstractions`. Yak-shaving for a single-user desktop app. Skip.
+- **More edge cases on `Student` sanitization.** Existing tests cover apostrophe, hyphen, single-char dedup, weight suffix, null/whitespace, invalid punctuation. The doubled-letter case (`"a a apple"`) and dot-stripping (`"John... Smith"`) from the original plan would be *nice* but neither has produced a real bug. Add only if a regression appears.
+- **>60% line-coverage target.** Coverage is collected (`./scripts/test-unit.ps1 -Coverage`) but no threshold is enforced anywhere. Setting one in CI would just create busywork. Read the report when something feels under-tested; don't gate on a number.
 
-### Phase B — Services
+## Is a different approach warranted?
 
-3. **`LocalSettingsServiceTests.cs`** (a stub already exists at `TeacherToolbox.UnitTests/Services/LocalSettingsServiceTests.cs` — extend it):
-   - `SaveSettingAsync` followed by `ReadSettingAsync<T>` round-trips a string, an int, a complex object.
-   - Concurrent `SaveSettingAsync` calls don't corrupt the file (run 100 in parallel, then verify the file deserializes).
-   - Atomic write: kill the process between temp-file creation and rename — the original file should be unchanged. (Simulate by mocking `File.Move`.)
-   - Corrupted JSON on disk → `LoadSettings` falls back to defaults instead of throwing.
-   - `InitializeSync` produces the same result as `LoadSettings` for the same file.
+No. The current split is working:
 
-4. **`SettingsServiceFactoryTests.cs`** — verify the factory returns the same instance on subsequent calls (singleton semantics).
+- **Unit tests** (`TeacherToolbox.UnitTests`) — Models, Services, ViewModels with mocked dependencies. Fast, runs in a vanilla .NET test process, no WinUI dispatcher.
+- **Integration tests** (`TeacherToolbox.IntegrationTests`) — FlaUI-driven UI tests against the built `TeacherToolbox.exe`. The substantial `TestBase` (503 lines) handles app launch, settings cleanup, and dialog helpers.
 
-### Phase C — ViewModels (depends on Plan 02)
+The boundary is clean. Plan 02 removed the WinUI-types-in-VMs problem that originally blocked unit-testing. ViewModels now take service interfaces in their constructors and are testable without any UI scaffolding. There is nothing to redesign here — just fill the two gaps above and move on.
 
-5. **`ClockViewModelTests.cs`** — replace the existing brittle tests:
-   - Time-slice add/remove/extend.
-   - Slice doesn't cross hour boundary (the existing test `ExtendTimeSlice_PreventsCrossingHourBoundaryOverlap_SpecificScenario` should be kept).
-   - Adding at the same position doesn't create a duplicate.
-   - `HandColor` updates when `IThemeService.IsDarkTheme` changes.
-   - Construction succeeds with mocked `ITimerService` and `IThemeService` — **no `SolidColorBrush` setup required** (this is the test that proves Plan 02 worked).
+## Acceptance criteria (revised)
 
-6. **`RandomNameGeneratorViewModelTests.cs`**:
-   - Pick command calls into the underlying class.
-   - Refusing-list / "skip-this-name" feature works.
-   - Empty class → command is disabled or no-ops gracefully.
-   - F9 hotkey path (if observable from the VM) updates the displayed name.
-
-7. **`SettingsViewModelTests.cs`**:
-   - Theme change updates `IThemeService` and persists via `ISettingsService`.
-   - Centre-number save flows through to `ISettingsService.SaveSettingAsync`.
-   - Loading a settings page reads existing values from `ISettingsService`.
-
-8. **`TimerWindowViewModelTests.cs`**:
-   - Countdown reaches zero → state transitions correctly.
-   - Pause/resume works.
-   - Sound-on-finish flag is honored (mock the sound service).
-   - `TimerTextColor` flips to red in the last 10s (or whatever the existing rule is).
-
-9. **`IntervalTimerViewModelTests.cs`** and **`TimerPageViewModelTests.cs`** — read these classes first, then write tests for whatever logic they own. If the class is mostly a thin wrapper around `TimerWindowViewModel`, one or two smoke tests is enough.
-
-### Phase D — CI hookup
-
-10. **Confirm the test project runs from CI**, if there is one. If not, add a one-line `dotnet test` command to whatever build script exists, or note in `CLAUDE.md` that the developer should run it before each release.
-
-## Acceptance criteria
-
-- [ ] At least one test file exists for every public ViewModel and every Service.
-- [ ] `dotnet test` passes locally and runs in <30 seconds.
-- [ ] No test relies on a real WinUI dispatcher; all run in a vanilla .NET test process.
-- [ ] No test writes to `%LocalAppData%\TeacherToolbox\` (only to per-test temp directories that get cleaned up).
-- [ ] All tests pass on a clean machine with no special setup.
-- [ ] Coverage of ViewModel and Service code is reasonable — aim for >60% line coverage on those folders. Don't bend the design just to chase percentage.
+- [x] `StudentClassTests.cs` exists with at least the four cases listed.
+- [x] Decision made on `SettingsServiceFactoryTests.cs`: implemented with the small refactor.
+- [x] `./scripts/test-unit.ps1` still passes.
+- [x] No new test writes to `%LocalAppData%\TeacherToolbox\`.
 
 ## Stop and ask
 
-- If a ViewModel turns out to depend on a singleton or a static (e.g., `DateTime.Now`) in a way that prevents deterministic testing — the right fix is usually an injected `Func<DateTime>`/`IDateTimeProvider`. Confirm before refactoring.
-- If randomness inside a ViewModel is impossible to seed without a refactor that goes beyond a constructor parameter, ask before going wider.
-- If a Service's file-IO is genuinely hard to mock (e.g., does interop directly to Win32). Some IO can stay covered by integration tests instead.
-- If existing tests start failing for reasons unrelated to your changes — that may indicate a flake, but it may also indicate Plan 02 left something half-done. Don't paper over it; investigate.
+- Before refactoring `SettingsServiceFactory` to accept an injected `ISettingsService` factory delegate — confirm the user wants that small DI tweak vs. just skipping the factory tests.
+- Before adding a GitHub Actions workflow — confirm CI is wanted and the runner story (Windows minutes, x86 SDK availability) is acceptable.
+- If `StudentClass` selection logic turns out to depend on `DateTime.Now` for day-of-week assignment, inject a `Func<DateTime>` rather than freezing the clock globally.

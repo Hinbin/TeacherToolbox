@@ -1,5 +1,4 @@
 ﻿using System.Threading.Tasks;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace TeacherToolbox.Services
 {
@@ -13,6 +12,17 @@ namespace TeacherToolbox.Services
     {
         private ISettingsService _instance;
         private readonly object _lock = new object();
+        private readonly System.Func<ISettingsService> _createSettingsService;
+
+        public SettingsServiceFactory()
+            : this(CreateLocalSettingsService)
+        {
+        }
+
+        public SettingsServiceFactory(System.Func<ISettingsService> createSettingsService)
+        {
+            _createSettingsService = createSettingsService ?? throw new System.ArgumentNullException(nameof(createSettingsService));
+        }
 
         public async Task<ISettingsService> CreateAsync()
         {
@@ -22,9 +32,7 @@ namespace TeacherToolbox.Services
                 {
                     if (_instance == null)
                     {
-                        var service = new LocalSettingsService();
-                        service.InitializeSync(); // Use sync in lock to avoid deadlock
-                        _instance = service;
+                        _instance = _createSettingsService();
                     }
                 }
 
@@ -43,14 +51,19 @@ namespace TeacherToolbox.Services
                 {
                     if (_instance == null)
                     {
-                        var service = new LocalSettingsService();
-                        service.InitializeSync();
-                        _instance = service;
+                        _instance = _createSettingsService();
                     }
                 }
             }
 
             return _instance;
+        }
+
+        private static ISettingsService CreateLocalSettingsService()
+        {
+            var service = new LocalSettingsService();
+            service.InitializeSync();
+            return service;
         }
     }
 }

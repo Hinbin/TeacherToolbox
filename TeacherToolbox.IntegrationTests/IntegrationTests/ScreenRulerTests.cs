@@ -10,8 +10,15 @@ using NUnit.Framework;
 namespace TeacherToolbox.IntegrationTests.IntegrationTests
 {
     [TestFixture]
+    [FixtureLifeCycle(LifeCycle.SingleInstance)]
     public class ScreenRulerTests : TestBase
     {
+        [OneTimeSetUp]
+        public void ClassSetUp() => EnableSharedLaunch();
+
+        [OneTimeTearDown]
+        public void ClassTearDown() => TearDownSharedLaunch();
+
         private Window? _rulerWindow;
         private AutomationElement? _closeButton;
 

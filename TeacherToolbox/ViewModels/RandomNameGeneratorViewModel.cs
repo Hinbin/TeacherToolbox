@@ -18,6 +18,8 @@ namespace TeacherToolbox.ViewModels
         private readonly ISettingsService _settingsService;
         private readonly IFilePickerService _filePickerService;
         private readonly Random _random = new();
+        private readonly Func<DateTime> _getCurrentDate;
+        private readonly Func<Task<StudentClassSelector>> _createStudentClassSelector;
 
         private StudentClass _currentClass;
         private StudentClassSelector _studentClassSelector;
@@ -109,10 +111,16 @@ namespace TeacherToolbox.ViewModels
 
         #region Constructor
 
-        public RandomNameGeneratorViewModel(ISettingsService settingsService, IFilePickerService filePickerService)
+        public RandomNameGeneratorViewModel(
+            ISettingsService settingsService,
+            IFilePickerService filePickerService,
+            Func<DateTime> getCurrentDate = null,
+            Func<Task<StudentClassSelector>> createStudentClassSelector = null)
         {
             _settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
             _filePickerService = filePickerService ?? throw new ArgumentNullException(nameof(filePickerService));
+            _getCurrentDate = getCurrentDate ?? (() => DateTime.Now);
+            _createStudentClassSelector = createStudentClassSelector ?? StudentClassSelector.CreateAsync;
 
             StudentClasses = new ObservableCollection<StudentClass>();
             VisibleClasses = new ObservableCollection<StudentClass>();
@@ -126,7 +134,8 @@ namespace TeacherToolbox.ViewModels
             ShowInstructionsCommand = new RelayCommand(ShowInstructions);
 
             // Set day of week (Monday = 0, Tuesday = 1, etc.)
-            _dayOfWeek = DateTime.Now.DayOfWeek == DayOfWeek.Sunday ? 6 : (int)DateTime.Now.DayOfWeek - 1;
+            var currentDate = _getCurrentDate();
+            _dayOfWeek = currentDate.DayOfWeek == DayOfWeek.Sunday ? 6 : (int)currentDate.DayOfWeek - 1;
 
             // Initialize tips
             InitializeTips();
@@ -138,7 +147,7 @@ namespace TeacherToolbox.ViewModels
 
         public async Task InitializeAsync()
         {
-            _studentClassSelector = await StudentClassSelector.CreateAsync();
+            _studentClassSelector = await _createStudentClassSelector();
 
             LoadClassesForDay();
             DisplayRandomTip();

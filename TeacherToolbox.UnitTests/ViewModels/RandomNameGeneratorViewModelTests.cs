@@ -180,6 +180,19 @@ namespace TeacherToolbox.UnitTests.ViewModels
         }
 
         [Test]
+        public async Task InitializeAsync_WithSameDate_LoadsSameDayClasses()
+        {
+            var firstViewModel = CreateViewModelForDate(new DateTime(2026, 5, 4));
+            var secondViewModel = CreateViewModelForDate(new DateTime(2026, 5, 4));
+
+            await firstViewModel.InitializeAsync();
+            await secondViewModel.InitializeAsync();
+
+            Assert.That(firstViewModel.StudentClasses.Select(c => c.ClassName), Is.EqualTo(new[] { "Monday" }));
+            Assert.That(secondViewModel.StudentClasses.Select(c => c.ClassName), Is.EqualTo(new[] { "Monday" }));
+        }
+
+        [Test]
         public void WindowHandle_WhenSet_StoresValue()
         {
             var handle = new IntPtr(1234);
@@ -214,6 +227,33 @@ namespace TeacherToolbox.UnitTests.ViewModels
             }
 
             return studentClass;
+        }
+
+        private RandomNameGeneratorViewModel CreateViewModelForDate(DateTime currentDate)
+        {
+            return new RandomNameGeneratorViewModel(
+                _mockSettingsService.Object,
+                _mockFilePickerService.Object,
+                () => currentDate,
+                () => Task.FromResult(CreateClassSelector()));
+        }
+
+        private static StudentClassSelector CreateClassSelector()
+        {
+            var selector = new StudentClassSelector
+            {
+                studentClasses = new List<StudentClass>[7]
+            };
+
+            for (int i = 0; i < selector.studentClasses.Length; i++)
+            {
+                selector.studentClasses[i] = new List<StudentClass>();
+            }
+
+            selector.studentClasses[0].Add(CreateClass("Monday", "Alice"));
+            selector.studentClasses[1].Add(CreateClass("Tuesday", "Bob"));
+            selector.studentClasses[6].Add(CreateClass("Sunday", "Sam"));
+            return selector;
         }
     }
 }
