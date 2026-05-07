@@ -91,7 +91,7 @@ namespace TeacherToolbox.Services
             }
         }
 
-        public event EventHandler<ElementTheme> ThemeChanged;
+        public event EventHandler ThemeChanged;
 
         public void ApplyThemeToWindow(Window window)
         {
@@ -160,7 +160,7 @@ namespace TeacherToolbox.Services
 
         private void OnThemeChanged(ElementTheme newTheme)
         {
-            ThemeChanged?.Invoke(this, newTheme);
+            ThemeChanged?.Invoke(this, EventArgs.Empty);
 
             // Update main window if available
             if (App.MainWindow?.Content is FrameworkElement mainContent)

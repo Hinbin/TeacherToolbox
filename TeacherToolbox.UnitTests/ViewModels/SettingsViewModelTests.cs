@@ -4,7 +4,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Moq;
-using Microsoft.UI.Xaml;
 using TeacherToolbox.Model;
 using TeacherToolbox.ViewModels;
 using TeacherToolbox.Services;
@@ -97,10 +96,10 @@ namespace TeacherToolbox.UnitTests.ViewModels
         {
             // Arrange
             bool eventRaised = false;
-            ElementTheme capturedTheme = ElementTheme.Default;
-            _viewModel.ThemeChanged += (theme) => {
+            int capturedThemeIndex = -1;
+            _viewModel.ThemeChanged += (index) => {
                 eventRaised = true;
-                capturedTheme = theme;
+                capturedThemeIndex = index;
             };
 
             // Act
@@ -109,7 +108,7 @@ namespace TeacherToolbox.UnitTests.ViewModels
             // Assert
             _mockSettingsService.Verify(s => s.SetTheme(2), Times.Once);
             Assert.That(eventRaised, Is.True);
-            Assert.That(capturedTheme, Is.EqualTo(ElementTheme.Dark));
+            Assert.That(capturedThemeIndex, Is.EqualTo(2)); // 2 = Dark
         }
 
         [Test]
@@ -117,7 +116,7 @@ namespace TeacherToolbox.UnitTests.ViewModels
         {
             // Arrange
             bool eventRaised = false;
-            _viewModel.ThemeChanged += (theme) => { eventRaised = true; };
+            _viewModel.ThemeChanged += (index) => { eventRaised = true; };
 
             // Initialize with value 0
             _mockSettingsService.Setup(s => s.GetTheme()).Returns(0);
@@ -135,48 +134,48 @@ namespace TeacherToolbox.UnitTests.ViewModels
         }
 
         [Test]
-        public void UpdateAppTheme_SystemTheme_SetsElementThemeDefault()
+        public void UpdateAppTheme_SystemTheme_RaisesIndexZero()
         {
             // Arrange - start with a different theme value
             _mockSettingsService.Setup(s => s.GetTheme()).Returns(1); // Light theme
             var viewModel = new SettingsViewModel(_mockSettingsService.Object, _mockTelemetry.Object, _mockFilePicker.Object, _mockWindowService.Object);
 
-            ElementTheme capturedTheme = ElementTheme.Dark;
-            viewModel.ThemeChanged += (theme) => { capturedTheme = theme; };
+            int capturedIndex = -1;
+            viewModel.ThemeChanged += (index) => { capturedIndex = index; };
 
             // Act
-            viewModel.SelectedThemeIndex = 0; // Change to System
+            viewModel.SelectedThemeIndex = 0; // Change to System (Default)
 
             // Assert
-            Assert.That(capturedTheme, Is.EqualTo(ElementTheme.Default));
+            Assert.That(capturedIndex, Is.EqualTo(0)); // 0 = Default/System
         }
 
         [Test]
-        public void UpdateAppTheme_LightTheme_SetsElementThemeLight()
+        public void UpdateAppTheme_LightTheme_RaisesIndexOne()
         {
             // Arrange
-            ElementTheme capturedTheme = ElementTheme.Dark; // Start with a different value
-            _viewModel.ThemeChanged += (theme) => { capturedTheme = theme; };
+            int capturedIndex = -1;
+            _viewModel.ThemeChanged += (index) => { capturedIndex = index; };
 
             // Act
             _viewModel.SelectedThemeIndex = 1; // Light
 
             // Assert
-            Assert.That(capturedTheme, Is.EqualTo(ElementTheme.Light));
+            Assert.That(capturedIndex, Is.EqualTo(1)); // 1 = Light
         }
 
         [Test]
-        public void UpdateAppTheme_DarkTheme_SetsElementThemeDark()
+        public void UpdateAppTheme_DarkTheme_RaisesIndexTwo()
         {
             // Arrange
-            ElementTheme capturedTheme = ElementTheme.Light; // Start with a different value
-            _viewModel.ThemeChanged += (theme) => { capturedTheme = theme; };
+            int capturedIndex = -1;
+            _viewModel.ThemeChanged += (index) => { capturedIndex = index; };
 
             // Act
             _viewModel.SelectedThemeIndex = 2; // Dark
 
             // Assert
-            Assert.That(capturedTheme, Is.EqualTo(ElementTheme.Dark));
+            Assert.That(capturedIndex, Is.EqualTo(2)); // 2 = Dark
         }
 
         #endregion

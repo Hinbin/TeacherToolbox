@@ -154,7 +154,7 @@
                                     Margin="0,10,0,0" />
                             <Button Content="Test Crash"
                                     Command="{x:Bind ViewModel.TestCrashCommand}"
-                                    Visibility="{x:Bind ViewModel.DebugOnlyVisibility, Mode=OneTime}"
+                                    Visibility="{x:Bind ViewModel.IsDebugVisible, Mode=OneTime, Converter={StaticResource BoolToVisibilityConverter}}"
                                     Background="OrangeRed" Foreground="White"
                                     Margin="0,10,0,0" />
                         </StackPanel>

@@ -2,12 +2,10 @@
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI;
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Media;
 using System;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using TeacherToolbox.Controls;
 using TeacherToolbox.Helpers;
@@ -16,7 +14,7 @@ using TeacherToolbox.Services;
 using Windows.Foundation;
 using Windows.Media.Core;
 using Windows.Media.Playback;
-using System.IO;
+using Windows.UI;
 
 namespace TeacherToolbox.ViewModels
 {
@@ -44,7 +42,7 @@ namespace TeacherToolbox.ViewModels
         private readonly ObservableCollection<TimeSlice> _timeSlices;
         private readonly ISleepPreventer _sleepPreventer;
         private bool _disposed = false;
-        private SolidColorBrush _handColorBrush;
+        private Windows.UI.Color _handColor;
         private int _gaugeNameCounter = 0;
         private bool _isSoundAvailable;
 
@@ -114,10 +112,10 @@ namespace TeacherToolbox.ViewModels
 
         public ObservableCollection<TimeSlice> TimeSlices => _timeSlices;
 
-        public SolidColorBrush HandColorBrush
+        public Windows.UI.Color HandColor
         {
-            get => _handColorBrush;
-            private set => SetProperty(ref _handColorBrush, value);
+            get => _handColor;
+            private set => SetProperty(ref _handColor, value);
         }
 
         // Mock Mode Properties
@@ -159,7 +157,7 @@ namespace TeacherToolbox.ViewModels
         }
 
         // Commands
-        public IRelayCommand<TimePickedEventArgs> TimePickedCommand { get; }
+        public IRelayCommand<TimeSpan?> TimePickedCommand { get; }
         public IRelayCommand<Point> AddGaugeCommand { get; }
         public IRelayCommand<string> RemoveGaugeCommand { get; }
         public IRelayCommand ShowInstructionsCommand { get; }
@@ -194,7 +192,7 @@ namespace TeacherToolbox.ViewModels
             }
 
             // Initialize commands
-            TimePickedCommand = new RelayCommand<TimePickedEventArgs>(OnTimePicked);
+            TimePickedCommand = new RelayCommand<TimeSpan?>(OnTimePicked);
             AddGaugeCommand = new RelayCommand<Point>(OnAddGauge);
             RemoveGaugeCommand = new RelayCommand<string>(OnRemoveGauge);
             ShowInstructionsCommand = new RelayCommand(OnShowInstructions);
@@ -344,16 +342,8 @@ namespace TeacherToolbox.ViewModels
 
         private void UpdateHandColor()
         {
-            try
-            {
-                var isDarkTheme = _themeService?.IsDarkTheme ?? false;
-                HandColorBrush = new SolidColorBrush(isDarkTheme ? Colors.White : Colors.Black);
-            }
-            catch
-            {
-                // If we can't create brushes (e.g., in unit tests), set to null
-                HandColorBrush = null;
-            }
+            var isDarkTheme = _themeService?.IsDarkTheme ?? false;
+            HandColor = isDarkTheme ? Colors.White : Colors.Black;
         }
 
         private void OnNudgeTime(string parameter)
@@ -403,7 +393,7 @@ namespace TeacherToolbox.ViewModels
         }
 
         // Existing command handlers
-        private void OnThemeServiceChanged(object sender, ElementTheme e)
+        private void OnThemeServiceChanged(object sender, EventArgs e)
         {
             UpdateHandColor();
         }
@@ -413,12 +403,12 @@ namespace TeacherToolbox.ViewModels
             UpdateHandColor();
         }
 
-        private void OnTimePicked(TimePickedEventArgs args)
+        private void OnTimePicked(TimeSpan? newTime)
         {
-            if (args == null) return;
+            if (newTime == null) return;
 
             // Calculate the offset between current time and picked time
-            _timeOffset = DateTime.Today.Add(args.NewTime).Subtract(DateTime.Now);
+            _timeOffset = DateTime.Today.Add(newTime.Value).Subtract(DateTime.Now);
 
             // Add current seconds to offset
             _timeOffset = _timeOffset.Add(TimeSpan.FromSeconds(_currentTime.Second));

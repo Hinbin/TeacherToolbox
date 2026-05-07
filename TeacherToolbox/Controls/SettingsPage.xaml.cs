@@ -21,12 +21,16 @@ namespace TeacherToolbox.Controls
             ViewModel.ThemeChanged += OnThemeChanged;
         }
 
-        private void OnThemeChanged(ElementTheme theme)
+        private void OnThemeChanged(int themeIndex)
         {
             if (ThemeService != null)
             {
-                // Update the theme service
-                ThemeService.CurrentTheme = theme;
+                ThemeService.CurrentTheme = themeIndex switch
+                {
+                    1 => ElementTheme.Light,
+                    2 => ElementTheme.Dark,
+                    _ => ElementTheme.Default
+                };
             }
         }
     }

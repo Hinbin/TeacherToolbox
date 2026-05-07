@@ -1,9 +1,5 @@
 ﻿using System;
 using System.Linq;
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls.Primitives;
-using Microsoft.UI.Xaml.Media;
-using Microsoft.UI;
 using Moq;
 using NUnit.Framework;
 using TeacherToolbox.Model;
@@ -11,6 +7,7 @@ using TeacherToolbox.Services;
 using TeacherToolbox.ViewModels;
 using TeacherToolbox.Helpers;
 using Windows.Foundation;
+using Windows.UI;
 
 namespace TeacherToolbox.UnitTests.ViewModels
 {
@@ -31,8 +28,6 @@ namespace TeacherToolbox.UnitTests.ViewModels
             _mockTimerService = new Mock<ITimerService>();
             _mockSleepPreventer = new Mock<ISleepPreventer>();
 
-            _mockThemeService.Setup(x => x.HandColorBrush)
-                .Returns((SolidColorBrush)null);  // Don't create UI objects in tests
             _mockThemeService.Setup(x => x.IsDarkTheme).Returns(false);
 
             // Setup settings service
@@ -96,20 +91,12 @@ namespace TeacherToolbox.UnitTests.ViewModels
         }
 
         [Test]
-        public void Constructor_HandlesMissingThemeService_GracefullyWithFallback()
+        public void HandColor_IsConstructibleWithoutWinUIDispatcher()
         {
-            // Test that ViewModel can handle null brush from theme service
-            // This test verifies the ViewModel doesn't crash when theme service returns null
-
-            // The ViewModel should have been constructed successfully even with null brush
+            // Windows.UI.Color is a plain struct — this verifies the ViewModel can be
+            // constructed and its color property read in a test process with no WinUI dispatcher.
             Assert.That(_viewModel, Is.Not.Null);
-
-            // HandColorBrush should either be null or have a fallback value
-            // The ViewModel should handle this gracefully
-            Assert.DoesNotThrow(() => {
-                var brush = _viewModel.HandColorBrush;
-                // The brush can be null or a fallback - both are acceptable
-            });
+            Assert.That(_viewModel.HandColor, Is.Not.EqualTo(default(Windows.UI.Color)));
         }
 
         #endregion

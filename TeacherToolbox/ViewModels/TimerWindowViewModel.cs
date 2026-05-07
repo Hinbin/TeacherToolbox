@@ -1,12 +1,11 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.UI.Dispatching;
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Media;
+using Microsoft.UI;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using Windows.UI;
 using System.IO;
 using System.Linq;
 using TeacherToolbox.Helpers;
@@ -50,8 +49,8 @@ namespace TeacherToolbox.ViewModels
         private double _timerGaugeMaximum;
         private double _timerGaugeMinimum;
         private int _timerGaugeTickSpacing = 5;
-        private SolidColorBrush _timerTextColor = new SolidColorBrush(Microsoft.UI.Colors.Black);
-        private SolidColorBrush _trailBrush;
+        private Windows.UI.Color _timerTextColor = Colors.Black;
+        private Windows.UI.Color _trailColor;
 
         // Interval setup
         private ObservableCollection<IntervalTimeViewModel> _intervalsList = new ObservableCollection<IntervalTimeViewModel>();
@@ -111,16 +110,16 @@ namespace TeacherToolbox.ViewModels
             private set => SetProperty(ref _timerGaugeTickSpacing, value);
         }
 
-        public SolidColorBrush TimerTextColor
+        public Windows.UI.Color TimerTextColor
         {
             get => _timerTextColor;
             private set => SetProperty(ref _timerTextColor, value);
         }
 
-        public SolidColorBrush TrailBrush
+        public Windows.UI.Color TrailColor
         {
-            get => _trailBrush;
-            private set => SetProperty(ref _trailBrush, value);
+            get => _trailColor;
+            private set => SetProperty(ref _trailColor, value);
         }
 
         public ObservableCollection<IntervalTimeViewModel> IntervalsList
@@ -182,7 +181,7 @@ namespace TeacherToolbox.ViewModels
             PauseResumeTimerCommand = new RelayCommand(PauseResumeTimer);
 
             // Initialize UI
-            _trailBrush = new SolidColorBrush(Microsoft.UI.Colors.Purple); // Will be updated by theme
+            _trailColor = Colors.Purple;
 
             // Load sound
             InitializeSound();
@@ -449,7 +448,7 @@ namespace TeacherToolbox.ViewModels
             {
                 case TimerFinishBehavior.CloseTimer:
                     _timerService.Stop();
-                    TimerTextColor = new SolidColorBrush(Microsoft.UI.Colors.Red);
+                    TimerTextColor = Colors.Red;
 
                     // Signal that the timer is finished, view should close the window
                     TimerFinished?.Invoke(this, EventArgs.Empty);
@@ -457,12 +456,12 @@ namespace TeacherToolbox.ViewModels
 
                 case TimerFinishBehavior.CountUp:
                     // Timer continues counting (negative values)
-                    TimerTextColor = new SolidColorBrush(Microsoft.UI.Colors.Red);
+                    TimerTextColor = Colors.Red;
                     break;
 
                 case TimerFinishBehavior.StayAtZero:
                     _timerService.Stop();
-                    TimerTextColor = new SolidColorBrush(Microsoft.UI.Colors.Red);
+                    TimerTextColor = Colors.Red;
                     _secondsLeft = 0;
                     UpdateTimerText();
                     break;
@@ -498,13 +497,13 @@ namespace TeacherToolbox.ViewModels
             // Set text color based on state
             if (_secondsLeft < 0)
             {
-                TimerTextColor = new SolidColorBrush(Microsoft.UI.Colors.Red);
+                TimerTextColor = Colors.Red;
             }
             else
             {
                 // Use appropriate theme color
                 bool isDarkTheme = _themeService.IsDarkTheme;
-                TimerTextColor = new SolidColorBrush(isDarkTheme ? Microsoft.UI.Colors.White : Microsoft.UI.Colors.Black);
+                TimerTextColor = isDarkTheme ? Colors.White : Colors.Black;
             }
         }
 
@@ -556,18 +555,15 @@ namespace TeacherToolbox.ViewModels
                 IsPaused = true;
 
                 // Set visual indication of pause
-                TrailBrush = new SolidColorBrush(Microsoft.UI.Colors.DarkGray);
+                TrailColor = Colors.DarkGray;
             }
             else
             {
                 _timerService.Start();
                 IsPaused = false;
 
-                // Use theme color for trail
-                bool isDarkTheme = _themeService.IsDarkTheme;
-                TrailBrush = Application.Current.Resources.TryGetValue("darkPurpleBrush", out object purpleBrush)
-                    ? purpleBrush as SolidColorBrush
-                    : new SolidColorBrush(Microsoft.UI.Colors.Purple);
+                // Restore the app's dark-purple trail color (#5b3493)
+                TrailColor = Windows.UI.Color.FromArgb(255, 0x5b, 0x34, 0x93);
             }
         }
 

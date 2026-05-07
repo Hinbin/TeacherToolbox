@@ -4,7 +4,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Microsoft.UI.Xaml;
 using TeacherToolbox.Model;
 using TeacherToolbox.Helpers;
 using TeacherToolbox.Services;
@@ -82,15 +81,15 @@ namespace TeacherToolbox.ViewModels
         public IAsyncRelayCommand SaveLogsCommand { get; }
         public IRelayCommand TestCrashCommand { get; }
 
-        public Visibility DebugOnlyVisibility =>
+        public bool IsDebugVisible =>
 #if DEBUG
-            Visibility.Visible;
+            true;
 #else
-            Visibility.Collapsed;
+            false;
 #endif
 
-        // Events for view interaction
-        public event Action<ElementTheme> ThemeChanged;
+        // Events for view interaction — passes the theme index (0=Default, 1=Light, 2=Dark)
+        public event Action<int> ThemeChanged;
 
         /// <summary>
         /// Constructor that uses dependency injection for the settings service
@@ -147,22 +146,8 @@ namespace TeacherToolbox.ViewModels
 
         private void UpdateAppTheme()
         {
-            ElementTheme theme;
-            switch (SelectedThemeIndex)
-            {
-                case 1: // Light
-                    theme = ElementTheme.Light;
-                    break;
-                case 2: // Dark
-                    theme = ElementTheme.Dark;
-                    break;
-                default: // System
-                    theme = ElementTheme.Default;
-                    break;
-            }
-
-            // Notify the view to update the theme
-            ThemeChanged?.Invoke(theme);
+            // Notify the view to update the theme (0=Default/System, 1=Light, 2=Dark)
+            ThemeChanged?.Invoke(SelectedThemeIndex);
 
             // Save the setting
             _settingsService.SetTheme(SelectedThemeIndex);

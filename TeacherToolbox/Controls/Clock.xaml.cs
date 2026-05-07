@@ -110,10 +110,10 @@ namespace TeacherToolbox.Controls
             // Get theme service from DI
             var handColor = ThemeService?.IsDarkTheme == true ? Colors.White : Colors.Black;
 
-            // Use ViewModel's brush if available, otherwise use theme service color
-            if (ViewModel?.HandColorBrush?.Color != null)
+            // Use ViewModel's color if available, otherwise use theme service color
+            if (ViewModel != null)
             {
-                handColor = ViewModel.HandColorBrush.Color;
+                handColor = ViewModel.HandColor;
             }
 
             var handColorBrush = _compositor.CreateColorBrush(handColor);
@@ -179,7 +179,7 @@ namespace TeacherToolbox.Controls
                 case nameof(ClockViewModel.MinuteHandAngle):
                     UpdateClockHandPositions();
                     break;
-                case nameof(ClockViewModel.HandColorBrush):
+                case nameof(ClockViewModel.HandColor):
                     UpdateHandColors();
                     break;
             }
@@ -225,9 +225,9 @@ namespace TeacherToolbox.Controls
 
         private void UpdateHandColors()
         {
-            if (ViewModel?.HandColorBrush == null) return;
+            if (ViewModel == null) return;
 
-            var handColorBrush = _compositor.CreateColorBrush(ViewModel.HandColorBrush.Color);
+            var handColorBrush = _compositor.CreateColorBrush(ViewModel.HandColor);
             if (_hourhand != null)
                 _hourhand.Brush = handColorBrush;
             if (_minutehand != null)
@@ -245,7 +245,7 @@ namespace TeacherToolbox.Controls
 
         private void TimePickerFlyout_TimePicked(TimePickerFlyout sender, TimePickedEventArgs args)
         {
-            ViewModel?.TimePickedCommand.Execute(args);
+            ViewModel?.TimePickedCommand.Execute(args?.NewTime);
         }
 
         private void Digital_Time_Tapped(object sender, TappedRoutedEventArgs e)

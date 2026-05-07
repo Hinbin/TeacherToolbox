@@ -33,7 +33,7 @@ namespace TeacherToolbox.Services
         /// <summary>
         /// Event raised when the theme changes
         /// </summary>
-        event EventHandler<ElementTheme> ThemeChanged;
+        event EventHandler ThemeChanged;
 
         /// <summary>
         /// Applies the current theme to a window (including title bar)
