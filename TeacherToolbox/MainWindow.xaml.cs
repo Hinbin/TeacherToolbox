@@ -115,71 +115,8 @@ namespace TeacherToolbox
 
                 if (!savedPosition.IsEmpty)
                 {
-                    // Verify the saved display still exists and the position is valid
-                    bool positionIsValid = false;
-                    double targetScaleFactor = 1.0;
-
-                    try
-                    {
-                        // Get all display areas and check if the saved position is within any of them
-                        var displayAreas = Microsoft.UI.Windowing.DisplayArea.FindAll();
-
-                        foreach (var display in displayAreas)
-                        {
-                            if (savedPosition.DisplayID != 0 &&
-                                display.DisplayId.Value != savedPosition.DisplayID)
-                            {
-                                continue;
-                            }
-
-                            var workArea = display.WorkArea;
-
-                            // Check if the saved position's top-left corner is within this display's work area
-                            // Allow some tolerance for windows that might be partially off-screen
-                            if (savedPosition.X >= workArea.X - 100 &&
-                                savedPosition.X < workArea.X + workArea.Width &&
-                                savedPosition.Y >= workArea.Y - 100 &&
-                                savedPosition.Y < workArea.Y + workArea.Height)
-                            {
-                                positionIsValid = true;
-
-                                // Get the DPI scale factor for this display
-                                // We calculate it from the ratio of outer bounds to work area
-                                // or use a more direct method if available
-                                try
-                                {
-                                    // Get DPI for target monitor using its bounds
-                                    uint dpiX = 96, dpiY = 96;
-                                    var monitorHandle = MonitorFromPoint(
-                                        new POINT { x = savedPosition.X, y = savedPosition.Y },
-                                        MONITOR_DEFAULTTONEAREST);
-
-                                    if (monitorHandle != IntPtr.Zero)
-                                    {
-                                        GetDpiForMonitor(monitorHandle, MDT_EFFECTIVE_DPI, out dpiX, out dpiY);
-                                        targetScaleFactor = dpiX / 96.0;
-                                        Debug.WriteLine($"Target monitor DPI: {dpiX}, scale factor: {targetScaleFactor}");
-                                    }
-                                }
-                                catch (Exception dpiEx)
-                                {
-                                    _telemetry.LogWarning("Could not get DPI for target monitor", dpiEx);
-                                    // Fall back to current window's scale factor
-                                    if (Content?.XamlRoot != null)
-                                    {
-                                        targetScaleFactor = Content.XamlRoot.RasterizationScale;
-                                    }
-                                }
-
-                                break;
-                            }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _telemetry.LogWarning("Error checking display areas during window position restoration", ex);
-                        positionIsValid = IsPositionOnMonitor(savedPosition.X, savedPosition.Y);
-                    }
+                    bool positionIsValid = TryGetRestoreMonitor(savedPosition, out var restoreMonitorHandle);
+                    double targetScaleFactor = GetScaleFactorForMonitor(restoreMonitorHandle);
 
                     if (positionIsValid)
                     {
@@ -241,25 +178,57 @@ namespace TeacherToolbox
         #region DPI Helper P/Invoke
 
         [System.Runtime.InteropServices.DllImport("user32.dll")]
-        private static extern IntPtr MonitorFromPoint(POINT pt, uint dwFlags);
+        private static extern IntPtr MonitorFromRect(ref RECT lprc, uint dwFlags);
 
         [System.Runtime.InteropServices.DllImport("shcore.dll")]
         private static extern int GetDpiForMonitor(IntPtr hmonitor, int dpiType, out uint dpiX, out uint dpiY);
 
         [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
-        private struct POINT
+        private struct RECT
         {
-            public int x;
-            public int y;
+            public int left;
+            public int top;
+            public int right;
+            public int bottom;
         }
 
-        private const uint MONITOR_DEFAULTTONEAREST = 2;
         private const uint MONITOR_DEFAULTTONULL = 0;
         private const int MDT_EFFECTIVE_DPI = 0;
 
-        private static bool IsPositionOnMonitor(int x, int y)
+        private bool TryGetRestoreMonitor(Model.WindowPosition savedPosition, out IntPtr monitorHandle)
         {
-            return MonitorFromPoint(new POINT { x = x, y = y }, MONITOR_DEFAULTTONULL) != IntPtr.Zero;
+            var restoreRect = new RECT
+            {
+                left = savedPosition.X,
+                top = savedPosition.Y,
+                right = savedPosition.X + Math.Max((int)savedPosition.Width, 400),
+                bottom = savedPosition.Y + Math.Max((int)savedPosition.Height, 150)
+            };
+
+            monitorHandle = MonitorFromRect(ref restoreRect, MONITOR_DEFAULTTONULL);
+            return monitorHandle != IntPtr.Zero;
+        }
+
+        private double GetScaleFactorForMonitor(IntPtr monitorHandle)
+        {
+            if (monitorHandle != IntPtr.Zero)
+            {
+                try
+                {
+                    if (GetDpiForMonitor(monitorHandle, MDT_EFFECTIVE_DPI, out var dpiX, out _) == 0)
+                    {
+                        var scaleFactor = dpiX / 96.0;
+                        Debug.WriteLine($"Target monitor DPI: {dpiX}, scale factor: {scaleFactor}");
+                        return scaleFactor;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Could not get DPI for target monitor: {ex}");
+                }
+            }
+
+            return Content?.XamlRoot?.RasterizationScale ?? 1.0;
         }
 
         #endregion
