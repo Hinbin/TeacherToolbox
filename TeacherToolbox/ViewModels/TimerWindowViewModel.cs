@@ -461,9 +461,9 @@ namespace TeacherToolbox.ViewModels
 
                 case TimerFinishBehavior.StayAtZero:
                     _timerService.Stop();
-                    TimerTextColor = Colors.Red;
                     _secondsLeft = 0;
                     UpdateTimerText();
+                    TimerTextColor = Colors.Red;
                     break;
             }
         }
