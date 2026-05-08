@@ -5,7 +5,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using OpenQA.Selenium.DevTools.V131.DOM;
 using TeacherToolbox.Model;
 using TeacherToolbox.Services;
 using Windows.Storage;

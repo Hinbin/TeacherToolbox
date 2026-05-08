@@ -33,11 +33,11 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
             LaunchApp();
 
             var restoredRect = MainWindow!.BoundingRectangle;
-            Assert.Multiple(() =>
+            Assert.Multiple((Action)(() =>
             {
                 Assert.That(Math.Abs(restoredRect.X - savedX), Is.LessThan(10));
                 Assert.That(Math.Abs(restoredRect.Y - savedY), Is.LessThan(10));
-            });
+            }));
         }
 
         [Test]
@@ -60,13 +60,13 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
             LaunchApp();
             var rect = MainWindow!.BoundingRectangle;
 
-            Assert.Multiple(() =>
+            Assert.Multiple((Action)(() =>
             {
                 Assert.That(rect.X, Is.GreaterThan(-1000));
                 Assert.That(rect.Y, Is.GreaterThan(-1000));
                 Assert.That(rect.Width, Is.GreaterThan(500));
                 Assert.That(rect.Height, Is.GreaterThan(150));
-            });
+            }));
         }
 
         private void MoveWindow(int x, int y)

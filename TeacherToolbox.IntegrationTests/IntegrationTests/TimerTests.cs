@@ -64,11 +64,11 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
                 () => _timerWindow!.FindFirstDescendant(cf => cf.ByAutomationId("timerGauge")),
                 "Timer gauge should be present");
 
-            Assert.Multiple(() =>
+            Assert.Multiple((Action)(() =>
             {
                 Assert.That(timerText.AsTextBox().Text, Is.EqualTo("30").Or.EqualTo("29"));
                 Assert.That(timerGauge.IsOffscreen, Is.False);
-            });
+            }));
         }
 
         [Test]
@@ -83,11 +83,11 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
                 () => _timerWindow!.FindFirstDescendant(cf => cf.ByAutomationId("addIntervalButton")),
                 "Add interval button should be present");
 
-            Assert.Multiple(() =>
+            Assert.Multiple((Action)(() =>
             {
                 Assert.That(intervalsListView.IsOffscreen, Is.False);
                 Assert.That(addIntervalButton.IsOffscreen, Is.False);
-            });
+            }));
         }
 
         private void OpenTimerWindow(string buttonAutomationId)

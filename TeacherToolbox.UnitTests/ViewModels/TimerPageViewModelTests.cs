@@ -22,7 +22,7 @@ namespace TeacherToolbox.UnitTests.ViewModels
         [Test]
         public void Constructor_WithNullSettingsService_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new TimerPageViewModel(null));
+            Assert.Throws<ArgumentNullException>((Action)(() => new TimerPageViewModel(null)));
         }
 
         [Test]

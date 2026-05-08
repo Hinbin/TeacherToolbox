@@ -73,10 +73,10 @@ namespace TeacherToolbox.UnitTests.ViewModels
         public void Constructor_WithNullService_ThrowsArgumentNullException()
         {
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new SettingsViewModel(null, _mockTelemetry.Object, _mockFilePicker.Object, _mockWindowService.Object));
-            Assert.Throws<ArgumentNullException>(() => new SettingsViewModel(_mockSettingsService.Object, null, _mockFilePicker.Object, _mockWindowService.Object));
-            Assert.Throws<ArgumentNullException>(() => new SettingsViewModel(_mockSettingsService.Object, _mockTelemetry.Object, null, _mockWindowService.Object));
-            Assert.Throws<ArgumentNullException>(() => new SettingsViewModel(_mockSettingsService.Object, _mockTelemetry.Object, _mockFilePicker.Object, null));
+            Assert.Throws<ArgumentNullException>((Action)(() => new SettingsViewModel(null, _mockTelemetry.Object, _mockFilePicker.Object, _mockWindowService.Object)));
+            Assert.Throws<ArgumentNullException>((Action)(() => new SettingsViewModel(_mockSettingsService.Object, null, _mockFilePicker.Object, _mockWindowService.Object)));
+            Assert.Throws<ArgumentNullException>((Action)(() => new SettingsViewModel(_mockSettingsService.Object, _mockTelemetry.Object, null, _mockWindowService.Object)));
+            Assert.Throws<ArgumentNullException>((Action)(() => new SettingsViewModel(_mockSettingsService.Object, _mockTelemetry.Object, _mockFilePicker.Object, null)));
         }
 
         [Test]
@@ -265,7 +265,7 @@ namespace TeacherToolbox.UnitTests.ViewModels
             // For now, we'll just verify the command executes without exceptions
 
             // Act & Assert
-            Assert.DoesNotThrow(() => _viewModel.TestSoundCommand.Execute(null));
+            Assert.DoesNotThrow((Action)(() => _viewModel.TestSoundCommand.Execute(null)));
 
             // No further assertion needed if no exception is thrown
             // In a real test, you might use a mock media player or a test-specific sound service
@@ -279,7 +279,7 @@ namespace TeacherToolbox.UnitTests.ViewModels
             // For now, we'll just verify the command executes without exceptions
 
             // Act & Assert
-            Assert.DoesNotThrow(() => _viewModel.SendFeedbackCommand.Execute(null));
+            Assert.DoesNotThrow((Action)(() => _viewModel.SendFeedbackCommand.Execute(null)));
 
             // No further assertion needed if no exception is thrown
             // In a real test, you might use a mock launcher service or a test-specific feedback service

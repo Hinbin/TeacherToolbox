@@ -102,9 +102,7 @@ namespace TeacherToolbox
             // Dispose DI container (and singletons that hold OS resources, like Serilog) on shutdown.
             MainWindow.Closed += (_, _) =>
             {
-                _flushTimer?.Dispose();
-                _flushTimer = null;
-                (Services as IDisposable)?.Dispose();
+                DisposeServices();
             };
 
             await InitializeAppThemeAsync();
@@ -129,6 +127,36 @@ namespace TeacherToolbox
                 state: null,
                 dueTime: TelemetryFlushInterval,
                 period: TelemetryFlushInterval);
+        }
+
+        private void DisposeServices()
+        {
+            try
+            {
+                _flushTimer?.Dispose();
+                _flushTimer = null;
+
+                if (Services is IAsyncDisposable asyncDisposableServices)
+                {
+                    asyncDisposableServices.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                }
+                else
+                {
+                    (Services as IDisposable)?.Dispose();
+                }
+            }
+            catch (Exception ex)
+            {
+                try
+                {
+                    Services.GetRequiredService<ITelemetryService>()
+                        .LogError("Failed to dispose services during shutdown", ex);
+                }
+                catch
+                {
+                    // Avoid throwing from shutdown cleanup.
+                }
+            }
         }
 
         private async Task InitializeAppThemeAsync()
