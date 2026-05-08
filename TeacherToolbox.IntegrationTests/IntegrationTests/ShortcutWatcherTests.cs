@@ -27,11 +27,11 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
         {
             var watcherProcess = Process.GetProcessesByName("ShortcutWatcher");
 
-            Assert.Multiple(() =>
+            Assert.Multiple((Action)(() =>
             {
                 Assert.That(watcherProcess.Length, Is.GreaterThan(0));
                 Assert.That(watcherProcess[0].HasExited, Is.False);
-            });
+            }));
         }
 
         [Test]

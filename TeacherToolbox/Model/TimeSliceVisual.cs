@@ -102,7 +102,7 @@ namespace TeacherToolbox.Model
                 Left = 30;
                 Top = 30;
                 ZIndex = 2;
-                ScalePadding = 0;
+                ScalePadding = 15;
             }
 
             UpdateAngles(timeSlice);

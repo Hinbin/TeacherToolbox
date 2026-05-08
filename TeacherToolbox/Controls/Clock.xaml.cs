@@ -1,4 +1,3 @@
-using CommunityToolkit.WinUI.UI.Controls;
 using Microsoft.UI;
 using Microsoft.UI.Composition;
 using Microsoft.UI.Xaml;
@@ -433,6 +432,8 @@ namespace TeacherToolbox.Controls
             }
             else
             {
+                gauge.ScaleWidth = 30;
+                gauge.ScalePadding = 15;
                 gauge.Width = 140;
                 gauge.Height = 140;
                 gauge.SetValue(Canvas.LeftProperty, 30);

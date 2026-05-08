@@ -28,8 +28,8 @@ namespace TeacherToolbox.UnitTests.ViewModels
         [Test]
         public void Constructor_WithNullDependencies_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new RandomNameGeneratorViewModel(null, _mockFilePickerService.Object));
-            Assert.Throws<ArgumentNullException>(() => new RandomNameGeneratorViewModel(_mockSettingsService.Object, null));
+            Assert.Throws<ArgumentNullException>((Action)(() => new RandomNameGeneratorViewModel(null, _mockFilePickerService.Object)));
+            Assert.Throws<ArgumentNullException>((Action)(() => new RandomNameGeneratorViewModel(_mockSettingsService.Object, null)));
         }
 
         [Test]

@@ -91,7 +91,7 @@ namespace TeacherToolbox.UnitTests.Services
         public void SetValue_WithNullKey_ThrowsArgumentNullException()
         {
             // Arrange, Act & Assert
-            Assert.Throws<ArgumentNullException>(() => _settingsService.SetValue(null, "value"));
+            Assert.Throws<ArgumentNullException>((Action)(() => _settingsService.SetValue(null, "value")));
         }
 
         #endregion
@@ -458,7 +458,7 @@ namespace TeacherToolbox.UnitTests.Services
             var newService = new TestLocalSettingsService(_testFilePath);
 
             // Act & Assert - should not throw an exception
-            Assert.DoesNotThrowAsync(() => newService.LoadSettings());
+            Assert.DoesNotThrowAsync((Func<Task>)(() => newService.LoadSettings()));
 
             // Verify defaults are used
             Assert.That(newService.GetTheme(), Is.EqualTo(0));
@@ -476,7 +476,7 @@ namespace TeacherToolbox.UnitTests.Services
             var newService = new TestLocalSettingsService(_testFilePath);
 
             // Act & Assert - should not throw an exception
-            Assert.DoesNotThrow(() => newService.LoadSettingsSync());
+            Assert.DoesNotThrow((Action)(() => newService.LoadSettingsSync()));
 
             // Verify defaults are used
             Assert.That(newService.GetTimerSound(), Is.EqualTo(0));
@@ -496,7 +496,7 @@ namespace TeacherToolbox.UnitTests.Services
                 File.SetAttributes(_testFilePath, FileAttributes.ReadOnly);
 
                 // Act & Assert - should not throw an exception
-                Assert.DoesNotThrow(() => _settingsService.SetTheme(1));
+                Assert.DoesNotThrow((Action)(() => _settingsService.SetTheme(1)));
             }
             catch (UnauthorizedAccessException)
             {

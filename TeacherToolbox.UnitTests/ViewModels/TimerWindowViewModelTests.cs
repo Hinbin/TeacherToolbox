@@ -47,9 +47,9 @@ namespace TeacherToolbox.UnitTests.ViewModels
         [Test]
         public void Constructor_WithNullDependencies_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new TimerWindowViewModel(null, 30, _mockThemeService.Object, _mockTimerService.Object));
-            Assert.Throws<ArgumentNullException>(() => new TimerWindowViewModel(_mockSettingsService.Object, 30, null, _mockTimerService.Object));
-            Assert.Throws<ArgumentNullException>(() => new TimerWindowViewModel(_mockSettingsService.Object, 30, _mockThemeService.Object, null));
+            Assert.Throws<ArgumentNullException>((Action)(() => new TimerWindowViewModel(null, 30, _mockThemeService.Object, _mockTimerService.Object)));
+            Assert.Throws<ArgumentNullException>((Action)(() => new TimerWindowViewModel(_mockSettingsService.Object, 30, null, _mockTimerService.Object)));
+            Assert.Throws<ArgumentNullException>((Action)(() => new TimerWindowViewModel(_mockSettingsService.Object, 30, _mockThemeService.Object, null)));
         }
 
         [Test]
