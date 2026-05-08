@@ -13,25 +13,12 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
     [TestFixture]
     public class ShortcutWatcherTests : TestBase
     {
-        [SetUp]
-        public void ShortcutWatcherSetUp()
-        {
-            WaitUntilCondition(
-                () => Process.GetProcessesByName("ShortcutWatcher").Length > 0,
-                "ShortcutWatcher.exe should be running",
-                TimeSpan.FromSeconds(5));
-        }
-
         [Test]
-        public void ShortcutWatcher_ProcessIsRunning()
+        public void ShortcutListener_DoesNotStartExternalProcess()
         {
             var watcherProcess = Process.GetProcessesByName("ShortcutWatcher");
 
-            Assert.Multiple((Action)(() =>
-            {
-                Assert.That(watcherProcess.Length, Is.GreaterThan(0));
-                Assert.That(watcherProcess[0].HasExited, Is.False);
-            }));
+            Assert.That(watcherProcess, Is.Empty);
         }
 
         [Test]
