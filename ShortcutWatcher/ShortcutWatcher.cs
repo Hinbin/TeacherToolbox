@@ -16,9 +16,9 @@ class ShortcutWatcher
     private const int WM_SYSKEYUP = 0x0105;
     private static LowLevelKeyboardProc _proc = HookCallback;
     private static IntPtr _hookID = IntPtr.Zero;
-    private static NamedPipeClientStream pipeClient;
-    private static NamedPipeServerStream shutdownPipeServer;
-    private static StreamWriter writer;
+    private static NamedPipeClientStream? pipeClient;
+    private static NamedPipeServerStream? shutdownPipeServer;
+    private static StreamWriter? writer;
     private static HashSet<Keys> keysBeingPressed = new HashSet<Keys>();
 
     // Added constants for connection retries
@@ -34,7 +34,7 @@ class ShortcutWatcher
     private static DateTime lastWindowsKeyPress = DateTime.MinValue; // Timestamp of the last Windows key press
 
     // Added process watchdog timer
-    private static System.Threading.Timer aliveSignalTimer;
+    private static System.Threading.Timer? aliveSignalTimer;
 
     public static void Main()
     {
@@ -47,7 +47,7 @@ class ShortcutWatcher
         try
         {
             // Ensure directory exists
-            Directory.CreateDirectory(Path.GetDirectoryName(logPath));
+            EnsureDirectoryForFile(logPath);
 
             // Log startup
             File.AppendAllText(logPath, $"{DateTime.Now}: ShortcutWatcher starting\r\n");
@@ -128,7 +128,7 @@ class ShortcutWatcher
                     "error.log");
 
                 // Ensure directory exists
-                Directory.CreateDirectory(Path.GetDirectoryName(logPath));
+                EnsureDirectoryForFile(logPath);
 
                 // Append to log file
                 File.AppendAllText(logPath,
@@ -168,6 +168,7 @@ class ShortcutWatcher
 
                     // Create new pipe client
                     pipeClient = new NamedPipeClientStream(".", "ShortcutWatcher", PipeDirection.Out);
+                    var currentPipeClient = pipeClient;
 
                     // Use shorter timeout for initial attempts to avoid long delays
                     var timeout = (attempt <= 3) ? 1000 : PIPE_CONNECTION_TIMEOUT_MS;
@@ -176,7 +177,7 @@ class ShortcutWatcher
                     var connectionTask = Task.Run(() => {
                         try
                         {
-                            pipeClient.Connect(timeout);
+                            currentPipeClient.Connect(timeout);
                             return true;
                         }
                         catch
@@ -194,9 +195,9 @@ class ShortcutWatcher
                         throw new TimeoutException("Connection attempt timed out");
                     }
 
-                    if (pipeClient.IsConnected)
+                    if (currentPipeClient.IsConnected)
                     {
-                        writer = new StreamWriter(pipeClient);
+                        writer = new StreamWriter(currentPipeClient);
                         writer.AutoFlush = true; // Ensure data is sent immediately
 
                         // Send confirmation that we've started successfully
@@ -256,7 +257,7 @@ class ShortcutWatcher
         return false;
     }
 
-    private static void SendAliveSignal(object state)
+    private static void SendAliveSignal(object? state)
     {
         if (isShuttingDown) return;
 
@@ -343,12 +344,18 @@ class ShortcutWatcher
                         try
                         {
                             // Wait for connection
-                            await shutdownPipeServer.WaitForConnectionAsync();
+                            var currentShutdownPipeServer = shutdownPipeServer;
+                            if (currentShutdownPipeServer == null)
+                            {
+                                break;
+                            }
+
+                            await currentShutdownPipeServer.WaitForConnectionAsync();
                             Debug.WriteLine("Shutdown connection received");
 
-                            using (StreamReader reader = new StreamReader(shutdownPipeServer))
+                            using (StreamReader reader = new StreamReader(currentShutdownPipeServer))
                             {
-                                string message = await reader.ReadLineAsync();
+                                string? message = await reader.ReadLineAsync();
                                 Debug.WriteLine($"Shutdown message received: {message}");
 
                                 if (message == "SHUTDOWN")
@@ -364,7 +371,7 @@ class ShortcutWatcher
                             }
 
                             // Disconnect and reset for next connection
-                            shutdownPipeServer.Disconnect();
+                            currentShutdownPipeServer.Disconnect();
                         }
                         catch (Exception ex)
                         {
@@ -450,7 +457,7 @@ class ShortcutWatcher
         File.AppendAllText(logPath, $"{DateTime.Now}: Resources cleaned up\r\n");
     }
 
-    private static void SystemEvents_SessionSwitch(object sender, SessionSwitchEventArgs e)
+    private static void SystemEvents_SessionSwitch(object? sender, SessionSwitchEventArgs e)
     {
         if (e.Reason == SessionSwitchReason.SessionLock)
         {
@@ -467,8 +474,10 @@ class ShortcutWatcher
     private static IntPtr SetHook(LowLevelKeyboardProc proc)
     {
         using (Process curProcess = Process.GetCurrentProcess())
-        using (ProcessModule curModule = curProcess.MainModule)
         {
+            ProcessModule curModule = curProcess.MainModule
+                ?? throw new InvalidOperationException("Unable to access the current process module for the keyboard hook.");
+
             return SetWindowsHookEx(WH_KEYBOARD_LL, proc,
                 GetModuleHandle(curModule.ModuleName), 0);
         }
@@ -630,6 +639,15 @@ class ShortcutWatcher
         {
             keysBeingPressed.Remove(Keys.LWin);
             keysBeingPressed.Remove(Keys.RWin);
+        }
+    }
+
+    private static void EnsureDirectoryForFile(string filePath)
+    {
+        var directoryPath = Path.GetDirectoryName(filePath);
+        if (!string.IsNullOrEmpty(directoryPath))
+        {
+            Directory.CreateDirectory(directoryPath);
         }
     }
 

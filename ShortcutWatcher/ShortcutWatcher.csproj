@@ -6,7 +6,6 @@
     <Nullable>enable</Nullable>
     <UseWindowsForms>True</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
-    <BaseOutputPath>..\TeacherToolBox\bin</BaseOutputPath>
     <Platforms>x86</Platforms>
     <PlatformTarget>x86</PlatformTarget>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
