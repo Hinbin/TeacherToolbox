@@ -1,0 +1,23 @@
+<UserControl
+    x:Class="TeacherToolbox.Controls.CircularTimerGauge"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    x:Name="root"
+    IsHitTestVisible="False"
+    SizeChanged="CircularTimerGauge_SizeChanged">
+
+    <Grid>
+        <Path
+            x:Name="trackRing"
+            Stroke="{ThemeResource ControlStrokeColorDefaultBrush}"
+            StrokeEndLineCap="Round"
+            StrokeLineJoin="Round"
+            StrokeStartLineCap="Round" />
+        <Path
+            x:Name="progressRing"
+            Stroke="{Binding TrailBrush, ElementName=root}"
+            StrokeEndLineCap="Round"
+            StrokeLineJoin="Round"
+            StrokeStartLineCap="Round" />
+    </Grid>
+</UserControl>

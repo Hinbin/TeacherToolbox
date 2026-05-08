@@ -445,8 +445,7 @@ namespace TeacherToolbox.Controls
 
             secondsLeft = seconds;
 
-            // If less than 60 seconds, use 60 seconds as the timerGauge maximum
-            timerGauge.Maximum = seconds < 60 ? 60 : seconds;
+            timerGauge.Maximum = seconds;
             timerGauge.Minimum = 0;
             timerGauge.Value = secondsLeft;
             SetTimerTickInterval();
@@ -773,6 +772,7 @@ namespace TeacherToolbox.Controls
             try
             {
                 timerText.Text = timeText;
+                UpdateTimerRingColor();
 
                 // Set text color to red if we're in overtime
                 if (secondsLeft < 0)
@@ -832,6 +832,32 @@ namespace TeacherToolbox.Controls
             }
         }
 
+        private void UpdateTimerRingColor()
+        {
+            if (timerGauge == null)
+            {
+                return;
+            }
+
+            if (secondsLeft < 0)
+            {
+                timerGauge.TrailBrush = new SolidColorBrush(Microsoft.UI.Colors.Red);
+                return;
+            }
+
+            if (timerGauge.Maximum > 0 && secondsLeft <= Math.Max(10, timerGauge.Maximum * 0.1))
+            {
+                timerGauge.TrailBrush = new SolidColorBrush(Microsoft.UI.Colors.Orange);
+                return;
+            }
+
+            if (Application.Current.Resources.TryGetValue("darkPurpleBrush", out object darkPurpleBrush) &&
+                darkPurpleBrush is SolidColorBrush solidColorBrush)
+            {
+                timerGauge.TrailBrush = solidColorBrush;
+            }
+        }
+
         bool TrySetAcrylicBackdrop(bool useAcrylicThin)
         {
             if (Microsoft.UI.Composition.SystemBackdrops.DesktopAcrylicController.IsSupported())
@@ -865,7 +891,12 @@ namespace TeacherToolbox.Controls
 
         private void Window_Activated(object sender, WindowActivatedEventArgs args)
         {
-            m_configurationSource.IsInputActive = args.WindowActivationState != WindowActivationState.Deactivated;
+            // Keep the floating classroom timer visually present when focus moves elsewhere.
+            // The default inactive acrylic state washes the transparent window out to grey.
+            if (m_configurationSource != null)
+            {
+                m_configurationSource.IsInputActive = true;
+            }
         }
 
         private void Window_Closed(object sender, WindowEventArgs args)
