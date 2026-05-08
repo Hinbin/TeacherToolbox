@@ -1,9 +1,10 @@
 using Microsoft.UI.Dispatching;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Pipes;
-using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -11,26 +12,43 @@ namespace TeacherToolbox.Services
 {
     public sealed class ShortcutWatcherManager : IShortcutWatcherService
     {
-        private const int MaxRestartAttempts = 3;
-        private const string ShortcutPipeName = "ShortcutWatcher";
-        private const string ShutdownPipeName = "ShortcutWatcherShutdown";
+        private const int WH_KEYBOARD_LL = 13;
+        private const int WM_KEYDOWN = 0x0100;
+        private const int WM_KEYUP = 0x0101;
+        private const int WM_SYSKEYDOWN = 0x0104;
+        private const int WM_SYSKEYUP = 0x0105;
+        private const int WM_QUIT = 0x0012;
+
+        private const int VK_F9 = 0x78;
+        private const int VK_LWIN = 0x5B;
+        private const int VK_RWIN = 0x5C;
+        private const int VK_D0 = 0x30;
+        private const int VK_D9 = 0x39;
+        private const int VK_NUMPAD0 = 0x60;
+        private const int VK_NUMPAD9 = 0x69;
+
+        private static readonly LowLevelKeyboardProc HookProc = HookCallback;
+        private static readonly object InstanceLock = new();
+        private static ShortcutWatcherManager _activeInstance;
 
         private readonly ITelemetryService _telemetry;
         private readonly DispatcherQueue _dispatcherQueue;
-        private readonly SemaphoreSlim _pipeSemaphore = new(1, 1);
         private readonly object _stateLock = new();
+        private readonly object _pressedKeysLock = new();
+        private readonly HashSet<int> _pressedKeys = new();
 
-        private NamedPipeServerStream _pipeServer;
-        private Process _shortcutWatcherProcess;
-        private Timer _watchdogTimer;
-        private CancellationTokenSource _shutdownCts;
-        private Task _listenerTask;
+        private IntPtr _hookId = IntPtr.Zero;
+        private Thread _hookThread;
+        private uint _hookThreadId;
+        private Timer _failsafeTimer;
+#if DEBUG
+        private CancellationTokenSource _testListenerCts;
         private Task _testListenerTask;
-        private int _restartAttempts;
+#endif
         private bool _isRunning;
-        private int _pipeFailedChecks;
-        private bool _isPipeListenerRunning;
-        private bool _isStopping;
+        private volatile bool _stopRequested;
+        private Exception _hookStartException;
+        private DateTime _lastWindowsKeyPress = DateTime.MinValue;
 
         public ShortcutWatcherManager(ITelemetryService telemetry)
         {
@@ -52,131 +70,286 @@ namespace TeacherToolbox.Services
         public event EventHandler<ShortcutPressedEventArgs> ShortcutPressed;
         public event EventHandler<WatcherHealthChangedEventArgs> HealthChanged;
 
-        public async Task StartAsync(CancellationToken ct = default)
+        public Task StartAsync(CancellationToken ct = default)
         {
-            lock (_stateLock)
+            if (ct.IsCancellationRequested)
             {
-                if (_shutdownCts != null && !_shutdownCts.IsCancellationRequested)
-                {
-                    return;
-                }
-
-                _shutdownCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-                _isStopping = false;
-                _pipeFailedChecks = 0;
+                return Task.FromCanceled(ct);
             }
 
-            await Task.Run(() =>
+            lock (_stateLock)
             {
+                if (_isRunning)
+                {
+                    return Task.CompletedTask;
+                }
+
                 try
                 {
-                    CleanupExistingShortcutWatcherProcesses();
-                    EnsureListenerStarted();
+                    StartHookThread();
 
+                    _failsafeTimer = new Timer(FailsafeTimerCallback, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
 #if DEBUG
                     if (Environment.GetEnvironmentVariable("TEACHER_TOOLBOX_TEST_SHORTCUT_PIPE") == "1")
                     {
-                        EnsureTestListenerStarted();
+                        StartTestListener();
                     }
 #endif
-
-                    StartProcess();
+                    _isRunning = true;
+                    _telemetry.LogInfo($"In-process shortcut listener started. HookId={_hookId}");
+                    RaiseHealthChanged(true, "In-process shortcut listener started");
                 }
                 catch (Exception ex)
                 {
-                    _telemetry.LogError("Error starting ShortcutWatcher", ex);
-                    AttemptRestartIfNeeded();
+                    _isRunning = false;
+                    _hookId = IntPtr.Zero;
+                    _stopRequested = true;
+
+                    lock (InstanceLock)
+                    {
+                        if (ReferenceEquals(_activeInstance, this))
+                        {
+                            _activeInstance = null;
+                        }
+                    }
+
+                    _telemetry.LogError("Error starting in-process shortcut listener", ex);
+                    RaiseHealthChanged(false, "Failed to start in-process shortcut listener");
                 }
-            }, ct);
-        }
-
-        public async Task StopAsync()
-        {
-            CancellationTokenSource cts;
-            Process process;
-
-            lock (_stateLock)
-            {
-                _isStopping = true;
-                cts = _shutdownCts;
-                process = _shortcutWatcherProcess;
-                _shutdownCts = null;
-                _isRunning = false;
             }
 
-            try
+            return Task.CompletedTask;
+        }
+
+        public Task StopAsync()
+        {
+            lock (_stateLock)
             {
-                if (cts != null)
+                if (!_isRunning && _hookId == IntPtr.Zero)
                 {
-                    await cts.CancelAsync();
-                }
-                _watchdogTimer?.Dispose();
-                _watchdogTimer = null;
-
-                try
-                {
-                    _pipeServer?.Dispose();
-                    _pipeServer = null;
-                }
-                catch (Exception ex)
-                {
-                    _telemetry.LogWarning("Error disposing ShortcutWatcher pipe server", ex);
+                    return Task.CompletedTask;
                 }
 
-                SendShutdownSignalToShortcutWatcher();
+                _isRunning = false;
+                _failsafeTimer?.Dispose();
+                _failsafeTimer = null;
+                StopHookThread();
 
-                if (process != null)
+#if DEBUG
+                StopTestListenerAsync().GetAwaiter().GetResult();
+#endif
+
+                lock (_pressedKeysLock)
+                {
+                    _pressedKeys.Clear();
+                }
+
+                if (_hookId != IntPtr.Zero)
                 {
                     try
                     {
-                        process.Exited -= OnShortcutWatcherExited;
-
-                        if (!process.HasExited && !process.WaitForExit(500))
+                        if (!UnhookWindowsHookEx(_hookId))
                         {
-                            process.Kill();
+                            _telemetry.LogWarning($"Failed to unhook keyboard listener. Win32 error: {Marshal.GetLastWin32Error()}");
                         }
                     }
                     catch (Exception ex)
                     {
-                        _telemetry.LogWarning("Error killing ShortcutWatcher during shutdown", ex);
+                        _telemetry.LogWarning("Error unhooking keyboard listener", ex);
                     }
                     finally
                     {
-                        process.Dispose();
+                        _hookId = IntPtr.Zero;
                     }
                 }
 
-                if (_listenerTask != null)
+                lock (InstanceLock)
                 {
-                    await Task.WhenAny(_listenerTask, Task.Delay(1000));
+                    if (ReferenceEquals(_activeInstance, this))
+                    {
+                        _activeInstance = null;
+                    }
                 }
+            }
 
-                if (_testListenerTask != null)
+            RaiseHealthChanged(false, "In-process shortcut listener stopped");
+            return Task.CompletedTask;
+        }
+
+#if DEBUG
+        private void StartTestListener()
+        {
+            if (_testListenerTask != null && !_testListenerTask.IsCompleted)
+            {
+                return;
+            }
+
+            _testListenerCts = new CancellationTokenSource();
+            _testListenerTask = ListenForTestShortcutMessagesAsync(_testListenerCts.Token);
+        }
+
+        private async Task StopTestListenerAsync()
+        {
+            if (_testListenerCts == null)
+            {
+                return;
+            }
+
+            await _testListenerCts.CancelAsync();
+            if (_testListenerTask != null)
+            {
+                await Task.WhenAny(_testListenerTask, Task.Delay(1000));
+            }
+
+            _testListenerCts.Dispose();
+            _testListenerCts = null;
+            _testListenerTask = null;
+        }
+
+        private async Task ListenForTestShortcutMessagesAsync(CancellationToken cancellationToken)
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                try
                 {
-                    await Task.WhenAny(_testListenerTask, Task.Delay(1000));
+                    using var testPipe = new NamedPipeServerStream(
+                        "TeacherToolboxShortcutTest",
+                        PipeDirection.In,
+                        1,
+                        PipeTransmissionMode.Byte,
+                        PipeOptions.Asynchronous);
+
+                    await testPipe.WaitForConnectionAsync(cancellationToken);
+                    using var reader = new StreamReader(testPipe);
+                    var message = await reader.ReadLineAsync();
+                    if (TryParseShortcutMessage(message, out var args))
+                    {
+                        RaiseShortcutPressed(args);
+                    }
                 }
-            }
-            catch (Exception ex)
-            {
-                _telemetry.LogError("Error during ShortcutWatcher cleanup", ex);
-            }
-            finally
-            {
-                cts?.Dispose();
-                lock (_stateLock)
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
-                    _shortcutWatcherProcess = null;
-                    _listenerTask = null;
-                    _testListenerTask = null;
-                    _isPipeListenerRunning = false;
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    _telemetry.LogWarning("Test shortcut pipe listener stopped", ex);
+                    break;
                 }
             }
         }
+#endif
 
         public async ValueTask DisposeAsync()
         {
             await StopAsync();
-            _pipeSemaphore.Dispose();
+        }
+
+        private void StartHookThread()
+        {
+            _stopRequested = false;
+            _hookStartException = null;
+
+            using var hookStarted = new ManualResetEventSlim(false);
+
+            _hookThread = new Thread(() => HookThreadLoop(hookStarted))
+            {
+                IsBackground = true,
+                Name = "TeacherToolbox shortcut hook"
+            };
+            _hookThread.SetApartmentState(ApartmentState.STA);
+            _hookThread.Start();
+
+            if (!hookStarted.Wait(TimeSpan.FromSeconds(5)))
+            {
+                _stopRequested = true;
+                throw new TimeoutException("Timed out starting the shortcut hook thread.");
+            }
+
+            if (_hookStartException != null)
+            {
+                throw _hookStartException;
+            }
+        }
+
+        private void StopHookThread()
+        {
+            _stopRequested = true;
+
+            if (_hookThreadId != 0)
+            {
+                PostThreadMessage(_hookThreadId, WM_QUIT, IntPtr.Zero, IntPtr.Zero);
+            }
+
+            if (_hookThread != null && _hookThread.IsAlive && !_hookThread.Join(TimeSpan.FromSeconds(2)))
+            {
+                _telemetry.LogWarning("Shortcut hook thread did not stop within the expected timeout.");
+            }
+
+            _hookThread = null;
+            _hookThreadId = 0;
+        }
+
+        private void HookThreadLoop(ManualResetEventSlim hookStarted)
+        {
+            try
+            {
+                _hookThreadId = GetCurrentThreadId();
+
+                lock (InstanceLock)
+                {
+                    _activeInstance = this;
+                }
+
+                _hookId = SetHook(HookProc);
+                if (_hookId == IntPtr.Zero)
+                {
+                    throw new InvalidOperationException($"Unable to set keyboard hook. Win32 error: {Marshal.GetLastWin32Error()}");
+                }
+
+                hookStarted.Set();
+
+                while (!_stopRequested && GetMessage(out var message, IntPtr.Zero, 0, 0) > 0)
+                {
+                    TranslateMessage(ref message);
+                    DispatchMessage(ref message);
+                }
+            }
+            catch (Exception ex)
+            {
+                _hookStartException = ex;
+                hookStarted.Set();
+                _telemetry.LogError("Shortcut hook thread failed", ex);
+            }
+            finally
+            {
+                if (_hookId != IntPtr.Zero)
+                {
+                    try
+                    {
+                        if (!UnhookWindowsHookEx(_hookId))
+                        {
+                            _telemetry.LogWarning($"Failed to unhook keyboard listener. Win32 error: {Marshal.GetLastWin32Error()}");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _telemetry.LogWarning("Error unhooking keyboard listener", ex);
+                    }
+                    finally
+                    {
+                        _hookId = IntPtr.Zero;
+                    }
+                }
+
+                lock (InstanceLock)
+                {
+                    if (ReferenceEquals(_activeInstance, this))
+                    {
+                        _activeInstance = null;
+                    }
+                }
+            }
         }
 
         internal static bool TryParseShortcutMessage(string message, out ShortcutPressedEventArgs args)
@@ -195,832 +368,192 @@ namespace TeacherToolbox.Services
                 number >= 0 &&
                 number <= 9)
             {
-                args = new ShortcutPressedEventArgs
-                {
-                    Kind = ShortcutKind.Timer,
-                    Number = number,
-                    PressedAt = DateTimeOffset.UtcNow,
-                    RawMessage = message
-                };
+                args = CreateTimerShortcutArgs(number, message);
                 return true;
             }
 
             if (string.Equals(message, "F9", StringComparison.Ordinal))
             {
-                args = new ShortcutPressedEventArgs
-                {
-                    Kind = ShortcutKind.RandomName,
-                    Number = -1,
-                    PressedAt = DateTimeOffset.UtcNow,
-                    RawMessage = message
-                };
+                args = CreateRandomNameShortcutArgs(message);
                 return true;
             }
 
             return false;
         }
 
-        private void EnsureListenerStarted()
+        private static IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
         {
-            lock (_stateLock)
+            ShortcutWatcherManager instance;
+            lock (InstanceLock)
             {
-                if (_listenerTask != null && !_listenerTask.IsCompleted)
+                instance = _activeInstance;
+            }
+
+            if (instance == null || nCode < 0)
+            {
+                return CallNextHookEx(IntPtr.Zero, nCode, wParam, lParam);
+            }
+
+            return instance.HandleKeyboardEvent(nCode, wParam, lParam);
+        }
+
+        private IntPtr HandleKeyboardEvent(int nCode, IntPtr wParam, IntPtr lParam)
+        {
+            var vkCode = Marshal.ReadInt32(lParam);
+            var isKeyDown = wParam == (IntPtr)WM_KEYDOWN || wParam == (IntPtr)WM_SYSKEYDOWN;
+            var isKeyUp = wParam == (IntPtr)WM_KEYUP || wParam == (IntPtr)WM_SYSKEYUP;
+
+            if (!isKeyDown && !isKeyUp)
+            {
+                return CallNextHookEx(_hookId, nCode, wParam, lParam);
+            }
+
+            lock (_pressedKeysLock)
+            {
+                if (isKeyUp)
+                {
+                    _pressedKeys.Remove(vkCode);
+
+                    return CallNextHookEx(_hookId, nCode, wParam, lParam);
+                }
+
+                if (TryGetShortcutNumber(vkCode, out var numberFromPressedKey) && IsWindowsKeyPhysicallyDown())
+                {
+                    if (_pressedKeys.Add(vkCode))
+                    {
+                        RaiseShortcutPressed(CreateTimerShortcutArgs(numberFromPressedKey, $"D{numberFromPressedKey}"));
+                    }
+
+                    return (IntPtr)1;
+                }
+
+                if (!_pressedKeys.Add(vkCode))
+                {
+                    return CallNextHookEx(_hookId, nCode, wParam, lParam);
+                }
+
+                if (IsWindowsKey(vkCode))
+                {
+                    _lastWindowsKeyPress = DateTime.Now;
+
+                    if (TryGetPhysicallyPressedShortcutNumber(out var numberFromHeldKey))
+                    {
+                        RaiseShortcutPressed(CreateTimerShortcutArgs(numberFromHeldKey, $"D{numberFromHeldKey}"));
+                        return (IntPtr)1;
+                    }
+                }
+
+                if (IsWindowsKeyPressed())
+                {
+                    if (TryGetShortcutNumber(vkCode, out var number))
+                    {
+                        SendTimerShortcut(number);
+                        return (IntPtr)1;
+                    }
+                }
+                else if (vkCode == VK_F9)
+                {
+                    RaiseShortcutPressed(CreateRandomNameShortcutArgs("F9"));
+                }
+            }
+
+            return CallNextHookEx(_hookId, nCode, wParam, lParam);
+        }
+
+        private void SendTimerShortcut(int vkCode)
+        {
+            if (TryGetShortcutNumber(vkCode, out var number))
+            {
+                RaiseShortcutPressed(CreateTimerShortcutArgs(number, $"D{number}"));
+            }
+        }
+
+        private int? FindPressedNumberKey()
+        {
+            foreach (var key in _pressedKeys)
+            {
+                if (TryGetShortcutNumber(key, out _))
+                {
+                    return key;
+                }
+            }
+
+            return null;
+        }
+
+        private bool IsWindowsKeyPressed()
+        {
+            return _pressedKeys.Contains(VK_LWIN) || _pressedKeys.Contains(VK_RWIN);
+        }
+
+        private static bool IsWindowsKey(int vkCode)
+        {
+            return vkCode == VK_LWIN || vkCode == VK_RWIN;
+        }
+
+        private static bool IsWindowsKeyPhysicallyDown()
+        {
+            return IsKeyPhysicallyDown(VK_LWIN) || IsKeyPhysicallyDown(VK_RWIN);
+        }
+
+        private static bool TryGetPhysicallyPressedShortcutNumber(out int number)
+        {
+            for (var vkCode = VK_D0; vkCode <= VK_D9; vkCode++)
+            {
+                if (IsKeyPhysicallyDown(vkCode))
+                {
+                    number = vkCode - VK_D0;
+                    return true;
+                }
+            }
+
+            for (var vkCode = VK_NUMPAD0; vkCode <= VK_NUMPAD9; vkCode++)
+            {
+                if (IsKeyPhysicallyDown(vkCode))
+                {
+                    number = vkCode - VK_NUMPAD0;
+                    return true;
+                }
+            }
+
+            number = -1;
+            return false;
+        }
+
+        private static bool IsKeyPhysicallyDown(int vkCode)
+        {
+            return (GetAsyncKeyState(vkCode) & 0x8000) != 0;
+        }
+
+        private static bool TryGetShortcutNumber(int vkCode, out int number)
+        {
+            if (vkCode >= VK_D0 && vkCode <= VK_D9)
+            {
+                number = vkCode - VK_D0;
+                return true;
+            }
+
+            if (vkCode >= VK_NUMPAD0 && vkCode <= VK_NUMPAD9)
+            {
+                number = vkCode - VK_NUMPAD0;
+                return true;
+            }
+
+            number = -1;
+            return false;
+        }
+
+        private void FailsafeTimerCallback(object state)
+        {
+            lock (_pressedKeysLock)
+            {
+                if ((DateTime.Now - _lastWindowsKeyPress).TotalSeconds <= 5)
                 {
                     return;
                 }
 
-                _listenerTask = ListenForKeyPressesAsync(_shutdownCts.Token);
-            }
-        }
-
-#if DEBUG
-        private void EnsureTestListenerStarted()
-        {
-            lock (_stateLock)
-            {
-                if (_testListenerTask != null && !_testListenerTask.IsCompleted)
-                {
-                    return;
-                }
-
-                _testListenerTask = ListenForTestShortcutMessagesAsync(_shutdownCts.Token);
-            }
-        }
-#endif
-
-        private void StartProcess()
-        {
-            string exePath = ResolveShortcutWatcherPath();
-
-            var startInfo = new ProcessStartInfo
-            {
-                FileName = exePath,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                WorkingDirectory = Path.GetDirectoryName(exePath)
-            };
-
-            Debug.WriteLine($"Starting ShortcutWatcher.exe from {startInfo.WorkingDirectory}");
-
-            var process = Process.Start(startInfo);
-            if (process == null)
-            {
-                Debug.WriteLine("Failed to start ShortcutWatcher.exe - Process.Start returned null");
-                AttemptRestartIfNeeded();
-                return;
-            }
-
-            lock (_stateLock)
-            {
-                _shortcutWatcherProcess = process;
-                _isRunning = true;
-            }
-
-            process.EnableRaisingEvents = true;
-            process.Exited += OnShortcutWatcherExited;
-
-            _ = VerifyShortcutWatcherRunningAsync();
-            _watchdogTimer = new Timer(WatchdogCallback, null, 15000, 30000);
-
-            Debug.WriteLine($"ShortcutWatcher process started with PID: {process.Id}");
-            RaiseHealthChanged(true, $"ShortcutWatcher process started with PID {process.Id}");
-        }
-
-        private static string ResolveShortcutWatcherPath()
-        {
-            string exePath = Path.Combine(AppContext.BaseDirectory, "ShortcutWatcher.exe");
-            if (File.Exists(exePath))
-            {
-                return exePath;
-            }
-
-            string assemblyPath = System.Reflection.Assembly.GetExecutingAssembly().Location;
-            string assemblyDir = Path.GetDirectoryName(assemblyPath);
-            exePath = Path.Combine(assemblyDir, "ShortcutWatcher.exe");
-            if (File.Exists(exePath))
-            {
-                return exePath;
-            }
-
-            if (File.Exists("ShortcutWatcher.exe"))
-            {
-                return Path.GetFullPath("ShortcutWatcher.exe");
-            }
-
-            throw new FileNotFoundException("Could not find ShortcutWatcher.exe");
-        }
-
-        private void OnShortcutWatcherExited(object sender, EventArgs e)
-        {
-            if (_isStopping)
-            {
-                return;
-            }
-
-            Debug.WriteLine("ShortcutWatcher process exited unexpectedly");
-            SetRunning(false, "ShortcutWatcher process exited unexpectedly");
-            AttemptRestartIfNeeded();
-        }
-
-        private async Task VerifyShortcutWatcherRunningAsync()
-        {
-            try
-            {
-                await Task.Delay(6000);
-                await VerifyPipeConnectionAsync();
-            }
-            catch (Exception ex)
-            {
-                _telemetry.LogError("ShortcutWatcher verification task failed", ex);
-            }
-        }
-
-        private async Task VerifyPipeConnectionAsync()
-        {
-            try
-            {
-                Debug.WriteLine("Verifying ShortcutWatcher pipe connection...");
-
-                if (_shortcutWatcherProcess == null || _shortcutWatcherProcess.HasExited)
-                {
-                    Debug.WriteLine("ShortcutWatcher process has exited before verification");
-                    SetRunning(false, "ShortcutWatcher process exited before verification");
-                    AttemptRestartIfNeeded();
-                    return;
-                }
-
-                using (var testPipe = new NamedPipeClientStream(".", ShutdownPipeName, PipeDirection.Out))
-                {
-                    try
-                    {
-                        await testPipe.ConnectAsync(2000);
-
-                        if (testPipe.IsConnected)
-                        {
-                            Debug.WriteLine("ShortcutWatcher shutdown pipe connection verified");
-                            lock (_stateLock)
-                            {
-                                _isRunning = true;
-                                _restartAttempts = 0;
-                            }
-
-                            testPipe.Close();
-                            return;
-                        }
-                    }
-                    catch (TimeoutException)
-                    {
-                        _telemetry.LogWarning("ShortcutWatcher shutdown pipe connection timed out");
-                    }
-                    catch (Exception innerEx)
-                    {
-                        _telemetry.LogWarning("Error during ShortcutWatcher verification", innerEx);
-                    }
-                }
-
-                if (_shortcutWatcherProcess != null && !_shortcutWatcherProcess.HasExited)
-                {
-                    Debug.WriteLine("Process is still running but pipe connection failed - waiting for ALIVE signal");
-                }
-                else
-                {
-                    Debug.WriteLine("ShortcutWatcher pipe connection failed - process not running");
-                    SetRunning(false, "ShortcutWatcher pipe connection failed; process not running");
-                    AttemptRestartIfNeeded();
-                }
-            }
-            catch (Exception ex)
-            {
-                _telemetry.LogError("ShortcutWatcher pipe connection test failed", ex);
-                SetRunning(false, "ShortcutWatcher pipe connection test failed");
-                AttemptRestartIfNeeded();
-            }
-        }
-
-        private void WatchdogCallback(object state)
-        {
-            Task.Run(async () =>
-            {
-                try
-                {
-                    Debug.WriteLine("Watchdog checking ShortcutWatcher status...");
-
-                    bool processRunning = _shortcutWatcherProcess != null && !_shortcutWatcherProcess.HasExited;
-
-                    if (!processRunning)
-                    {
-                        Debug.WriteLine("Watchdog detected ShortcutWatcher process is not running");
-                        SetRunning(false, "Watchdog detected ShortcutWatcher process is not running");
-                        AttemptRestartIfNeeded();
-                        return;
-                    }
-
-                    bool isPipeConnected = false;
-
-                    try
-                    {
-                        if (_pipeServer != null && _pipeServer.IsConnected)
-                        {
-                            Debug.WriteLine("Main pipe server is connected");
-                            isPipeConnected = true;
-                        }
-                        else
-                        {
-                            using (var testPipe = new NamedPipeClientStream(".", ShutdownPipeName, PipeDirection.Out))
-                            {
-                                await testPipe.ConnectAsync(2000);
-
-                                if (testPipe.IsConnected)
-                                {
-                                    Debug.WriteLine("Watchdog: ShortcutWatcher shutdown pipe is responsive");
-                                    isPipeConnected = true;
-                                    testPipe.Close();
-                                }
-                                else
-                                {
-                                    Debug.WriteLine("Watchdog: ShortcutWatcher shutdown pipe is not responsive");
-                                }
-                            }
-                        }
-                    }
-                    catch (Exception pipeEx)
-                    {
-                        _telemetry.LogWarning("Watchdog: Error checking pipe status", pipeEx);
-                    }
-
-                    if (processRunning && !isPipeConnected)
-                    {
-                        Debug.WriteLine("Watchdog: Process is running but pipes are not responsive");
-
-                        if (++_pipeFailedChecks >= 3)
-                        {
-                            Debug.WriteLine("Watchdog: Multiple pipe check failures, forcing process restart");
-                            try
-                            {
-                                if (!_shortcutWatcherProcess.HasExited)
-                                {
-                                    _shortcutWatcherProcess.Kill();
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                _telemetry.LogWarning("Watchdog: failed to kill unresponsive ShortcutWatcher", ex);
-                            }
-
-                            SetRunning(false, "Watchdog restarting unresponsive ShortcutWatcher");
-                            AttemptRestartIfNeeded();
-                            _pipeFailedChecks = 0;
-                        }
-                    }
-                    else if (processRunning && isPipeConnected)
-                    {
-                        Debug.WriteLine("Watchdog: ShortcutWatcher is running properly");
-                        SetRunning(true, "ShortcutWatcher is running properly");
-                        _pipeFailedChecks = 0;
-                    }
-                    else
-                    {
-                        Debug.WriteLine("Watchdog: ShortcutWatcher needs restart");
-                        SetRunning(false, "Watchdog says ShortcutWatcher needs restart");
-                        AttemptRestartIfNeeded();
-                        _pipeFailedChecks = 0;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _telemetry.LogError("Error in watchdog", ex);
-
-                    try
-                    {
-                        SetRunning(false, "Watchdog error");
-                        AttemptRestartIfNeeded();
-                    }
-                    catch (Exception nestEx)
-                    {
-                        _telemetry.LogWarning("Watchdog: nested error during AttemptRestartIfNeeded", nestEx);
-                    }
-                }
-            });
-        }
-
-        private void AttemptRestartIfNeeded()
-        {
-            if (_isStopping)
-            {
-                return;
-            }
-
-            Task.Run(() =>
-            {
-                try
-                {
-                    if (_restartAttempts < MaxRestartAttempts)
-                    {
-                        _restartAttempts++;
-                        Debug.WriteLine($"Attempting to restart ShortcutWatcher (attempt {_restartAttempts} of {MaxRestartAttempts})");
-
-                        DisposeCurrentProcessForRestart();
-                        CleanupExistingShortcutWatcherProcesses();
-
-                        Task.Delay(2000).Wait();
-
-                        try
-                        {
-                            string exePath = ResolveShortcutWatcherPath();
-                            var startInfo = new ProcessStartInfo
-                            {
-                                FileName = exePath,
-                                UseShellExecute = false,
-                                CreateNoWindow = true,
-                                WorkingDirectory = Path.GetDirectoryName(exePath)
-                            };
-
-                            Debug.WriteLine($"Restarting ShortcutWatcher.exe from {startInfo.WorkingDirectory}");
-
-                            Process proc = Process.Start(startInfo);
-
-                            if (proc != null)
-                            {
-                                lock (_stateLock)
-                                {
-                                    _shortcutWatcherProcess = proc;
-                                    _isRunning = true;
-                                }
-
-                                proc.EnableRaisingEvents = true;
-                                proc.Exited += OnShortcutWatcherExited;
-
-                                Debug.WriteLine($"ShortcutWatcher restarted with PID: {proc.Id}");
-                                RaiseHealthChanged(true, $"ShortcutWatcher restarted with PID {proc.Id}");
-                            }
-                            else
-                            {
-                                Debug.WriteLine("Failed to restart ShortcutWatcher - Process.Start returned null");
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            _telemetry.LogError("Error starting ShortcutWatcher process", ex);
-                        }
-                    }
-                    else
-                    {
-                        Debug.WriteLine("Maximum ShortcutWatcher restart attempts reached");
-                        _telemetry.LogWarning("Maximum ShortcutWatcher restart attempts reached");
-                        RaiseHealthChanged(false, "Maximum ShortcutWatcher restart attempts reached");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _telemetry.LogError("Critical error in ShortcutWatcher restart", ex);
-                }
-            });
-        }
-
-        private void DisposeCurrentProcessForRestart()
-        {
-            if (_shortcutWatcherProcess == null)
-            {
-                return;
-            }
-
-            try
-            {
-                _shortcutWatcherProcess.Exited -= OnShortcutWatcherExited;
-            }
-            catch (Exception ex)
-            {
-                _telemetry.LogWarning("Failed to unsubscribe ShortcutWatcher Exited handler", ex);
-            }
-
-            try
-            {
-                if (!_shortcutWatcherProcess.HasExited)
-                {
-                    _shortcutWatcherProcess.Kill();
-                    _shortcutWatcherProcess.WaitForExit(1000);
-                }
-            }
-            catch (Exception ex)
-            {
-                _telemetry.LogWarning("Error killing ShortcutWatcher process during restart", ex);
-            }
-
-            try
-            {
-                _shortcutWatcherProcess.Dispose();
-            }
-            catch (Exception ex)
-            {
-                _telemetry.LogWarning("Failed to dispose ShortcutWatcher process", ex);
-            }
-
-            _shortcutWatcherProcess = null;
-        }
-
-        private void CleanupExistingShortcutWatcherProcesses()
-        {
-            try
-            {
-                var existingProcesses = Process.GetProcesses()
-                    .Where(p => string.Equals(p.ProcessName, "ShortcutWatcher", StringComparison.OrdinalIgnoreCase))
-                    .ToList();
-
-                if (existingProcesses.Count > 0)
-                {
-                    Debug.WriteLine($"Found {existingProcesses.Count} existing ShortcutWatcher processes");
-
-                    foreach (var process in existingProcesses)
-                    {
-                        try
-                        {
-                            SendShutdownSignalToSpecificProcess(process.Id);
-
-                            if (!process.WaitForExit(1000))
-                            {
-                                Debug.WriteLine($"Process {process.Id} didn't exit gracefully, forcing termination");
-                                process.Kill();
-                            }
-                            else
-                            {
-                                Debug.WriteLine($"Process {process.Id} exited gracefully");
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            _telemetry.LogWarning($"Error shutting down process {process.Id}", ex);
-
-                            try
-                            {
-                                if (!process.HasExited)
-                                {
-                                    process.Kill();
-                                    Debug.WriteLine($"Forcibly terminated process {process.Id}");
-                                }
-                            }
-                            catch (Exception killEx)
-                            {
-                                _telemetry.LogWarning($"Failed to forcibly terminate process {process.Id}", killEx);
-                            }
-                        }
-                        finally
-                        {
-                            process.Dispose();
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _telemetry.LogError("Error during existing ShortcutWatcher process cleanup", ex);
-            }
-        }
-
-        private void SendShutdownSignalToSpecificProcess(int processId)
-        {
-            try
-            {
-                using (var pipeClient = new NamedPipeClientStream(".", ShutdownPipeName, PipeDirection.Out))
-                {
-                    pipeClient.Connect(500);
-
-                    if (pipeClient.IsConnected)
-                    {
-                        using (var writer = new StreamWriter(pipeClient))
-                        {
-                            writer.WriteLine("SHUTDOWN");
-                            writer.Flush();
-                            Debug.WriteLine($"Sent shutdown signal to process {processId}");
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _telemetry.LogWarning($"Failed to send shutdown signal to process {processId}", ex);
-            }
-        }
-
-        private void SendShutdownSignalToShortcutWatcher()
-        {
-            try
-            {
-                using (var pipeClient = new NamedPipeClientStream(".", ShutdownPipeName, PipeDirection.Out))
-                {
-                    pipeClient.Connect(1000);
-                    using (var writer = new StreamWriter(pipeClient))
-                    {
-                        writer.WriteLine("SHUTDOWN");
-                        writer.Flush();
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _telemetry.LogWarning("Error sending shutdown signal to ShortcutWatcher", ex);
-            }
-        }
-
-        private async Task ListenForKeyPressesAsync(CancellationToken cancellationToken)
-        {
-            if (_isPipeListenerRunning)
-            {
-                Debug.WriteLine("ListenForKeyPresses already running, ignoring duplicate call");
-                return;
-            }
-
-            bool semaphoreAcquired = false;
-            try
-            {
-                _isPipeListenerRunning = true;
-                semaphoreAcquired = await _pipeSemaphore.WaitAsync(1000, cancellationToken);
-
-                if (!semaphoreAcquired)
-                {
-                    Debug.WriteLine("Failed to acquire pipe semaphore, another operation might be in progress");
-                    _isPipeListenerRunning = false;
-                    return;
-                }
-
-                Debug.WriteLine("Starting pipe listener loop");
-
-                while (!cancellationToken.IsCancellationRequested)
-                {
-                    NamedPipeServerStream localPipeServer = null;
-                    StreamReader reader = null;
-
-                    try
-                    {
-                        try
-                        {
-                            if (_pipeServer != null)
-                            {
-                                Debug.WriteLine("Disposing old pipe server");
-                                _pipeServer.Dispose();
-                                _pipeServer = null;
-                            }
-                        }
-                        catch (Exception disposeEx)
-                        {
-                            Debug.WriteLine($"Error disposing old pipe: {disposeEx.Message}");
-                        }
-
-                        Debug.WriteLine("Creating new pipe server instance");
-                        _pipeServer = new NamedPipeServerStream(
-                            ShortcutPipeName,
-                            PipeDirection.In,
-                            1,
-                            PipeTransmissionMode.Byte,
-                            PipeOptions.Asynchronous);
-
-                        localPipeServer = _pipeServer;
-
-                        Debug.WriteLine("Waiting for ShortcutWatcher pipe connection...");
-                        await localPipeServer.WaitForConnectionAsync(cancellationToken);
-                        Debug.WriteLine("ShortcutWatcher pipe connected");
-
-                        lock (_stateLock)
-                        {
-                            _isRunning = true;
-                            _restartAttempts = 0;
-                        }
-
-                        reader = new StreamReader(localPipeServer);
-
-                        string message;
-                        while (!cancellationToken.IsCancellationRequested &&
-                               (message = await reader.ReadLineAsync()) != null)
-                        {
-                            Debug.WriteLine($"Received from ShortcutWatcher: {message}");
-                            ProcessWatcherMessage(message);
-                        }
-
-                        Debug.WriteLine("Pipe disconnected normally");
-                    }
-                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-                    {
-                        break;
-                    }
-                    catch (Exception ex)
-                    {
-                        _telemetry.LogError("Error in ListenForKeyPresses", ex);
-
-                        bool processRunning = _shortcutWatcherProcess != null && !_shortcutWatcherProcess.HasExited;
-
-                        if (!processRunning)
-                        {
-                            Debug.WriteLine("ShortcutWatcher process not running, requesting restart");
-                            SetRunning(false, "ShortcutWatcher process not running, requesting restart");
-
-                            if (semaphoreAcquired)
-                            {
-                                _pipeSemaphore.Release();
-                                semaphoreAcquired = false;
-                            }
-
-                            await RestartShortcutWatcherWithDelay();
-
-                            semaphoreAcquired = await _pipeSemaphore.WaitAsync(1000, cancellationToken);
-                            if (!semaphoreAcquired)
-                            {
-                                Debug.WriteLine("Failed to re-acquire semaphore after restart");
-                                break;
-                            }
-                        }
-                        else if (ex is IOException && ex.Message.Contains("busy"))
-                        {
-                            Debug.WriteLine("Pipe is busy, forcing ShortcutWatcher restart");
-
-                            if (semaphoreAcquired)
-                            {
-                                _pipeSemaphore.Release();
-                                semaphoreAcquired = false;
-                            }
-
-                            await ForceRestartShortcutWatcher();
-
-                            semaphoreAcquired = await _pipeSemaphore.WaitAsync(1000, cancellationToken);
-                            if (!semaphoreAcquired)
-                            {
-                                Debug.WriteLine("Failed to re-acquire semaphore after forced restart");
-                                break;
-                            }
-                        }
-                        else
-                        {
-                            Debug.WriteLine("ShortcutWatcher process still running, recreating pipe only");
-
-                            try
-                            {
-                                reader?.Dispose();
-                                reader = null;
-
-                                if (localPipeServer != null && localPipeServer != _pipeServer)
-                                {
-                                    localPipeServer.Dispose();
-                                    localPipeServer = null;
-                                }
-                            }
-                            catch (Exception cleanupEx)
-                            {
-                                _telemetry.LogWarning("Error during cleanup in ListenForKeyPresses", cleanupEx);
-                            }
-                        }
-                    }
-                    finally
-                    {
-                        try
-                        {
-                            reader?.Dispose();
-                        }
-                        catch (Exception ex)
-                        {
-                            _telemetry.LogWarning("Error disposing pipe reader in finally", ex);
-                        }
-
-                        try
-                        {
-                            if (localPipeServer != null && localPipeServer != _pipeServer)
-                            {
-                                localPipeServer.Dispose();
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            _telemetry.LogWarning("Error disposing local pipe server in finally", ex);
-                        }
-                    }
-
-                    await Task.Delay(1000, cancellationToken);
-                }
-            }
-            finally
-            {
-                _isPipeListenerRunning = false;
-
-                if (semaphoreAcquired)
-                {
-                    try
-                    {
-                        _pipeSemaphore.Release();
-                    }
-                    catch (SemaphoreFullException)
-                    {
-                        _telemetry.LogWarning("Tried to release semaphore when it was already released");
-                    }
-                    catch (Exception ex)
-                    {
-                        _telemetry.LogError("Error releasing semaphore", ex);
-                    }
-                }
-
-                Debug.WriteLine("ListenForKeyPresses exited");
-            }
-        }
-
-        private void ProcessWatcherMessage(string message)
-        {
-            if (message.StartsWith("STARTUP:", StringComparison.Ordinal))
-            {
-                string pidString = message.Substring("STARTUP:".Length);
-                if (int.TryParse(pidString, out int pid))
-                {
-                    Debug.WriteLine($"ShortcutWatcher started successfully with PID: {pid}");
-                    lock (_stateLock)
-                    {
-                        _isRunning = true;
-                        _restartAttempts = 0;
-                    }
-                    RaiseHealthChanged(true, $"ShortcutWatcher startup message received from PID {pid}");
-                }
-            }
-            else if (string.Equals(message, "ALIVE", StringComparison.Ordinal))
-            {
-                Debug.WriteLine("Received alive signal from ShortcutWatcher");
-                SetRunning(true, "ShortcutWatcher alive signal received");
-            }
-            else if (TryParseShortcutMessage(message, out var args))
-            {
-                RaiseShortcutPressed(args);
-            }
-        }
-
-#if DEBUG
-        private async Task ListenForTestShortcutMessagesAsync(CancellationToken cancellationToken)
-        {
-            while (!cancellationToken.IsCancellationRequested)
-            {
-                try
-                {
-                    using var testPipe = new NamedPipeServerStream(
-                        "TeacherToolboxShortcutTest",
-                        PipeDirection.In,
-                        1,
-                        PipeTransmissionMode.Byte,
-                        PipeOptions.Asynchronous);
-                    await testPipe.WaitForConnectionAsync(cancellationToken);
-                    using var reader = new StreamReader(testPipe);
-                    var message = await reader.ReadLineAsync();
-                    if (!string.IsNullOrWhiteSpace(message))
-                    {
-                        ProcessWatcherMessage(message);
-                    }
-                }
-                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-                {
-                    break;
-                }
-                catch (Exception ex)
-                {
-                    _telemetry.LogWarning("Test shortcut pipe listener stopped", ex);
-                    break;
-                }
-            }
-        }
-#endif
-
-        private async Task ForceRestartShortcutWatcher()
-        {
-            Debug.WriteLine("Force restarting ShortcutWatcher");
-
-            try
-            {
-                DisposeCurrentProcessForRestart();
-                await Task.Run(() => CleanupExistingShortcutWatcherProcesses());
-
-                lock (_stateLock)
-                {
-                    _isRunning = false;
-                    _restartAttempts = 0;
-                }
-
-                await RestartShortcutWatcherWithDelay();
-            }
-            catch (Exception ex)
-            {
-                _telemetry.LogError("Error during ShortcutWatcher force restart", ex);
-            }
-        }
-
-        private async Task RestartShortcutWatcherWithDelay()
-        {
-            Debug.WriteLine("Restarting ShortcutWatcher with delay");
-            await Task.Delay(2000);
-            AttemptRestartIfNeeded();
-        }
-
-        private void SetRunning(bool isRunning, string message)
-        {
-            bool changed;
-            lock (_stateLock)
-            {
-                changed = _isRunning != isRunning;
-                _isRunning = isRunning;
-            }
-
-            if (changed)
-            {
-                RaiseHealthChanged(isRunning, message);
+                _pressedKeys.Remove(VK_LWIN);
+                _pressedKeys.Remove(VK_RWIN);
             }
         }
 
@@ -1058,5 +591,83 @@ namespace TeacherToolbox.Services
                 Raise();
             }
         }
+
+        private static ShortcutPressedEventArgs CreateTimerShortcutArgs(int number, string rawMessage)
+        {
+            return new ShortcutPressedEventArgs
+            {
+                Kind = ShortcutKind.Timer,
+                Number = number,
+                PressedAt = DateTimeOffset.UtcNow,
+                RawMessage = rawMessage
+            };
+        }
+
+        private static ShortcutPressedEventArgs CreateRandomNameShortcutArgs(string rawMessage)
+        {
+            return new ShortcutPressedEventArgs
+            {
+                Kind = ShortcutKind.RandomName,
+                Number = -1,
+                PressedAt = DateTimeOffset.UtcNow,
+                RawMessage = rawMessage
+            };
+        }
+
+        private static IntPtr SetHook(LowLevelKeyboardProc proc)
+        {
+            using var curProcess = Process.GetCurrentProcess();
+            var curModule = curProcess.MainModule
+                ?? throw new InvalidOperationException("Unable to access the current process module for the keyboard hook.");
+
+            return SetWindowsHookEx(WH_KEYBOARD_LL, proc, GetModuleHandle(curModule.ModuleName), 0);
+        }
+
+        private delegate IntPtr LowLevelKeyboardProc(int nCode, IntPtr wParam, IntPtr lParam);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct NativeMessage
+        {
+            public IntPtr Hwnd;
+            public uint Message;
+            public UIntPtr WParam;
+            public IntPtr LParam;
+            public uint Time;
+            public int PointX;
+            public int PointY;
+        }
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern IntPtr SetWindowsHookEx(int idHook, LowLevelKeyboardProc lpfn, IntPtr hMod, uint dwThreadId);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool UnhookWindowsHookEx(IntPtr hhk);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern int GetMessage(out NativeMessage lpMsg, IntPtr hWnd, uint wMsgFilterMin, uint wMsgFilterMax);
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool TranslateMessage(ref NativeMessage lpMsg);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr DispatchMessage(ref NativeMessage lpMsg);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool PostThreadMessage(uint idThread, int msg, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern IntPtr GetModuleHandle(string lpModuleName);
+
+        [DllImport("kernel32.dll")]
+        private static extern uint GetCurrentThreadId();
+
+        [DllImport("user32.dll")]
+        private static extern short GetAsyncKeyState(int vKey);
     }
 }
