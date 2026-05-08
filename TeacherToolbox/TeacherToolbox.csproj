@@ -90,7 +90,6 @@
     </Page>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\ShortcutWatcher\ShortcutWatcher.csproj" PrivateAssets="all" />
     <RuntimeHostConfigurationOption Include="System.Runtime.InteropServices.BuiltInComInteropSupport" Value="true" />
   </ItemGroup>
   <ItemGroup>
