@@ -20,6 +20,7 @@ namespace TeacherToolbox.UnitTests.ViewModels
         private Mock<ITelemetryService> _mockTelemetry;
         private Mock<IFilePickerService> _mockFilePicker;
         private Mock<IWindowService> _mockWindowService;
+        private Mock<IUriLauncherService> _mockUriLauncher;
         private SettingsViewModel _viewModel;
 
         [SetUp]
@@ -30,14 +31,16 @@ namespace TeacherToolbox.UnitTests.ViewModels
             _mockTelemetry = new Mock<ITelemetryService>();
             _mockFilePicker = new Mock<IFilePickerService>();
             _mockWindowService = new Mock<IWindowService>();
+            _mockUriLauncher = new Mock<IUriLauncherService>();
 
             // Default settings service return values
             _mockSettingsService.Setup(s => s.GetTheme()).Returns(0); // System
             _mockSettingsService.Setup(s => s.GetTimerSound()).Returns(0);
             _mockSettingsService.Setup(s => s.GetTimerFinishBehavior()).Returns(TimerFinishBehavior.CloseTimer);
+            _mockUriLauncher.Setup(s => s.LaunchUriAsync(It.IsAny<Uri>())).ReturnsAsync(true);
 
             // Create the view model with the mock services
-            _viewModel = new SettingsViewModel(_mockSettingsService.Object, _mockTelemetry.Object, _mockFilePicker.Object, _mockWindowService.Object);
+            _viewModel = CreateViewModel();
         }
 
         [TearDown]
@@ -45,6 +48,16 @@ namespace TeacherToolbox.UnitTests.ViewModels
         {
             // Make sure to dispose the ViewModel to clean up resources
             _viewModel.Dispose();
+        }
+
+        private SettingsViewModel CreateViewModel()
+        {
+            return new SettingsViewModel(
+                _mockSettingsService.Object,
+                _mockTelemetry.Object,
+                _mockFilePicker.Object,
+                _mockWindowService.Object,
+                _mockUriLauncher.Object);
         }
 
         #region Initialization Tests
@@ -58,7 +71,7 @@ namespace TeacherToolbox.UnitTests.ViewModels
             _mockSettingsService.Setup(s => s.GetTimerFinishBehavior()).Returns(TimerFinishBehavior.CountUp);
 
             // Act
-            var viewModel = new SettingsViewModel(_mockSettingsService.Object, _mockTelemetry.Object, _mockFilePicker.Object, _mockWindowService.Object);
+            var viewModel = CreateViewModel();
 
             // Assert
             Assert.That(viewModel.SelectedThemeIndex, Is.EqualTo(1));
@@ -73,10 +86,11 @@ namespace TeacherToolbox.UnitTests.ViewModels
         public void Constructor_WithNullService_ThrowsArgumentNullException()
         {
             // Act & Assert
-            Assert.Throws<ArgumentNullException>((Action)(() => new SettingsViewModel(null, _mockTelemetry.Object, _mockFilePicker.Object, _mockWindowService.Object)));
-            Assert.Throws<ArgumentNullException>((Action)(() => new SettingsViewModel(_mockSettingsService.Object, null, _mockFilePicker.Object, _mockWindowService.Object)));
-            Assert.Throws<ArgumentNullException>((Action)(() => new SettingsViewModel(_mockSettingsService.Object, _mockTelemetry.Object, null, _mockWindowService.Object)));
-            Assert.Throws<ArgumentNullException>((Action)(() => new SettingsViewModel(_mockSettingsService.Object, _mockTelemetry.Object, _mockFilePicker.Object, null)));
+            Assert.Throws<ArgumentNullException>((Action)(() => new SettingsViewModel(null, _mockTelemetry.Object, _mockFilePicker.Object, _mockWindowService.Object, _mockUriLauncher.Object)));
+            Assert.Throws<ArgumentNullException>((Action)(() => new SettingsViewModel(_mockSettingsService.Object, null, _mockFilePicker.Object, _mockWindowService.Object, _mockUriLauncher.Object)));
+            Assert.Throws<ArgumentNullException>((Action)(() => new SettingsViewModel(_mockSettingsService.Object, _mockTelemetry.Object, null, _mockWindowService.Object, _mockUriLauncher.Object)));
+            Assert.Throws<ArgumentNullException>((Action)(() => new SettingsViewModel(_mockSettingsService.Object, _mockTelemetry.Object, _mockFilePicker.Object, null, _mockUriLauncher.Object)));
+            Assert.Throws<ArgumentNullException>((Action)(() => new SettingsViewModel(_mockSettingsService.Object, _mockTelemetry.Object, _mockFilePicker.Object, _mockWindowService.Object, null)));
         }
 
         [Test]
@@ -120,7 +134,7 @@ namespace TeacherToolbox.UnitTests.ViewModels
 
             // Initialize with value 0
             _mockSettingsService.Setup(s => s.GetTheme()).Returns(0);
-            _viewModel = new SettingsViewModel(_mockSettingsService.Object, _mockTelemetry.Object, _mockFilePicker.Object, _mockWindowService.Object);
+            _viewModel = CreateViewModel();
 
             // Reset verification counts
             _mockSettingsService.Invocations.Clear();
@@ -138,7 +152,7 @@ namespace TeacherToolbox.UnitTests.ViewModels
         {
             // Arrange - start with a different theme value
             _mockSettingsService.Setup(s => s.GetTheme()).Returns(1); // Light theme
-            var viewModel = new SettingsViewModel(_mockSettingsService.Object, _mockTelemetry.Object, _mockFilePicker.Object, _mockWindowService.Object);
+            var viewModel = CreateViewModel();
 
             int capturedIndex = -1;
             viewModel.ThemeChanged += (index) => { capturedIndex = index; };
@@ -197,7 +211,7 @@ namespace TeacherToolbox.UnitTests.ViewModels
         {
             // Arrange
             _mockSettingsService.Setup(s => s.GetTimerSound()).Returns(1);
-            _viewModel = new SettingsViewModel(_mockSettingsService.Object, _mockTelemetry.Object, _mockFilePicker.Object, _mockWindowService.Object);
+            _viewModel = CreateViewModel();
 
             // Reset verification counts
             _mockSettingsService.Invocations.Clear();
@@ -228,7 +242,7 @@ namespace TeacherToolbox.UnitTests.ViewModels
         {
             // Arrange
             _mockSettingsService.Setup(s => s.GetTimerFinishBehavior()).Returns(TimerFinishBehavior.CountUp);
-            _viewModel = new SettingsViewModel(_mockSettingsService.Object, _mockTelemetry.Object, _mockFilePicker.Object, _mockWindowService.Object);
+            _viewModel = CreateViewModel();
 
             // Reset verification counts
             _mockSettingsService.Invocations.Clear();
@@ -272,17 +286,29 @@ namespace TeacherToolbox.UnitTests.ViewModels
         }
 
         [Test]
-        public void SendFeedbackCommand_WhenExecuted_LaunchesUri()
+        public async Task SendFeedbackCommand_WhenExecuted_LaunchesUri()
         {
-            // This test is also challenging as it uses Windows.System.Launcher
-            // We would need to mock or create a test seam for Launcher
-            // For now, we'll just verify the command executes without exceptions
+            // Act
+            await _viewModel.SendFeedbackCommand.ExecuteAsync(null);
 
-            // Act & Assert
-            Assert.DoesNotThrow((Action)(() => _viewModel.SendFeedbackCommand.Execute(null)));
+            // Assert
+            _mockUriLauncher.Verify(
+                s => s.LaunchUriAsync(It.Is<Uri>(uri =>
+                    uri.ToString() == "https://docs.google.com/forms/d/e/1FAIpQLScAKZmB6CN7jBhIiZ7E25Vn_80yPTEUWBTNV4ZMJQEeXrF42g/viewform")),
+                Times.Once);
+        }
 
-            // No further assertion needed if no exception is thrown
-            // In a real test, you might use a mock launcher service or a test-specific feedback service
+        [Test]
+        public async Task ViewFeedbackCommand_WhenExecuted_LaunchesUri()
+        {
+            // Act
+            await _viewModel.ViewFeedbackCommand.ExecuteAsync(null);
+
+            // Assert
+            _mockUriLauncher.Verify(
+                s => s.LaunchUriAsync(It.Is<Uri>(uri =>
+                    uri.ToString() == "https://docs.google.com/spreadsheets/d/1fdZeVxytN2yPmk5jKqhIFK6_U_6s66v6A4w2uh_SBxA/edit?gid=0#gid=0")),
+                Times.Once);
         }
 
         #endregion

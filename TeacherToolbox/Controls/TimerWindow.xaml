@@ -38,6 +38,9 @@
                         x:FieldModifier="public"
                         Width="320"
                         Height="320"
+                        AutomationProperties.AccessibilityView="Control"
+                        AutomationProperties.AutomationId="timerGauge"
+                        AutomationProperties.Name="Timer gauge"
                         RingThickness="24"
                         TrailBrush="{StaticResource darkPurpleBrush}"
                         Visibility="Visible" />
@@ -51,6 +54,8 @@
                         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                             <TextBlock
                                 x:Name="timerText"
+                                AutomationProperties.AutomationId="timerText"
+                                AutomationProperties.Name="{Binding Text, ElementName=timerText}"
                                 FontFamily="Cascadia Mono, Courier New, monospace"
                                 FontSize="60"
                                 FontStretch="Normal"

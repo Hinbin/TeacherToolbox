@@ -66,7 +66,7 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
 
             Assert.Multiple((Action)(() =>
             {
-                Assert.That(timerText.AsTextBox().Text, Is.EqualTo("30").Or.EqualTo("29"));
+                Assert.That(GetDisplayedText(timerText), Is.EqualTo("30").Or.EqualTo("29"));
                 Assert.That(timerGauge.IsOffscreen, Is.False);
             }));
         }

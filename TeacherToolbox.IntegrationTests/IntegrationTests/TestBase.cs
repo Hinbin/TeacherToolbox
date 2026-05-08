@@ -339,6 +339,23 @@ public abstract class TestBase
         Assert.That(result.Result, Is.True, errorMessage);
     }
 
+    protected static string GetDisplayedText(AutomationElement element)
+    {
+        try
+        {
+            var textBoxText = element.AsTextBox().Text;
+            if (!string.IsNullOrEmpty(textBoxText))
+            {
+                return textBoxText;
+            }
+        }
+        catch
+        {
+        }
+
+        return element.Name;
+    }
+
     protected void ScrollElementIntoView(AutomationElement? element)
     {
         if (element == null)

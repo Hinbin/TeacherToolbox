@@ -79,6 +79,7 @@ namespace TeacherToolbox
             services.AddSingleton<IThemeService>(provider => new ThemeService(this));
 
             services.AddSingleton<IFilePickerService, FilePickerService>();
+            services.AddSingleton<IUriLauncherService, UriLauncherService>();
             services.AddSingleton<IShortcutWatcherService, ShortcutWatcherManager>();
 
             // Register other services

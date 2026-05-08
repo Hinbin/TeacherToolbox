@@ -60,7 +60,7 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
                 "Timer text should be found",
                 TimeSpan.FromSeconds(2));
 
-            var actualText = timerText.AsTextBox().Text;
+            var actualText = GetDisplayedText(timerText);
             var expectedConstraint = expectedText == "1:00"
                 ? Is.EqualTo("1:00").Or.EqualTo("59")
                 : Is.EqualTo(expectedText).Or.EqualTo("29");

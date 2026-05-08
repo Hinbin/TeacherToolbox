@@ -27,6 +27,7 @@ namespace TeacherToolbox.ViewModels
         private readonly ITelemetryService _telemetry;
         private readonly IFilePickerService _filePicker;
         private readonly IWindowService _windowService;
+        private readonly IUriLauncherService _uriLauncher;
         private MediaPlayer _testPlayer;
         private int _selectedThemeIndex;
         private int _selectedTimerSoundIndex;
@@ -76,8 +77,8 @@ namespace TeacherToolbox.ViewModels
 
         // Commands
         public IRelayCommand TestSoundCommand { get; }
-        public IRelayCommand SendFeedbackCommand { get; }
-        public IRelayCommand ViewFeedbackCommand { get; }
+        public IAsyncRelayCommand SendFeedbackCommand { get; }
+        public IAsyncRelayCommand ViewFeedbackCommand { get; }
         public IAsyncRelayCommand SaveLogsCommand { get; }
         public IRelayCommand TestCrashCommand { get; }
 
@@ -94,12 +95,18 @@ namespace TeacherToolbox.ViewModels
         /// <summary>
         /// Constructor that uses dependency injection for the settings service
         /// </summary>
-        public SettingsViewModel(ISettingsService settingsService, ITelemetryService telemetry, IFilePickerService filePicker, IWindowService windowService)
+        public SettingsViewModel(
+            ISettingsService settingsService,
+            ITelemetryService telemetry,
+            IFilePickerService filePicker,
+            IWindowService windowService,
+            IUriLauncherService uriLauncher)
         {
             _settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
             _telemetry = telemetry ?? throw new ArgumentNullException(nameof(telemetry));
             _filePicker = filePicker ?? throw new ArgumentNullException(nameof(filePicker));
             _windowService = windowService ?? throw new ArgumentNullException(nameof(windowService));
+            _uriLauncher = uriLauncher ?? throw new ArgumentNullException(nameof(uriLauncher));
 
             // Initialize sound options from SoundSettings helper
             _soundOptions = new List<Helpers.SoundSettings.SoundOption>();
@@ -197,7 +204,7 @@ namespace TeacherToolbox.ViewModels
             try
             {
                 var uri = new Uri("https://docs.google.com/forms/d/e/1FAIpQLScAKZmB6CN7jBhIiZ7E25Vn_80yPTEUWBTNV4ZMJQEeXrF42g/viewform");
-                await Windows.System.Launcher.LaunchUriAsync(uri);
+                await _uriLauncher.LaunchUriAsync(uri);
             }
             catch (Exception ex)
             {
@@ -210,7 +217,7 @@ namespace TeacherToolbox.ViewModels
             try
             {
                 var uri = new Uri("https://docs.google.com/spreadsheets/d/1fdZeVxytN2yPmk5jKqhIFK6_U_6s66v6A4w2uh_SBxA/edit?gid=0#gid=0");
-                await Windows.System.Launcher.LaunchUriAsync(uri);
+                await _uriLauncher.LaunchUriAsync(uri);
             }
             catch (Exception ex)
             {
