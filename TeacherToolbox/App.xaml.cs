@@ -59,8 +59,17 @@ namespace TeacherToolbox
 
         private void ConfigureServices(IServiceCollection services)
         {
+            services.AddSingleton<IAppEdition>(AppEdition.Current);
+
             // Telemetry must be first so other services can depend on it if needed
-            services.AddSingleton<ITelemetryService, TelemetryService>();
+            if (AppEdition.Current.CloudTelemetryEnabled)
+            {
+                services.AddSingleton<ITelemetryService, OutwoodTelemetryService>();
+            }
+            else
+            {
+                services.AddSingleton<ITelemetryService, LocalTelemetryService>();
+            }
 
             // Window service for HWND access
             services.AddSingleton<IWindowService, WindowService>();
@@ -83,6 +92,7 @@ namespace TeacherToolbox
             services.AddSingleton<IUriLauncherService, UriLauncherService>();
             services.AddSingleton<IShortcutWatcherService, ShortcutWatcherManager>();
             services.AddSingleton<IRegisterReminderService, RegisterReminderScheduler>();
+            services.AddSingleton<IRegisterSyncService, DisabledRegisterSyncService>();
 
             // Register other services
             services.AddTransient<ISleepPreventer, SleepPreventer>();
