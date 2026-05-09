@@ -108,8 +108,6 @@
                         <DataTemplate x:DataType="vm:ReminderSlotViewModel">
                             <Grid Margin="0,1" Padding="16,10,16,10">
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="4" />
                                     <ColumnDefinition Width="72" />
                                     <ColumnDefinition Width="12" />
                                     <ColumnDefinition Width="Auto" />
@@ -119,26 +117,16 @@
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
 
-                                <!--  Enable toggle  -->
-                                <ToggleSwitch
-                                    Grid.Column="0"
-                                    Width="60"
-                                    Margin="0,0,-8,0"
-                                    VerticalAlignment="Center"
-                                    IsOn="{x:Bind IsEnabled, Mode=TwoWay}"
-                                    OffContent=""
-                                    OnContent="" />
-
                                 <!--  Hour picker  -->
                                 <ComboBox
-                                    Grid.Column="2"
+                                    Grid.Column="0"
                                     HorizontalAlignment="Stretch"
                                     VerticalAlignment="Center"
                                     ItemsSource="{x:Bind HourOptions}"
                                     SelectedItem="{x:Bind Hour, Mode=TwoWay}" />
 
                                 <TextBlock
-                                    Grid.Column="4"
+                                    Grid.Column="2"
                                     VerticalAlignment="Center"
                                     FontSize="16"
                                     FontWeight="SemiBold"
@@ -146,18 +134,52 @@
 
                                 <!--  Minute picker  -->
                                 <ComboBox
-                                    Grid.Column="6"
+                                    Grid.Column="4"
                                     HorizontalAlignment="Stretch"
                                     VerticalAlignment="Center"
                                     ItemsSource="{x:Bind MinuteOptions}"
                                     SelectedItem="{x:Bind Minute, Mode=TwoWay}" />
 
-                                <!--  Label TextBox  -->
-                                <TextBox
-                                    Grid.Column="8"
+                                <StackPanel
+                                    Grid.Column="6"
                                     VerticalAlignment="Center"
-                                    PlaceholderText="Label (optional)"
-                                    Text="{x:Bind Label, Mode=TwoWay}" />
+                                    Spacing="6">
+                                    <!--  Label TextBox  -->
+                                    <TextBox
+                                        PlaceholderText="Label (optional)"
+                                        Text="{x:Bind Label, Mode=TwoWay}" />
+
+                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                        <CheckBox
+                                            MinWidth="34"
+                                            Content="M"
+                                            IsChecked="{x:Bind Monday, Mode=TwoWay}" />
+                                        <CheckBox
+                                            MinWidth="34"
+                                            Content="T"
+                                            IsChecked="{x:Bind Tuesday, Mode=TwoWay}" />
+                                        <CheckBox
+                                            MinWidth="34"
+                                            Content="W"
+                                            IsChecked="{x:Bind Wednesday, Mode=TwoWay}" />
+                                        <CheckBox
+                                            MinWidth="34"
+                                            Content="T"
+                                            IsChecked="{x:Bind Thursday, Mode=TwoWay}" />
+                                        <CheckBox
+                                            MinWidth="34"
+                                            Content="F"
+                                            IsChecked="{x:Bind Friday, Mode=TwoWay}" />
+                                        <CheckBox
+                                            MinWidth="34"
+                                            Content="S"
+                                            IsChecked="{x:Bind Saturday, Mode=TwoWay}" />
+                                        <CheckBox
+                                            MinWidth="34"
+                                            Content="S"
+                                            IsChecked="{x:Bind Sunday, Mode=TwoWay}" />
+                                    </StackPanel>
+                                </StackPanel>
                             </Grid>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
