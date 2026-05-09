@@ -106,7 +106,7 @@ namespace TeacherToolbox
             services.AddTransient<RegisterReminderViewModel>();
         }
 
-        protected override async void OnLaunched(LaunchActivatedEventArgs args)
+        protected override void OnLaunched(LaunchActivatedEventArgs args)
         {
             MainWindow = ActivatorUtilities.CreateInstance<MainWindow>(Services);
 
@@ -119,7 +119,7 @@ namespace TeacherToolbox
                 DisposeServices();
             };
 
-            await InitializeAppThemeAsync();
+            InitializeAppTheme();
             MainWindow.Activate();
 
             // Flush telemetry reports on startup, then on a periodic timer so reports buffered
@@ -173,7 +173,7 @@ namespace TeacherToolbox
             }
         }
 
-        private async Task InitializeAppThemeAsync()
+        private void InitializeAppTheme()
         {
             try
             {

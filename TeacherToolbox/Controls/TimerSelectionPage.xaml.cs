@@ -20,7 +20,12 @@ namespace TeacherToolbox.Controls
             timer30Button.Focus(FocusState.Programmatic);
         }
 
-        private async void OpenTimer_Click(object sender, RoutedEventArgs e)
+        private void OpenTimer_Click(object sender, RoutedEventArgs e)
+        {
+            _ = OpenTimerAsync(sender);
+        }
+
+        private async Task OpenTimerAsync(object sender)
         {
             try
             {

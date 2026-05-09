@@ -5,6 +5,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using System;
+using System.Threading.Tasks;
 using TeacherToolbox.Model;
 using TeacherToolbox.ViewModels;
 
@@ -22,21 +23,33 @@ namespace TeacherToolbox.Controls
             this.Loaded += RandomNameGenerator_Loaded;
         }
 
-        private async void RandomNameGenerator_Loaded(object sender, RoutedEventArgs e)
+        private void RandomNameGenerator_Loaded(object sender, RoutedEventArgs e)
         {
-            // Set the window handle for file picker
-            var window = App.MainWindow;
-            var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
-            ViewModel.WindowHandle = hWnd;
+            _ = RandomNameGeneratorLoadedAsync();
+        }
 
-            // Initialize the ViewModel
-            await ViewModel.InitializeAsync();
+        private async Task RandomNameGeneratorLoadedAsync()
+        {
+            try
+            {
+                // Set the window handle for file picker
+                var window = App.MainWindow;
+                var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
+                ViewModel.WindowHandle = hWnd;
 
-            // Subscribe to events
-            ViewModel.InstructionsRequested += OnInstructionsRequested;
+                // Initialize the ViewModel
+                await ViewModel.InitializeAsync();
 
-            // Subscribe to property changes to update the More button
-            ViewModel.PropertyChanged += ViewModel_PropertyChanged;
+                // Subscribe to events
+                ViewModel.InstructionsRequested += OnInstructionsRequested;
+
+                // Subscribe to property changes to update the More button
+                ViewModel.PropertyChanged += ViewModel_PropertyChanged;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error initializing random name generator: {ex}");
+            }
         }
 
         private void ViewModel_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)

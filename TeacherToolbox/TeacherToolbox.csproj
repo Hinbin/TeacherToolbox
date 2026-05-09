@@ -19,6 +19,8 @@
     <FileVersion>0.3.0.0</FileVersion>
     <AppxPackageVersion>0.3.0.0</AppxPackageVersion>
     <AppFlavor Condition="'$(AppFlavor)' == ''">Global</AppFlavor>
+    <!-- WinUIEx WindowEx generates metadata for obsolete WinUIEx.Icon even when the app does not set TaskBarIcon. -->
+    <NoWarn>$(NoWarn);CS0612</NoWarn>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(AppFlavor)' == 'Outwood'">

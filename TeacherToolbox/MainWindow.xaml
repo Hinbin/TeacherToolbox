@@ -49,10 +49,11 @@
                         <FontIcon FontFamily="Segoe MDL2 Assets" Glyph="&#xE75B;" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem
-                    Content="Exam Clock"
-                    Icon="Clock"
-                    Tag="TeacherToolbox.Controls.Clock" />
+                <NavigationViewItem Content="Exam Clock" Tag="TeacherToolbox.Controls.Clock">
+                    <NavigationViewItem.Icon>
+                        <SymbolIcon Symbol="Clock" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
                 <NavigationViewItem
                     AutomationProperties.AutomationId="RegisterReminderNavItem"
                     Content="Register Reminder"
