@@ -247,7 +247,9 @@
                                     Margin="8,0,0,0"
                                     VerticalAlignment="Center"
                                     AutomationProperties.AutomationId="RemoveIntervalButton"
+                                    AutomationProperties.Name="Remove interval"
                                     Click="RemoveInterval_Click"
+                                    ToolTipService.ToolTip="Remove interval"
                                     Visibility="{Binding ShowRemoveButton, Converter={StaticResource BoolToVisibilityConverter}}">
                                     <FontIcon FontSize="16" Glyph="&#xE711;" />
                                 </Button>

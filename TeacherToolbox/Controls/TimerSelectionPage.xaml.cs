@@ -24,23 +24,20 @@ namespace TeacherToolbox.Controls
         {
             try
             {
-                // Work out the number of seconds from the button content
-                string buttonContent = (sender as Button).Content.ToString();
+                string tag = (sender as Button).Tag?.ToString();
                 TimerWindow timerWindow = null;
 
-                // Create window based on button type
-                if (buttonContent.Contains("Custom"))
+                if (tag == "Custom")
                 {
                     timerWindow = new TimerWindow(0, SettingsService, ThemeService);
                 }
-                else if (buttonContent.Contains("Interval"))
+                else if (tag == "Interval")
                 {
                     timerWindow = new TimerWindow(-1, SettingsService, ThemeService);
                 }
                 else
                 {
-                    // Parse "30 seconds" to 30, "1 minute" to 60, "2 minutes" to 120, etc.    
-                    int seconds = int.Parse(buttonContent.Split(' ')[0]) * (buttonContent.Contains("min") ? 60 : 1);
+                    int seconds = int.Parse(tag);
                     timerWindow = new TimerWindow(seconds, SettingsService, ThemeService);
                 }
 

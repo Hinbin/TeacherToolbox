@@ -40,6 +40,7 @@ namespace TeacherToolbox.Controls
         private readonly ISettingsService _settingsService;
 
         WindowsSystemDispatcherQueueHelper m_wsdqHelper; // See separate sample below for implementation
+        Microsoft.UI.Composition.SystemBackdrops.MicaController m_micaController;
         Microsoft.UI.Composition.SystemBackdrops.DesktopAcrylicController m_acrylicController;
         Microsoft.UI.Composition.SystemBackdrops.SystemBackdropConfiguration m_configurationSource;
         private ObservableCollection<IntervalTimeViewModel> intervalsList;
@@ -148,7 +149,8 @@ namespace TeacherToolbox.Controls
 
         private void ConfigureWindowProperties()
         {
-            TrySetAcrylicBackdrop(true);
+            if (!TrySetMicaBackdrop())
+                TrySetAcrylicBackdrop(true);
             _themeService.ApplyThemeToWindow(this);
 
             var presenter = AppWindow?.Presenter as OverlappedPresenter;
@@ -263,6 +265,9 @@ namespace TeacherToolbox.Controls
         }
         private void SetupCustomTimerSelection(int timerType)
         {
+            if (AppWindow != null)
+                AppWindow.Title = "Timer";
+
             // Ensure intervalsList is initialized
             if (intervalsList == null)
             {
@@ -778,6 +783,8 @@ namespace TeacherToolbox.Controls
             try
             {
                 timerText.Text = timeText;
+                if (AppWindow != null)
+                    AppWindow.Title = secondsLeft < 0 ? $"-{timeText}" : timeText;
                 UpdateTimerRingColor();
 
                 // Set text color to red if we're in overtime
@@ -874,6 +881,29 @@ namespace TeacherToolbox.Controls
             return Windows.UI.Color.FromArgb(255, 0x5b, 0x34, 0x93);
         }
 
+        bool TrySetMicaBackdrop()
+        {
+            if (!Microsoft.UI.Composition.SystemBackdrops.MicaController.IsSupported())
+                return false;
+
+            m_wsdqHelper = new WindowsSystemDispatcherQueueHelper();
+            m_wsdqHelper.EnsureWindowsSystemDispatcherQueueController();
+
+            m_configurationSource = new Microsoft.UI.Composition.SystemBackdrops.SystemBackdropConfiguration();
+            this.Activated += Window_Activated;
+            this.Closed += Window_Closed;
+            ((FrameworkElement)this.Content).ActualThemeChanged += Window_ThemeChanged;
+
+            m_configurationSource.IsInputActive = true;
+            SetConfigurationSourceTheme();
+
+            m_micaController = new Microsoft.UI.Composition.SystemBackdrops.MicaController();
+            m_micaController.Kind = Microsoft.UI.Composition.SystemBackdrops.MicaKind.BaseAlt;
+            m_micaController.AddSystemBackdropTarget(this.As<Microsoft.UI.Composition.ICompositionSupportsSystemBackdrop>());
+            m_micaController.SetSystemBackdropConfiguration(m_configurationSource);
+            return true;
+        }
+
         bool TrySetAcrylicBackdrop(bool useAcrylicThin)
         {
             if (Microsoft.UI.Composition.SystemBackdrops.DesktopAcrylicController.IsSupported())
@@ -928,7 +958,12 @@ namespace TeacherToolbox.Controls
                     content.ActualThemeChanged -= Window_ThemeChanged;
                 }
 
-                // Dispose the acrylic controller
+                // Dispose backdrop controllers
+                if (m_micaController != null)
+                {
+                    m_micaController.Dispose();
+                    m_micaController = null;
+                }
                 if (m_acrylicController != null)
                 {
                     m_acrylicController.Dispose();
