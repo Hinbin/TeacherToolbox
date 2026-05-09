@@ -11,6 +11,16 @@
     mc:Ignorable="d">
 
     <Grid AutomationProperties.AutomationId="TimerSelectionGrid">
+        <TeachingTip
+            x:Name="TimerOnboardingTip"
+            Title="Keyboard Shortcuts"
+            AutomationProperties.AutomationId="TimerOnboardingTip"
+            CloseButtonContent="Got it!"
+            IsLightDismissEnabled="True"
+            PlacementMargin="20"
+            PreferredPlacement="Bottom"
+            Subtitle="Start timers from anywhere: Win+1–9 launches 1–9 minute timers, Win+0 starts a 30-second timer." />
+
         <Viewbox Margin="0,12,0,4">
             <Grid>
                 <Grid.RowDefinitions>

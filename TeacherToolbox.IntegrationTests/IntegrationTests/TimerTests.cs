@@ -55,7 +55,7 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
         [Test]
         public void TimerWindow_OpensWithFixedTime()
         {
-            OpenTimerWindow("timer30Button");
+            OpenTimerWindow("Timer30Button");
 
             var timerText = WaitUntilFound(
                 () => _timerWindow!.FindFirstDescendant(cf => cf.ByAutomationId("timerText")),
@@ -74,7 +74,7 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
         [Test]
         public void TimerWindow_OpensWithIntervalSelector()
         {
-            OpenTimerWindow("timerIntervalButton");
+            OpenTimerWindow("TimerIntervalButton");
 
             var intervalsListView = WaitUntilFound(
                 () => _timerWindow!.FindFirstDescendant(cf => cf.ByAutomationId("intervalsListView")),
@@ -98,8 +98,7 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
                 () => timerPage.FindFirstDescendant(cf => cf.ByControlType(ControlType.Button).And(cf.ByAutomationId(buttonAutomationId))),
                 $"Timer button '{buttonAutomationId}' should exist");
 
-            timerButton.Click();
-            Wait.UntilInputIsProcessed();
+            SafeClick(timerButton);
 
             _timerWindow = WaitUntilFound(
                 () => FindTimerWindow(),

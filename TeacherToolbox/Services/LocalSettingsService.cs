@@ -28,6 +28,8 @@ namespace TeacherToolbox.Services
         private const string LastTimerWindowPositionKey = "LastTimerWindowPosition";
         private const string LastScreenRulerWindowPositionKey = "LastScreenRulerWindowPosition";
         private const string HasShownClockInstructionsKey = "HasShownClockInstructions";
+        private const string HasShownRulerOnboardingKey = "HasShownRulerOnboarding";
+        private const string HasShownTimerOnboardingKey = "HasShownTimerOnboarding";
         private const string MockModeKey = "Clock_MockMode";
         private const string SoundEnabledKey = "Clock_SoundEnabled";
         private const string RegisterReminderSettingsKey = "RegisterReminderSettings";
@@ -45,6 +47,8 @@ namespace TeacherToolbox.Services
         private List<SavedIntervalConfig> savedCustomTimerConfigs;
         private readonly object _settingsLock = new object();
         private bool hasShownClockInstructions;
+        private bool hasShownRulerOnboarding;
+        private bool hasShownTimerOnboarding;
         private bool mockMode;
         private bool soundEnabled;
         private Model.RegisterReminderSettings registerReminderSettings;
@@ -144,6 +148,8 @@ namespace TeacherToolbox.Services
                         { LastScreenRulerWindowPositionKey, lastScreenRulerWindowPosition },
                         { IntervalConfigsKey, savedIntervalConfigs ?? new List<SavedIntervalConfig>() },
                         { HasShownClockInstructionsKey, hasShownClockInstructions },
+                        { HasShownRulerOnboardingKey, hasShownRulerOnboarding },
+                        { HasShownTimerOnboardingKey, hasShownTimerOnboarding },
                         { CustomTimerConfigsKey, savedCustomTimerConfigs ?? new List<SavedIntervalConfig>() },
                         { SoundKey, GetTimerSound() },
                         { TimerFinishBehaviorKey, (int)GetTimerFinishBehavior() },
@@ -267,6 +273,12 @@ namespace TeacherToolbox.Services
                                     break;
                                 case HasShownClockInstructionsKey:
                                     hasShownClockInstructions = kvp.Value.GetBoolean();
+                                    break;
+                                case HasShownRulerOnboardingKey:
+                                    hasShownRulerOnboarding = kvp.Value.GetBoolean();
+                                    break;
+                                case HasShownTimerOnboardingKey:
+                                    hasShownTimerOnboarding = kvp.Value.GetBoolean();
                                     break;
                                     case SoundKey:
                                         if (kvp.Value.ValueKind == JsonValueKind.Number)
@@ -444,6 +456,12 @@ namespace TeacherToolbox.Services
                                     break;
                                 case HasShownClockInstructionsKey:
                                     hasShownClockInstructions = kvp.Value.GetBoolean();
+                                    break;
+                                case HasShownRulerOnboardingKey:
+                                    hasShownRulerOnboarding = kvp.Value.GetBoolean();
+                                    break;
+                                case HasShownTimerOnboardingKey:
+                                    hasShownTimerOnboarding = kvp.Value.GetBoolean();
                                     break;
                                 case RegisterReminderSettingsKey:
                                     try
@@ -648,6 +666,12 @@ namespace TeacherToolbox.Services
         {
             SetAndSave(ref hasShownClockInstructions, shown);
         }
+
+        public bool GetHasShownRulerOnboarding() => hasShownRulerOnboarding;
+        public void SetHasShownRulerOnboarding(bool shown) => SetAndSave(ref hasShownRulerOnboarding, shown);
+
+        public bool GetHasShownTimerOnboarding() => hasShownTimerOnboarding;
+        public void SetHasShownTimerOnboarding(bool shown) => SetAndSave(ref hasShownTimerOnboarding, shown);
 
         /// <inheritdoc/>
         public string GetCentreText()

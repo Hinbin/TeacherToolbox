@@ -82,6 +82,14 @@
 
             </StackPanel>
 
+            <!--  Setup hint – visible whenever the master toggle is off  -->
+            <InfoBar
+                IsClosable="False"
+                IsOpen="{x:Bind ViewModel.ShowSetupInfo, Mode=OneWay}"
+                Message="Flip the 'Enable reminders' switch above to start getting notified."
+                Severity="Informational"
+                Title="Reminders are disabled" />
+
             <!--  Reminder slots section  -->
             <TextBlock
                 Margin="0,16,0,0"

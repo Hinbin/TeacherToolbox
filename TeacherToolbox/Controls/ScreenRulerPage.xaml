@@ -9,7 +9,18 @@
     Background="{ThemeResource LayerFillColorDefaultBrush}"
     mc:Ignorable="d">
 
-    <ScrollViewer>
+    <Grid>
+        <TeachingTip
+            x:Name="RulerOnboardingTip"
+            Title="Screen Ruler"
+            AutomationProperties.AutomationId="RulerOnboardingTip"
+            CloseButtonContent="Got it!"
+            IsLightDismissEnabled="True"
+            PlacementMargin="20"
+            PreferredPlacement="Bottom"
+            Subtitle="The ruler floats over all your windows. Drag it anywhere on screen to measure or highlight a section." />
+
+        <ScrollViewer>
         <StackPanel Margin="12,44,12,12" Spacing="8">
 
             <StackPanel
@@ -103,5 +114,6 @@
             </StackPanel>
 
         </StackPanel>
-    </ScrollViewer>
+        </ScrollViewer>
+    </Grid>
 </local:AutomatedPage>

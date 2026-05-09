@@ -133,9 +133,14 @@ namespace TeacherToolbox.ViewModels
             set
             {
                 if (SetProperty(ref _masterEnabled, value))
+                {
+                    OnPropertyChanged(nameof(ShowSetupInfo));
                     Save();
+                }
             }
         }
+
+        public bool ShowSetupInfo => !_masterEnabled;
 
         public bool WeekdaysOnly
         {

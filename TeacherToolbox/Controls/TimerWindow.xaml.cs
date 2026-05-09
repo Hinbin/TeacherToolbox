@@ -62,6 +62,7 @@ namespace TeacherToolbox.Controls
 
         private int intervalCount = 1;
         private const int MaxIntervals = 8;
+        private const double IntervalFitPadding = 8;
         private Queue<IntervalTime> intervals;
         private int currentIntervalTotal;
         private int intervalNumber = 0;
@@ -1082,12 +1083,68 @@ namespace TeacherToolbox.Controls
                 // Add new interval at the end of the list
                 intervalsList.Add(new IntervalTimeViewModel(intervalsList.Count + 1));
                 UpdateIntervalNumbers();
+                QueueIntervalWindowFit();
             }
 
             if (intervalsList.Count >= MaxIntervals)
             {
                 addIntervalButton.IsEnabled = false;
             }
+        }
+
+        private void QueueIntervalWindowFit()
+        {
+            DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, EnsureIntervalRowsFit);
+        }
+
+        private void EnsureIntervalRowsFit()
+        {
+            if (intervalsListView == null || timeSelector == null || timeSelector.Visibility != Visibility.Visible)
+            {
+                return;
+            }
+
+            intervalsListView.UpdateLayout();
+            ScrollViewer scrollViewer = FindDescendant<ScrollViewer>(intervalsListView);
+
+            if (scrollViewer == null || scrollViewer.ScrollableHeight <= 0)
+            {
+                return;
+            }
+
+            Height += scrollViewer.ScrollableHeight + IntervalFitPadding;
+            timeSelector.UpdateLayout();
+
+            if (_settingsService != null)
+            {
+                _settingsService.SetLastTimerWindowPosition(GetCurrentWindowInformation());
+            }
+        }
+
+        private static T FindDescendant<T>(DependencyObject parent) where T : DependencyObject
+        {
+            if (parent == null)
+            {
+                return null;
+            }
+
+            int childCount = VisualTreeHelper.GetChildrenCount(parent);
+            for (int i = 0; i < childCount; i++)
+            {
+                DependencyObject child = VisualTreeHelper.GetChild(parent, i);
+                if (child is T matchedChild)
+                {
+                    return matchedChild;
+                }
+
+                T descendant = FindDescendant<T>(child);
+                if (descendant != null)
+                {
+                    return descendant;
+                }
+            }
+
+            return null;
         }
 
 

@@ -16,8 +16,17 @@ namespace TeacherToolbox.Controls
         public TimerSelectionPage()
         {
             this.InitializeComponent();
-            // Focus one of the buttons so that the user can use the keyboard to navigate
             timer30Button.Focus(FocusState.Programmatic);
+            this.Loaded += TimerSelectionPage_Loaded;
+        }
+
+        private void TimerSelectionPage_Loaded(object sender, RoutedEventArgs e)
+        {
+            if (!SettingsService.GetHasShownTimerOnboarding())
+            {
+                TimerOnboardingTip.IsOpen = true;
+                SettingsService.SetHasShownTimerOnboarding(true);
+            }
         }
 
         private async void OpenTimer_Click(object sender, RoutedEventArgs e)

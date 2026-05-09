@@ -228,7 +228,17 @@ public abstract class TestBase
     protected void SafeClick(AutomationElement element)
     {
         var result = Retry.WhileException(
-            () => element.Click(),
+            () =>
+            {
+                if (element.Patterns.Invoke.IsSupported)
+                {
+                    element.Patterns.Invoke.Pattern.Invoke();
+                }
+                else
+                {
+                    element.Click();
+                }
+            },
             TimeSpan.FromSeconds(2),
             null,
             true);
@@ -254,8 +264,7 @@ public abstract class TestBase
 
         for (var retry = 0; retry < 3; retry++)
         {
-            openButton.Click();
-            Wait.UntilInputIsProcessed();
+            SafeClick(openButton);
 
             try
             {
@@ -292,6 +301,10 @@ public abstract class TestBase
         if (navItem.Patterns.Invoke.IsSupported)
         {
             navItem.Patterns.Invoke.Pattern.Invoke();
+        }
+        else if (navItem.Patterns.SelectionItem.IsSupported)
+        {
+            navItem.Patterns.SelectionItem.Pattern.Select();
         }
         else
         {
@@ -385,7 +398,12 @@ public abstract class TestBase
             var desktop = automation.GetDesktop();
             var windows = desktop.FindAllChildren(cf => cf.ByControlType(ControlType.Window));
             return windows
-                .FirstOrDefault(w => w.Name.Contains("Timer") && !w.Name.Contains("Visual Studio") && w != MainWindow)
+                .FirstOrDefault(w =>
+                    !w.Name.Contains("Visual Studio")
+                    && w != MainWindow
+                    && (w.Name.Contains("Timer")
+                        || w.FindFirstDescendant(cf => cf.ByAutomationId("timerText")) != null
+                        || w.FindFirstDescendant(cf => cf.ByAutomationId("intervalsListView")) != null))
                 ?.AsWindow();
         }
         catch (Exception ex)
