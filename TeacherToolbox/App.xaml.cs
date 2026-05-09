@@ -4,6 +4,7 @@ using System;
 using System.Threading.Tasks;
 using TeacherToolbox.Services;
 using TeacherToolbox.ViewModels;
+using TeacherToolbox.Controls;
 
 namespace TeacherToolbox
 {
@@ -81,6 +82,7 @@ namespace TeacherToolbox
             services.AddSingleton<IFilePickerService, FilePickerService>();
             services.AddSingleton<IUriLauncherService, UriLauncherService>();
             services.AddSingleton<IShortcutWatcherService, ShortcutWatcherManager>();
+            services.AddSingleton<IRegisterReminderService, RegisterReminderScheduler>();
 
             // Register other services
             services.AddTransient<ISleepPreventer, SleepPreventer>();
@@ -91,6 +93,7 @@ namespace TeacherToolbox
             services.AddTransient<ClockViewModel>();
             services.AddTransient<TimerWindowViewModel>();
             services.AddTransient<RandomNameGeneratorViewModel>();
+            services.AddTransient<RegisterReminderViewModel>();
         }
 
         protected override async void OnLaunched(LaunchActivatedEventArgs args)

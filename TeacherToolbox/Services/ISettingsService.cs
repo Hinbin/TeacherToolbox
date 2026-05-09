@@ -185,6 +185,16 @@ namespace TeacherToolbox.Services
         bool GetSoundEnabled();
         void SetSoundEnabled(bool value);
 
+        Model.WindowPosition GetLastClockWindowSize();
+        void SetLastClockWindowSize(Model.WindowPosition size);
+
+        #endregion
+
+        #region Register Reminder Settings
+
+        Model.RegisterReminderSettings GetRegisterReminderSettings();
+        void SaveRegisterReminderSettings(Model.RegisterReminderSettings settings);
+
         #endregion
     }
 }

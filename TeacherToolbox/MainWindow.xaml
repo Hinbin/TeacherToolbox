@@ -53,6 +53,14 @@
                     Content="Exam Clock"
                     Icon="Clock"
                     Tag="TeacherToolbox.Controls.Clock" />
+                <NavigationViewItem
+                    AutomationProperties.AutomationId="RegisterReminderNavItem"
+                    Content="Register Reminder"
+                    Tag="TeacherToolbox.Controls.RegisterReminderPage">
+                    <NavigationViewItem.Icon>
+                        <FontIcon FontFamily="Segoe MDL2 Assets" Glyph="&#xEA8F;" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
                 <NavigationViewItem Content="Settings" Tag="TeacherToolbox.Controls.SettingsPage">
                     <NavigationViewItem.Icon>
                         <FontIcon FontFamily="Segoe MDL2 Assets" Glyph="&#xE713;" />

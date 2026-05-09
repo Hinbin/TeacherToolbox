@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<winex:WindowEx
+    x:Class="TeacherToolbox.Controls.RegisterReminderToastWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:winex="using:WinUIEx"
+    Title="Register Reminder"
+    mc:Ignorable="d">
+
+    <Grid
+        x:Name="RootGrid"
+        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+        BorderBrush="{ThemeResource AccentAAFillColorDefaultBrush}"
+        BorderThickness="1"
+        CornerRadius="8"
+        RenderTransformOrigin="0.5,1">
+
+        <Grid.RenderTransform>
+            <TranslateTransform x:Name="SlideTransform" Y="60" />
+        </Grid.RenderTransform>
+
+        <Grid.Resources>
+            <Storyboard x:Name="SlideInStoryboard">
+                <DoubleAnimation
+                    Storyboard.TargetName="SlideTransform"
+                    Storyboard.TargetProperty="Y"
+                    From="60"
+                    To="0"
+                    Duration="0:0:0.25">
+                    <DoubleAnimation.EasingFunction>
+                        <CubicEase EasingMode="EaseOut" />
+                    </DoubleAnimation.EasingFunction>
+                </DoubleAnimation>
+                <DoubleAnimation
+                    Storyboard.TargetName="RootGrid"
+                    Storyboard.TargetProperty="Opacity"
+                    From="0"
+                    To="1"
+                    Duration="0:0:0.20" />
+            </Storyboard>
+        </Grid.Resources>
+
+        <Grid Margin="16,12,16,12">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="8" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!--  Header row: bell icon + title  -->
+            <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="10">
+                <FontIcon
+                    VerticalAlignment="Center"
+                    FontFamily="Segoe MDL2 Assets"
+                    FontSize="18"
+                    Foreground="{ThemeResource AccentAAFillColorDefaultBrush}"
+                    Glyph="&#xEA8F;" />
+                <TextBlock
+                    VerticalAlignment="Center"
+                    Style="{StaticResource BodyStrongTextBlockStyle}"
+                    Text="Take the register" />
+            </StackPanel>
+
+            <!--  Optional label subtitle  -->
+            <TextBlock
+                x:Name="LabelText"
+                Grid.Row="1"
+                Margin="28,2,0,0"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                Style="{StaticResource CaptionTextBlockStyle}"
+                Text=""
+                Visibility="Collapsed" />
+
+            <!--  Action buttons  -->
+            <StackPanel
+                Grid.Row="3"
+                HorizontalAlignment="Right"
+                Orientation="Horizontal"
+                Spacing="8">
+                <Button
+                    x:Name="SnoozeButton"
+                    AutomationProperties.AutomationId="ReminderSnoozeButton"
+                    Click="SnoozeButton_Click"
+                    Content="Snooze" />
+                <Button
+                    x:Name="DoneButton"
+                    AutomationProperties.AutomationId="ReminderDoneButton"
+                    Click="DoneButton_Click"
+                    Style="{StaticResource AccentButtonStyle}"
+                    Content="Done" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</winex:WindowEx>
