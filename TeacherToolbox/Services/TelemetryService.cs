@@ -1,51 +1,39 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
-using System.Threading;
-using System.Threading.Tasks;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using System.Diagnostics;
-using System.Runtime.InteropServices;
+using System.Threading;
+using System.Threading.Tasks;
 using Serilog;
 using Serilog.Core;
 
 namespace TeacherToolbox.Services
 {
-    public class TelemetryService : ITelemetryService, IDisposable
+    public class LocalTelemetryService : ITelemetryService, IDisposable
     {
-        private readonly Logger _logger;
-        private static readonly System.Net.Http.HttpClient _httpClient = new System.Net.Http.HttpClient();
-        private readonly SemaphoreSlim _flushLock = new SemaphoreSlim(1, 1);
-
-        // Google Apps Script Web App URL
-        // Instructions: Deploy a Google Apps Script as a Web App (Anyone can access)
-        // that handles doPost(e) by appending rows to a spreadsheet.
-        private const string TelemetryEndpoint = "https://script.google.com/macros/s/AKfycby0ZNXL5WnGPB_rVWoPN73Gxi8BadMAlgbyY4HQe5077W0z7QZsTPqX1MR9z73VrJlK/exec";
-
-        // Retention bounds for the on-disk pending queue.
-        private const int MaxPendingReports = 100;
-        private static readonly TimeSpan MaxPendingAge = TimeSpan.FromDays(30);
-
         private static readonly Regex UserPathRegex = new Regex(
             @"[A-Za-z]:\\Users\\[^\\\/""'<>|*?:]+",
             RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
-        public string LogsDirectory { get; }
-        private readonly string _pendingTelemetryDirectory;
+        private readonly Logger _logger;
 
-        public TelemetryService()
+        protected string AppDataDirectory { get; }
+
+        public string LogsDirectory { get; }
+
+        public LocalTelemetryService()
         {
-            string appData = Path.Combine(
+            AppDataDirectory = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "TeacherToolbox");
 
-            LogsDirectory = Path.Combine(appData, "logs");
-            _pendingTelemetryDirectory = Path.Combine(appData, "telemetry", "pending");
+            LogsDirectory = Path.Combine(AppDataDirectory, "logs");
 
             Directory.CreateDirectory(LogsDirectory);
-            Directory.CreateDirectory(_pendingTelemetryDirectory);
 
             _logger = new LoggerConfiguration()
                 .MinimumLevel.Information()
@@ -56,16 +44,92 @@ namespace TeacherToolbox.Services
                     outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
                 .CreateLogger();
 
-            _logger.Information("TelemetryService initialized. App version {Version}, OS {OS}, Arch {Arch}",
+            _logger.Information("{TelemetryService} initialized. App version {Version}, OS {OS}, Arch {Arch}",
+                GetType().Name,
                 GetAppVersion(),
                 Environment.OSVersion,
                 RuntimeInformation.ProcessArchitecture);
         }
 
-        public void CaptureException(Exception ex, string context = null)
+        public virtual void CaptureException(Exception ex, string context = null)
         {
             if (ex == null) return;
+
             _logger.Error(ex, "Unhandled exception. Context={Context}", context ?? "<none>");
+        }
+
+        public virtual Task FlushAsync()
+        {
+            return Task.CompletedTask;
+        }
+
+        public void LogInfo(string message)
+        {
+            _logger.Information(message);
+        }
+
+        public void LogWarning(string message, Exception ex = null)
+        {
+            if (ex == null)
+                _logger.Warning(message);
+            else
+                _logger.Warning(ex, message);
+        }
+
+        public void LogError(string message, Exception ex = null)
+        {
+            if (ex == null)
+                _logger.Error(message);
+            else
+                _logger.Error(ex, message);
+        }
+
+        public virtual void Dispose()
+        {
+            _logger?.Dispose();
+        }
+
+        protected static string ScrubPii(string input)
+        {
+            if (string.IsNullOrEmpty(input)) return input;
+            return UserPathRegex.Replace(input, m =>
+            {
+                int slashIdx = m.Value.IndexOf('\\', 3); // skip "C:\"
+                string drive = m.Value.Substring(0, slashIdx + 1);
+                return drive + "Users\\<user>";
+            });
+        }
+
+        protected static string GetAppVersion()
+        {
+            return typeof(LocalTelemetryService).Assembly.GetName().Version?.ToString() ?? "unknown";
+        }
+    }
+
+    public sealed class OutwoodTelemetryService : LocalTelemetryService
+    {
+        private static readonly System.Net.Http.HttpClient HttpClient = new System.Net.Http.HttpClient();
+        private readonly SemaphoreSlim _flushLock = new SemaphoreSlim(1, 1);
+        private readonly string _pendingTelemetryDirectory;
+
+        // Google Apps Script Web App URL for the private Outwood crash-report sheet.
+        private const string TelemetryEndpoint = "https://script.google.com/macros/s/AKfycby0ZNXL5WnGPB_rVWoPN73Gxi8BadMAlgbyY4HQe5077W0z7QZsTPqX1MR9z73VrJlK/exec";
+
+        // Retention bounds for the on-disk pending queue.
+        private const int MaxPendingReports = 100;
+        private static readonly TimeSpan MaxPendingAge = TimeSpan.FromDays(30);
+
+        public OutwoodTelemetryService()
+        {
+            _pendingTelemetryDirectory = Path.Combine(AppDataDirectory, "telemetry", "pending");
+            Directory.CreateDirectory(_pendingTelemetryDirectory);
+        }
+
+        public override void CaptureException(Exception ex, string context = null)
+        {
+            if (ex == null) return;
+
+            base.CaptureException(ex, context);
 
             try
             {
@@ -91,15 +155,15 @@ namespace TeacherToolbox.Services
                 // handlers where the runtime may tear down before an async continuation runs.
                 File.WriteAllText(filePath, json);
 
-                _logger.Information("Buffered crash report to disk: {FileName}", fileName);
+                LogInfo("Buffered crash report to disk: " + fileName);
             }
             catch (Exception writeEx)
             {
-                _logger.Warning(writeEx, "Failed to buffer crash report to disk");
+                LogWarning("Failed to buffer crash report to disk", writeEx);
             }
         }
 
-        public async Task FlushAsync()
+        public override async Task FlushAsync()
         {
             if (!await _flushLock.WaitAsync(0)) return;
 
@@ -110,7 +174,7 @@ namespace TeacherToolbox.Services
                 var pendingFiles = Directory.GetFiles(_pendingTelemetryDirectory, "*.json");
                 if (pendingFiles.Length == 0) return;
 
-                _logger.Information("Found {Count} pending telemetry reports. Attempting to upload...", pendingFiles.Length);
+                LogInfo($"Found {pendingFiles.Length} pending telemetry reports. Attempting to upload...");
 
                 foreach (var file in pendingFiles)
                 {
@@ -119,34 +183,32 @@ namespace TeacherToolbox.Services
                         string json = await File.ReadAllTextAsync(file);
                         var content = new System.Net.Http.StringContent(json, System.Text.Encoding.UTF8, "application/json");
 
-                        var response = await _httpClient.PostAsync(TelemetryEndpoint, content);
+                        var response = await HttpClient.PostAsync(TelemetryEndpoint, content);
 
                         if (response.IsSuccessStatusCode)
                         {
-                            _logger.Information("Successfully uploaded telemetry report: {FileName}", Path.GetFileName(file));
+                            LogInfo("Successfully uploaded telemetry report: " + Path.GetFileName(file));
                             File.Delete(file);
                         }
                         else if (IsPermanentFailure(response.StatusCode))
                         {
-                            _logger.Warning("Dropping telemetry report {FileName} after permanent failure. Status: {Status}",
-                                Path.GetFileName(file), response.StatusCode);
+                            LogWarning($"Dropping telemetry report {Path.GetFileName(file)} after permanent failure. Status: {response.StatusCode}");
                             File.Delete(file);
                         }
                         else
                         {
-                            _logger.Warning("Failed to upload telemetry report {FileName}. Status: {Status}. Will retry later.",
-                                Path.GetFileName(file), response.StatusCode);
+                            LogWarning($"Failed to upload telemetry report {Path.GetFileName(file)}. Status: {response.StatusCode}. Will retry later.");
                         }
                     }
                     catch (Exception uploadEx)
                     {
-                        _logger.Warning(uploadEx, "Error uploading telemetry report {FileName}", Path.GetFileName(file));
+                        LogWarning("Error uploading telemetry report " + Path.GetFileName(file), uploadEx);
                     }
                 }
             }
             catch (Exception ex)
             {
-                _logger.Warning(ex, "Error during telemetry flush");
+                LogWarning("Error during telemetry flush", ex);
             }
             finally
             {
@@ -166,7 +228,7 @@ namespace TeacherToolbox.Services
                 foreach (var fi in files.Where(f => f.LastWriteTimeUtc < cutoff).ToList())
                 {
                     try { fi.Delete(); files.Remove(fi); }
-                    catch (Exception ex) { _logger.Warning(ex, "Failed to delete aged telemetry report {FileName}", fi.Name); }
+                    catch (Exception ex) { LogWarning("Failed to delete aged telemetry report " + fi.Name, ex); }
                 }
 
                 if (files.Count > MaxPendingReports)
@@ -174,13 +236,13 @@ namespace TeacherToolbox.Services
                     foreach (var fi in files.OrderBy(f => f.LastWriteTimeUtc).Take(files.Count - MaxPendingReports))
                     {
                         try { fi.Delete(); }
-                        catch (Exception ex) { _logger.Warning(ex, "Failed to delete excess telemetry report {FileName}", fi.Name); }
+                        catch (Exception ex) { LogWarning("Failed to delete excess telemetry report " + fi.Name, ex); }
                     }
                 }
             }
             catch (Exception ex)
             {
-                _logger.Warning(ex, "Error pruning pending telemetry reports");
+                LogWarning("Error pruning pending telemetry reports", ex);
             }
         }
 
@@ -193,47 +255,10 @@ namespace TeacherToolbox.Services
                 && (int)status != 429;                           // Too Many Requests
         }
 
-        private static string ScrubPii(string input)
+        public override void Dispose()
         {
-            if (string.IsNullOrEmpty(input)) return input;
-            return UserPathRegex.Replace(input, m =>
-            {
-                int slashIdx = m.Value.IndexOf('\\', 3); // skip "C:\"
-                string drive = m.Value.Substring(0, slashIdx + 1);
-                return drive + "Users\\<user>";
-            });
-        }
-
-        private string GetAppVersion()
-        {
-            return typeof(TelemetryService).Assembly.GetName().Version?.ToString() ?? "unknown";
-        }
-
-        public void LogInfo(string message)
-        {
-            _logger.Information(message);
-        }
-
-        public void LogWarning(string message, Exception ex = null)
-        {
-            if (ex == null)
-                _logger.Warning(message);
-            else
-                _logger.Warning(ex, message);
-        }
-
-        public void LogError(string message, Exception ex = null)
-        {
-            if (ex == null)
-                _logger.Error(message);
-            else
-                _logger.Error(ex, message);
-        }
-
-        public void Dispose()
-        {
-            _logger?.Dispose();
             _flushLock?.Dispose();
+            base.Dispose();
         }
 
         public class TelemetryReport
