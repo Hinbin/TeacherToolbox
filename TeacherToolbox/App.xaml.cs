@@ -170,9 +170,6 @@ namespace TeacherToolbox
                 var themeService = Services.GetRequiredService<IThemeService>();
                 var settingsService = Services.GetRequiredService<ISettingsService>();
 
-                // Ensure settings are loaded
-                await settingsService.LoadSettings();
-
                 var savedThemeIndex = settingsService.GetValueOrDefault(ThemeKey, 0);
 
                 // Convert index to ElementTheme

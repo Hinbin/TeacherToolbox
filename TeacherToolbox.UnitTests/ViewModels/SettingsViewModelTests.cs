@@ -37,6 +37,7 @@ namespace TeacherToolbox.UnitTests.ViewModels
             _mockSettingsService.Setup(s => s.GetTheme()).Returns(0); // System
             _mockSettingsService.Setup(s => s.GetTimerSound()).Returns(0);
             _mockSettingsService.Setup(s => s.GetTimerFinishBehavior()).Returns(TimerFinishBehavior.CloseTimer);
+            _mockSettingsService.Setup(s => s.GetTimerRingColor()).Returns("#5b3493");
             _mockUriLauncher.Setup(s => s.LaunchUriAsync(It.IsAny<Uri>())).ReturnsAsync(true);
 
             // Create the view model with the mock services

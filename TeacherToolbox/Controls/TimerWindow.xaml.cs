@@ -93,6 +93,12 @@ namespace TeacherToolbox.Controls
             {
                 timeSelector.IsTabStop = true;
             }
+
+            // Apply saved ring colour immediately so the ring matches settings before first tick
+            if (timerGauge != null)
+            {
+                timerGauge.TrailBrush = new SolidColorBrush(GetSavedRingColor());
+            }
         }
 
         private async Task InitializeWindowAsync(int seconds)
@@ -851,11 +857,21 @@ namespace TeacherToolbox.Controls
                 return;
             }
 
-            if (Application.Current.Resources.TryGetValue("darkPurpleBrush", out object darkPurpleBrush) &&
-                darkPurpleBrush is SolidColorBrush solidColorBrush)
-            {
-                timerGauge.TrailBrush = solidColorBrush;
-            }
+            timerGauge.TrailBrush = new SolidColorBrush(GetSavedRingColor());
+        }
+
+        private Windows.UI.Color GetSavedRingColor()
+        {
+            string hex = _settingsService.GetTimerRingColor();
+            if (string.IsNullOrEmpty(hex))
+                return Windows.UI.Color.FromArgb(255, 0x5b, 0x34, 0x93);
+            hex = hex.TrimStart('#');
+            if (hex.Length == 6)
+                return Windows.UI.Color.FromArgb(255,
+                    Convert.ToByte(hex.Substring(0, 2), 16),
+                    Convert.ToByte(hex.Substring(2, 2), 16),
+                    Convert.ToByte(hex.Substring(4, 2), 16));
+            return Windows.UI.Color.FromArgb(255, 0x5b, 0x34, 0x93);
         }
 
         bool TrySetAcrylicBackdrop(bool useAcrylicThin)
@@ -1272,10 +1288,7 @@ namespace TeacherToolbox.Controls
                 timerText.FontWeight = Microsoft.UI.Text.FontWeights.SemiBold;
 
                 // Change the colour of the trailbrush back
-                if (Application.Current.Resources.TryGetValue("darkPurpleBrush", out object darkPurpleBrush))
-                {
-                    timerGauge.TrailBrush = darkPurpleBrush as SolidColorBrush;
-                }
+                timerGauge.TrailBrush = new SolidColorBrush(GetSavedRingColor());
             }
         }
     }

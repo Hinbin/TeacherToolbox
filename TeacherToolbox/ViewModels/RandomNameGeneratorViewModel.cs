@@ -167,7 +167,12 @@ namespace TeacherToolbox.ViewModels
                 "The colour coded segments in the exam clock are colour blind friendly",
                 "In the exam clock left click and drag to create a segment. Right clicking deletes a segment.",
                 "The interval timer feature is great for managing timed classroom activities and rotations.",
-                "Timer sounds can be customized in the settings to alert students when time is up."
+                "Timer sounds can be customized in the settings to alert students when time is up.",
+                "Set up register reminders so you get a notification when it's time to take attendance — find it in the Register Reminder section.",
+                "You can configure up to 6 register reminders, each with its own time and label so you know which class it's for.",                
+                "If you're not quite ready to take the register, you can snooze a reminder — configure the snooze duration in Register Reminders.",
+                "Customise the timer ring colour in Settings to make it easier to see on your classroom display.",
+                "The timer ring automatically turns orange when time is running low and red when time is up, regardless of your chosen ring colour."
             };
         }
 

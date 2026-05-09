@@ -95,7 +95,31 @@
                     </local:ExpanderItem.ItemContent>
                 </local:ExpanderItem>
 
-                <Border Height="1" Background="{ThemeResource CardStrokeColorDefaultBrush}" />
+                <local:ExpanderItem Header="Timer ring colour" Subheader="Choose the colour of the running timer ring">
+                    <local:ExpanderItem.ItemContent>
+                        <Button
+                            Width="40"
+                            Height="40"
+                            Padding="2"
+                            ToolTipService.ToolTip="Click to change colour">
+                            <Rectangle
+                                Width="32"
+                                Height="32"
+                                RadiusX="3"
+                                RadiusY="3"
+                                Fill="{Binding TimerRingBrush}" />
+                            <Button.Flyout>
+                                <Flyout Placement="Bottom">
+                                    <ColorPicker
+                                        Color="{Binding TimerRingColor, Mode=TwoWay}"
+                                        IsAlphaEnabled="False"
+                                        IsColorPreviewVisible="True"
+                                        IsHexInputVisible="True" />
+                                </Flyout>
+                            </Button.Flyout>
+                        </Button>
+                    </local:ExpanderItem.ItemContent>
+                </local:ExpanderItem>
 
                 <Border Height="1" Background="{ThemeResource CardStrokeColorDefaultBrush}" />
             </StackPanel>

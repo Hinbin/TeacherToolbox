@@ -4,11 +4,13 @@ using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.UI.Xaml.Media;
 using TeacherToolbox.Model;
 using TeacherToolbox.Helpers;
 using TeacherToolbox.Services;
 using Windows.Media.Core;
 using Windows.Media.Playback;
+using Windows.UI;
 using System.IO;
 using System.IO.Compression;
 using System.Diagnostics;
@@ -33,6 +35,8 @@ namespace TeacherToolbox.ViewModels
         private int _selectedTimerSoundIndex;
         private int _selectedTimerFinishBehaviorIndex;
         private List<Helpers.SoundSettings.SoundOption> _soundOptions;
+        private Color _timerRingColor;
+        private SolidColorBrush _timerRingBrush;
 
         // Properties
         public int SelectedThemeIndex
@@ -70,6 +74,21 @@ namespace TeacherToolbox.ViewModels
                 }
             }
         }
+
+        public Color TimerRingColor
+        {
+            get => _timerRingColor;
+            set
+            {
+                if (SetProperty(ref _timerRingColor, value))
+                {
+                    _timerRingBrush.Color = value;
+                    _settingsService.SetTimerRingColor(ColorToHex(value));
+                }
+            }
+        }
+
+        public SolidColorBrush TimerRingBrush => _timerRingBrush;
 
         public List<Helpers.SoundSettings.SoundOption> SoundOptions => _soundOptions;
 
@@ -139,11 +158,15 @@ namespace TeacherToolbox.ViewModels
                 _selectedThemeIndex = _settingsService.GetTheme();
                 _selectedTimerSoundIndex = _settingsService.GetTimerSound();
                 _selectedTimerFinishBehaviorIndex = (int)_settingsService.GetTimerFinishBehavior();
+                _timerRingColor = ParseHexColor(_settingsService.GetTimerRingColor());
+                _timerRingBrush = new SolidColorBrush(_timerRingColor);
 
                 // Notify UI of property changes
                 OnPropertyChanged(nameof(SelectedThemeIndex));
                 OnPropertyChanged(nameof(SelectedTimerSoundIndex));
                 OnPropertyChanged(nameof(SelectedTimerFinishBehaviorIndex));
+                OnPropertyChanged(nameof(TimerRingColor));
+                OnPropertyChanged(nameof(TimerRingBrush));
             }
             catch (Exception ex)
             {
@@ -272,6 +295,22 @@ namespace TeacherToolbox.ViewModels
                 _telemetry.LogError("Failed to save diagnostic logs", ex);
             }
         }
+
+        private static Color ParseHexColor(string hex)
+        {
+            if (string.IsNullOrEmpty(hex))
+                return Color.FromArgb(255, 0x5b, 0x34, 0x93);
+            hex = hex.TrimStart('#');
+            if (hex.Length == 6)
+                return Color.FromArgb(255,
+                    Convert.ToByte(hex.Substring(0, 2), 16),
+                    Convert.ToByte(hex.Substring(2, 2), 16),
+                    Convert.ToByte(hex.Substring(4, 2), 16));
+            return Color.FromArgb(255, 0x5b, 0x34, 0x93);
+        }
+
+        private static string ColorToHex(Color color) =>
+            $"#{color.R:X2}{color.G:X2}{color.B:X2}";
 
         // Clean up resources
         public void Dispose()

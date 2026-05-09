@@ -66,6 +66,17 @@ namespace TeacherToolbox.Services
         /// <param name="behavior">The timer finish behavior to set</param>
         void SetTimerFinishBehavior(Model.TimerFinishBehavior behavior);
 
+        /// <summary>
+        /// Gets the timer ring colour as a hex string (e.g. "#5b3493")
+        /// </summary>
+        string GetTimerRingColor();
+
+        /// <summary>
+        /// Sets the timer ring colour
+        /// </summary>
+        /// <param name="hexColor">Hex colour string, e.g. "#5b3493"</param>
+        void SetTimerRingColor(string hexColor);
+
         #endregion
 
         #region Theme Settings

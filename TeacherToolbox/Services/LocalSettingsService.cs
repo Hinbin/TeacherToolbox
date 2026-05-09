@@ -32,6 +32,7 @@ namespace TeacherToolbox.Services
         private const string SoundEnabledKey = "Clock_SoundEnabled";
         private const string RegisterReminderSettingsKey = "RegisterReminderSettings";
         private const string LastClockWindowSizeKey = "LastClockWindowSize";
+        private const string TimerRingColorKey = "TimerRingColor";
 
         // Private fields
         private string centreText;
@@ -514,6 +515,18 @@ namespace TeacherToolbox.Services
         public void SetTimerFinishBehavior(TimerFinishBehavior behavior)
         {
             SetValue(TimerFinishBehaviorKey, (int)behavior);
+        }
+
+        /// <inheritdoc/>
+        public string GetTimerRingColor()
+        {
+            return GetValueOrDefault(TimerRingColorKey, "#5b3493");
+        }
+
+        /// <inheritdoc/>
+        public void SetTimerRingColor(string hexColor)
+        {
+            SetValue(TimerRingColorKey, hexColor);
         }
 
         #endregion
