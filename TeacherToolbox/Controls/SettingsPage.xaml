@@ -25,32 +25,51 @@
     </Page.Resources>
 
     <ScrollViewer>
-        <StackPanel Margin="20,20,20,20" Spacing="8">
+        <StackPanel Margin="16" Spacing="8">
             <!--  Page Header  -->
             <TextBlock
-                Margin="0,10,0,0"
                 Style="{StaticResource TitleTextBlockStyle}"
                 Text="Settings" />
 
-            <!--  Feedback section  -->
-            <local:ExpanderItem Header="Feedback" Subheader="Report bugs and suggest improvements by clicking on these buttons">
-                <local:ExpanderItem.ItemContent>
-                    <StackPanel Spacing="8">
+            <!--  Feedback Section  -->
+            <TextBlock
+                Margin="0,16,0,0"
+                Style="{StaticResource SubtitleTextBlockStyle}"
+                Text="Feedback" />
+
+            <StackPanel
+                Margin="0,8"
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                CornerRadius="8">
+
+                <local:ExpanderItem Header="Send Feedback" Subheader="Report bugs or request new features">
+                    <local:ExpanderItem.ItemContent>
                         <Button
                             x:Name="SendFeedbackButton"
                             Command="{Binding SendFeedbackCommand}"
                             Content="Send Feedback" />
+                    </local:ExpanderItem.ItemContent>
+                </local:ExpanderItem>
+
+                <Border Height="1" Background="{ThemeResource CardStrokeColorDefaultBrush}" />
+
+                <local:ExpanderItem Header="View Feedback" Subheader="Browse reported bugs and requests">
+                    <local:ExpanderItem.ItemContent>
                         <Button
                             x:Name="ViewFeedbackButton"
                             Command="{Binding ViewFeedbackCommand}"
                             Content="View Feedback" />
-                    </StackPanel>
-                </local:ExpanderItem.ItemContent>
-            </local:ExpanderItem>
+                    </local:ExpanderItem.ItemContent>
+                </local:ExpanderItem>
+
+                <Border Height="1" Background="{ThemeResource CardStrokeColorDefaultBrush}" />
+            </StackPanel>
 
             <!--  Timer Section  -->
             <TextBlock
-                Margin="0,10,0,0"
+                Margin="0,16,0,0"
                 Style="{StaticResource SubtitleTextBlockStyle}"
                 Text="Timer" />
 
@@ -60,7 +79,7 @@
                 Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                 BorderThickness="1"
-                CornerRadius="4">
+                CornerRadius="8">
 
                 <!--  Timer sound Setting  -->
                 <local:ExpanderItem Header="Timer sound" Subheader="Select the sound when the timer is finished">
@@ -73,15 +92,20 @@
                             SelectedIndex="{Binding SelectedTimerSoundIndex, Mode=TwoWay}" />
                     </local:ExpanderItem.ItemContent>
                 </local:ExpanderItem>
+
+                <Border Height="1" Background="{ThemeResource CardStrokeColorDefaultBrush}" />
+
                 <local:ExpanderItem Header="Test Timer Sound" Subheader="Press the button to test the sound when the timer is finished">
                     <local:ExpanderItem.ItemContent>
                         <Button
                             x:Name="TimerSoundButton"
-                            Margin="0,24,0,0"
                             Command="{Binding TestSoundCommand}"
                             Content="Test Sound" />
                     </local:ExpanderItem.ItemContent>
                 </local:ExpanderItem>
+
+                <Border Height="1" Background="{ThemeResource CardStrokeColorDefaultBrush}" />
+
                 <local:ExpanderItem Header="Timer finish behavior" Subheader="Select what happens when the timer finishes">
                     <local:ExpanderItem.ItemContent>
                         <ComboBox
@@ -94,6 +118,8 @@
                         </ComboBox>
                     </local:ExpanderItem.ItemContent>
                 </local:ExpanderItem>
+
+                <Border Height="1" Background="{ThemeResource CardStrokeColorDefaultBrush}" />
 
                 <local:ExpanderItem Header="Timer ring colour" Subheader="Choose the colour of the running timer ring">
                     <local:ExpanderItem.ItemContent>
@@ -126,7 +152,7 @@
 
             <!--  Appearance Section  -->
             <TextBlock
-                Margin="0,24,0,0"
+                Margin="0,16,0,0"
                 Style="{StaticResource SubtitleTextBlockStyle}"
                 Text="Appearance" />
 
@@ -136,7 +162,7 @@
                 Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                 BorderThickness="1"
-                CornerRadius="4">
+                CornerRadius="8">
 
                 <!--  App Theme Setting  -->
                 <local:ExpanderItem Header="App theme" Subheader="Select which app theme to display">
@@ -155,9 +181,10 @@
                 <Border Height="1" Background="{ThemeResource CardStrokeColorDefaultBrush}" />
 
             </StackPanel>
+
             <!--  About Section  -->
             <TextBlock
-                Margin="0,24,0,0"
+                Margin="0,16,0,0"
                 Style="{StaticResource SubtitleTextBlockStyle}"
                 Text="About" />
 
@@ -166,7 +193,7 @@
                 Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                 BorderThickness="1"
-                CornerRadius="4">
+                CornerRadius="8">
 
                 <local:ExpanderItem Header="About">
                     <local:ExpanderItem.ItemContent>
@@ -184,6 +211,8 @@
                         </StackPanel>
                     </local:ExpanderItem.ItemContent>
                 </local:ExpanderItem>
+
+                <Border Height="1" Background="{ThemeResource CardStrokeColorDefaultBrush}" />
             </StackPanel>
 
         </StackPanel>
