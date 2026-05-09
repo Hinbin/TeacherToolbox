@@ -10,7 +10,7 @@
     mc:Ignorable="d">
 
     <ScrollViewer>
-        <StackPanel Margin="12,16,12,12" Spacing="8">
+        <StackPanel Margin="12,44,12,12" Spacing="8">
 
             <StackPanel
                 Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
