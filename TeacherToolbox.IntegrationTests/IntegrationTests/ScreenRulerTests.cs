@@ -86,6 +86,22 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
                 "Ruler should keep its horizontal position locked");
         }
 
+        [Test]
+        public void ScreenRuler_CanBeResizedVerticallyFromHandle()
+        {
+            OpenScreenRulerPage();
+            var resizeHandle = _rulerWindow!.FindFirstDescendant(cf => cf.ByAutomationId("ScreenRulerResizeHandle"));
+            Assert.That(resizeHandle, Is.Not.Null, "Screen ruler resize handle should be present");
+
+            var initialBounds = _rulerWindow.BoundingRectangle;
+            DragElement(resizeHandle, 0, 120);
+
+            WaitUntilCondition(
+                () => _rulerWindow!.BoundingRectangle.Height > initialBounds.Height + 40,
+                "Ruler should grow vertically when the resize handle is dragged down",
+                TimeSpan.FromSeconds(8));
+        }
+
         private void OpenScreenRulerPage()
         {
             NavigateToPage("Screen Ruler");
@@ -109,6 +125,19 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
             var bounds = window.BoundingRectangle;
             var startPoint = new System.Drawing.Point(bounds.X + 100, bounds.Y + bounds.Height / 2);
 
+            DragFromPoint(startPoint, offsetX, offsetY);
+        }
+
+        private static void DragElement(AutomationElement element, int offsetX, int offsetY)
+        {
+            var bounds = element.BoundingRectangle;
+            var startPoint = new System.Drawing.Point(bounds.X + bounds.Width / 2, bounds.Y + bounds.Height / 2);
+
+            DragFromPoint(startPoint, offsetX, offsetY);
+        }
+
+        private static void DragFromPoint(System.Drawing.Point startPoint, int offsetX, int offsetY)
+        {
             Mouse.MoveTo(startPoint);
             Wait.UntilInputIsProcessed();
             Mouse.Down();

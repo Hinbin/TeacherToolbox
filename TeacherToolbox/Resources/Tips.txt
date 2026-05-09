@@ -4,6 +4,7 @@ Pressing the windows key and a number will start a timer for that number of minu
 The Random Name Generator remembers what classes you have for each day of the week.
 In the exam clock, you can paint on segments to the clock to assist students with timing each question.
 In the exam clock, you can adjust the current time by clicking on the digital time.
+Drag the handle at the bottom of the screen ruler to make it taller and obscure more of the screen.
 
 
 //TODO

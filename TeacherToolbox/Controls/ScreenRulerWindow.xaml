@@ -43,6 +43,45 @@
                 Foreground="Black"
                 Glyph="&#xE711;" />
         </Button>
+
+        <Border
+            x:Name="resizeHandle"
+            Grid.ColumnSpan="2"
+            Width="96"
+            Height="24"
+            Margin="0,0,0,4"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Bottom"
+            AutomationProperties.AutomationId="ScreenRulerResizeHandle"
+            AutomationProperties.Name="Screen Ruler Resize Handle"
+            Background="#FF3F2468"
+            BorderBrush="Black"
+            BorderThickness="1"
+            CornerRadius="4"
+            PointerMoved="ResizeHandle_PointerMoved"
+            PointerPressed="ResizeHandle_PointerPressed"
+            PointerReleased="ResizeHandle_PointerReleased">
+            <StackPanel
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Spacing="3">
+                <Rectangle
+                    Width="44"
+                    Height="2"
+                    Fill="White"
+                    Opacity="0.85" />
+                <Rectangle
+                    Width="32"
+                    Height="2"
+                    Fill="White"
+                    Opacity="0.85" />
+                <Rectangle
+                    Width="20"
+                    Height="2"
+                    Fill="White"
+                    Opacity="0.85" />
+            </StackPanel>
+        </Border>
     </Grid>
 
 </winex:WindowEx>
