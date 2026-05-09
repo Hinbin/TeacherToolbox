@@ -30,6 +30,8 @@ namespace TeacherToolbox.Services
         private const string HasShownClockInstructionsKey = "HasShownClockInstructions";
         private const string MockModeKey = "Clock_MockMode";
         private const string SoundEnabledKey = "Clock_SoundEnabled";
+        private const string RegisterReminderSettingsKey = "RegisterReminderSettings";
+        private const string LastClockWindowSizeKey = "LastClockWindowSize";
 
         // Private fields
         private string centreText;
@@ -44,6 +46,8 @@ namespace TeacherToolbox.Services
         private bool hasShownClockInstructions;
         private bool mockMode;
         private bool soundEnabled;
+        private Model.RegisterReminderSettings registerReminderSettings;
+        private WindowPosition lastClockWindowSize;
 
         protected virtual string FilePath => filePath;
 
@@ -60,6 +64,8 @@ namespace TeacherToolbox.Services
                 "TeacherToolbox", "settings.json");
             mockMode = false;
             soundEnabled = false;
+            registerReminderSettings = new Model.RegisterReminderSettings();
+            lastClockWindowSize = new WindowPosition(0, 0, 0, 0, 0);
 
             Directory.CreateDirectory(Path.GetDirectoryName(filePath));
         }
@@ -142,7 +148,9 @@ namespace TeacherToolbox.Services
                         { TimerFinishBehaviorKey, (int)GetTimerFinishBehavior() },
                         { ThemeKey, GetTheme() },
                         { MockModeKey, mockMode },
-                        { SoundEnabledKey, soundEnabled }
+                        { SoundEnabledKey, soundEnabled },
+                        { RegisterReminderSettingsKey, registerReminderSettings ?? new Model.RegisterReminderSettings() },
+                        { LastClockWindowSizeKey, lastClockWindowSize }
                     };
 
                     foreach (var setting in settings)
@@ -309,6 +317,27 @@ namespace TeacherToolbox.Services
                                         soundEnabled = kvp.Value.GetString() == "true";
                                     }
                                         break;
+                                    case RegisterReminderSettingsKey:
+                                        try
+                                        {
+                                            registerReminderSettings = kvp.Value.Deserialize<Model.RegisterReminderSettings>(options)
+                                                ?? new Model.RegisterReminderSettings();
+                                        }
+                                        catch
+                                        {
+                                            registerReminderSettings = new Model.RegisterReminderSettings();
+                                        }
+                                        break;
+                                    case LastClockWindowSizeKey:
+                                        try
+                                        {
+                                            lastClockWindowSize = kvp.Value.Deserialize<WindowPosition>(options);
+                                        }
+                                        catch
+                                        {
+                                            lastClockWindowSize = new WindowPosition(0, 0, 0, 0, 0);
+                                        }
+                                        break;
                                 // Handle any other custom settings
                                 default:
                                     settings[kvp.Key] = kvp.Value;
@@ -414,6 +443,27 @@ namespace TeacherToolbox.Services
                                     break;
                                 case HasShownClockInstructionsKey:
                                     hasShownClockInstructions = kvp.Value.GetBoolean();
+                                    break;
+                                case RegisterReminderSettingsKey:
+                                    try
+                                    {
+                                        registerReminderSettings = kvp.Value.Deserialize<Model.RegisterReminderSettings>(options)
+                                            ?? new Model.RegisterReminderSettings();
+                                    }
+                                    catch
+                                    {
+                                        registerReminderSettings = new Model.RegisterReminderSettings();
+                                    }
+                                    break;
+                                case LastClockWindowSizeKey:
+                                    try
+                                    {
+                                        lastClockWindowSize = kvp.Value.Deserialize<WindowPosition>(options);
+                                    }
+                                    catch
+                                    {
+                                        lastClockWindowSize = new WindowPosition(0, 0, 0, 0, 0);
+                                    }
                                     break;
                                 default:
                                     settings[kvp.Key] = kvp.Value;
@@ -617,6 +667,31 @@ namespace TeacherToolbox.Services
         public void SetSoundEnabled(bool value)
         {
             SetAndSave(ref soundEnabled, value);
+        }
+
+        public WindowPosition GetLastClockWindowSize()
+        {
+            return lastClockWindowSize;
+        }
+
+        public void SetLastClockWindowSize(WindowPosition size)
+        {
+            SetAndSave(ref lastClockWindowSize, size);
+        }
+
+        #endregion
+
+        #region Register Reminder Settings
+
+        public Model.RegisterReminderSettings GetRegisterReminderSettings()
+        {
+            return registerReminderSettings ?? new Model.RegisterReminderSettings();
+        }
+
+        public void SaveRegisterReminderSettings(Model.RegisterReminderSettings settings)
+        {
+            registerReminderSettings = settings ?? new Model.RegisterReminderSettings();
+            SaveSettings();
         }
 
         #endregion

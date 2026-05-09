@@ -1,0 +1,61 @@
+using System;
+using System.Collections.Generic;
+using TeacherToolbox.Model;
+
+namespace TeacherToolbox.Services
+{
+    /// <summary>
+    /// Pure, threading-free scheduling logic — separated so it can be unit-tested.
+    /// </summary>
+    internal static class RegisterReminderLogic
+    {
+        internal const int DueWindowSeconds = 90;
+
+        internal static string MakeFiredKey(Guid id, DateTime date) =>
+            $"{id}:{date:yyyy-MM-dd}";
+
+        internal static bool HasFiredToday(Guid id, DateTime now, HashSet<string> firedToday) =>
+            firedToday.Contains(MakeFiredKey(id, now));
+
+        internal static List<RegisterReminder> GetDueReminders(
+            DateTime now,
+            RegisterReminderSettings settings,
+            HashSet<string> firedToday)
+        {
+            var result = new List<RegisterReminder>();
+            if (!settings.MasterEnabled) return result;
+
+            foreach (var r in settings.Reminders)
+            {
+                if (!r.IsEnabled) continue;
+                if (HasFiredToday(r.Id, now, firedToday)) continue;
+
+                var slotTime = now.Date.AddHours(r.Hour).AddMinutes(r.Minute);
+                if (Math.Abs((now - slotTime).TotalSeconds) <= DueWindowSeconds)
+                    result.Add(r);
+            }
+            return result;
+        }
+
+        internal static TimeSpan ComputeDelayToNextDue(
+            DateTime now,
+            RegisterReminderSettings settings,
+            HashSet<string> firedToday)
+        {
+            if (!settings.MasterEnabled) return TimeSpan.MaxValue;
+
+            TimeSpan shortest = TimeSpan.MaxValue;
+            foreach (var r in settings.Reminders)
+            {
+                if (!r.IsEnabled || HasFiredToday(r.Id, now, firedToday)) continue;
+
+                var slotTime = now.Date.AddHours(r.Hour).AddMinutes(r.Minute);
+                if (slotTime <= now) continue;
+
+                TimeSpan delay = slotTime - now;
+                if (delay < shortest) shortest = delay;
+            }
+            return shortest;
+        }
+    }
+}

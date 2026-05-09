@@ -38,6 +38,15 @@ namespace TeacherToolbox
         private readonly IThemeService _themeService;
         private readonly ITelemetryService _telemetry;
         private readonly IShortcutWatcherService _shortcutWatcher;
+        private readonly IRegisterReminderService _registerReminder;
+
+        // Active toast window — only one at a time
+        private RegisterReminderToastWindow _reminderToast;
+
+        // Window size before expanding for full-height pages
+        private Windows.Graphics.SizeInt32? _normalWindowSize;
+        // Track current page so we can detect when the user leaves the Clock page
+        private Type _currentPageType;
 
         private readonly OverlappedPresenter _presenter;
         private WindowDragHelper dragHelper;
@@ -51,7 +60,8 @@ namespace TeacherToolbox
             ISleepPreventer sleepPreventer,
             IThemeService themeService,
             ITelemetryService telemetry,
-            IShortcutWatcherService shortcutWatcher)
+            IShortcutWatcherService shortcutWatcher,
+            IRegisterReminderService registerReminder)
         {
             this.InitializeComponent();
 
@@ -60,6 +70,7 @@ namespace TeacherToolbox
             _themeService = themeService;
             _telemetry = telemetry;
             _shortcutWatcher = shortcutWatcher;
+            _registerReminder = registerReminder;
 
             _presenter = this.AppWindow.Presenter as OverlappedPresenter;
 
@@ -85,6 +96,18 @@ namespace TeacherToolbox
             catch (Exception e)
             {
                 _telemetry.LogWarning("Failed to start ShortcutWatcher from MainWindow ctor", e);
+            }
+
+            _registerReminder.ReminderDue += OnReminderDue;
+            _registerReminder.UpdateSettings(_settingsService.GetRegisterReminderSettings());
+
+            try
+            {
+                _ = _registerReminder.StartAsync();
+            }
+            catch (Exception e)
+            {
+                _telemetry.LogWarning("Failed to start RegisterReminderScheduler from MainWindow ctor", e);
             }
 
             this.Closed += MainWindow_Closed;
@@ -156,6 +179,97 @@ namespace TeacherToolbox
                 _telemetry.LogError("Error restoring window position", ex);
                 // Fall back to default size
                 ApplyDefaultWindowBounds();
+            }
+        }
+
+        private static bool IsFullHeightPage(Type pageType) =>
+            pageType == typeof(RegisterReminderPage) || pageType == typeof(SettingsPage) || pageType == typeof(Clock);
+
+        private void AdjustWindowHeightForPage(Type pageType)
+        {
+            bool needsExpansion = pageType != null && IsFullHeightPage(pageType);
+
+            if (needsExpansion && _normalWindowSize == null)
+            {
+                _normalWindowSize = this.AppWindow.Size;
+
+                if (pageType == typeof(Clock))
+                {
+                    ApplyClockWindowSize();
+                }
+                else
+                {
+                    double scale = Content?.XamlRoot?.RasterizationScale ?? 1.0;
+                    int expandedHeight = (int)(600 * scale);
+                    var pos = this.AppWindow.Position;
+                    this.AppWindow.MoveAndResize(new Windows.Graphics.RectInt32(
+                        pos.X, pos.Y, _normalWindowSize.Value.Width, expandedHeight));
+                }
+            }
+            else if (!needsExpansion && _normalWindowSize != null)
+            {
+                var size = _normalWindowSize.Value;
+                _normalWindowSize = null;
+                var pos = this.AppWindow.Position;
+                this.AppWindow.MoveAndResize(new Windows.Graphics.RectInt32(
+                    pos.X, pos.Y, size.Width, size.Height));
+            }
+        }
+
+        private void ApplyClockWindowSize()
+        {
+            try
+            {
+                var savedSize = _settingsService.GetLastClockWindowSize();
+                double scale = Content?.XamlRoot?.RasterizationScale ?? 1.0;
+
+                int targetWidth, targetHeight;
+                if (!savedSize.IsEmpty)
+                {
+                    targetWidth = (int)(savedSize.Width * scale);
+                    targetHeight = (int)(savedSize.Height * scale);
+                }
+                else
+                {
+                    targetWidth = (int)(700 * scale);
+                    targetHeight = (int)(500 * scale);
+                }
+
+                targetWidth = Math.Max(targetWidth, (int)(400 * scale));
+                targetHeight = Math.Max(targetHeight, (int)(300 * scale));
+
+                var displayArea = Microsoft.UI.Windowing.DisplayArea.GetFromWindowId(
+                    this.AppWindow.Id, Microsoft.UI.Windowing.DisplayAreaFallback.Primary);
+                var workArea = displayArea.WorkArea;
+
+                targetWidth = Math.Min(targetWidth, workArea.Width);
+                targetHeight = Math.Min(targetHeight, workArea.Height);
+
+                var pos = this.AppWindow.Position;
+                int clampedX = Math.Max(workArea.X, Math.Min(pos.X, workArea.X + workArea.Width - targetWidth));
+                int clampedY = Math.Max(workArea.Y, Math.Min(pos.Y, workArea.Y + workArea.Height - targetHeight));
+
+                this.AppWindow.MoveAndResize(new Windows.Graphics.RectInt32(
+                    clampedX, clampedY, targetWidth, targetHeight));
+            }
+            catch (Exception ex)
+            {
+                _telemetry.LogWarning("Error applying clock window size", ex);
+            }
+        }
+
+        private void SaveClockWindowSize()
+        {
+            try
+            {
+                var size = this.AppWindow.Size;
+                double scale = Content?.XamlRoot?.RasterizationScale ?? 1.0;
+                _settingsService.SetLastClockWindowSize(new Model.WindowPosition(
+                    0, 0, size.Width / scale, size.Height / scale, 0));
+            }
+            catch (Exception ex)
+            {
+                _telemetry.LogError("Error saving clock window size", ex);
             }
         }
 
@@ -238,7 +352,7 @@ namespace TeacherToolbox
             try
             {
                 var position = this.AppWindow.Position;
-                var size = this.AppWindow.Size;
+                var size = _normalWindowSize ?? this.AppWindow.Size;
                 var displayId = Microsoft.UI.Windowing.DisplayArea.GetFromWindowId(
                     this.AppWindow.Id,
                     Microsoft.UI.Windowing.DisplayAreaFallback.Primary).DisplayId;
@@ -273,16 +387,48 @@ namespace TeacherToolbox
         {
             try
             {
+                if (_currentPageType == typeof(Clock))
+                    SaveClockWindowSize();
+
                 // Save window position before closing
                 SaveWindowPosition();
 
                 _shortcutWatcher.ShortcutPressed -= OnShortcutPressed;
                 _shortcutWatcher.StopAsync().GetAwaiter().GetResult();
+
+                _registerReminder.ReminderDue -= OnReminderDue;
+                _registerReminder.StopAsync().GetAwaiter().GetResult();
+
+                _reminderToast?.Close();
+                _reminderToast = null;
+
                 _sleepPreventer?.Dispose();
             }
             catch (Exception ex)
             {
                 _telemetry.LogError("Error during MainWindow cleanup", ex);
+            }
+        }
+
+        private void OnReminderDue(object sender, Model.RegisterReminder reminder)
+        {
+            try
+            {
+                // Bring existing toast forward rather than spawning duplicates
+                if (_reminderToast != null)
+                {
+                    _reminderToast.Activate();
+                    return;
+                }
+
+                var settings = _settingsService.GetRegisterReminderSettings();
+                _reminderToast = new RegisterReminderToastWindow(reminder, settings, _registerReminder, _themeService);
+                _reminderToast.Closed += (_, _) => _reminderToast = null;
+                _reminderToast.Activate();
+            }
+            catch (Exception ex)
+            {
+                _telemetry.LogError("Error showing register reminder toast", ex);
             }
         }
 
@@ -344,6 +490,13 @@ namespace TeacherToolbox
                             .OfType<NavigationViewItem>()
                             .First(i => i.Tag.Equals(ContentFrame.SourcePageType.FullName.ToString()));
             }
+
+            if (_currentPageType == typeof(Clock) && ContentFrame.SourcePageType != typeof(Clock))
+                SaveClockWindowSize();
+
+            _currentPageType = ContentFrame.SourcePageType;
+
+            AdjustWindowHeightForPage(ContentFrame.SourcePageType);
 
             dragHelper.OnNavigate();
 

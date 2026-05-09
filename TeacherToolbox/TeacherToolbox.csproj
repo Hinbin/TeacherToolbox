@@ -67,6 +67,12 @@
     <Page Update="Controls\TimerWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Update="Controls\RegisterReminderToastWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Update="Controls\RegisterReminderPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
   <ItemGroup>
     <Page Update="Controls\RandomNameGeneratorPage.xaml">
