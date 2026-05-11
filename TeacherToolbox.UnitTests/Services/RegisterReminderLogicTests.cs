@@ -9,18 +9,20 @@ namespace TeacherToolbox.UnitTests.Services;
 [TestFixture]
 public class RegisterReminderLogicTests
 {
-    private static RegisterReminder MakeReminder(int hour, int minute, bool enabled = true, string label = "") =>
-        new() { Id = Guid.NewGuid(), Hour = hour, Minute = minute, IsEnabled = enabled, Label = label };
+    private static RegisterReminder MakeReminder(
+        int hour,
+        int minute,
+        string label = "",
+        ReminderDays days = ReminderDays.Weekdays) =>
+        new() { Id = Guid.NewGuid(), Hour = hour, Minute = minute, Label = label, Days = days };
 
     private static RegisterReminderSettings MakeSettings(
         bool masterEnabled = true,
-        bool weekdaysOnly = false,
         int snoozeMinutes = 3,
         List<RegisterReminder> reminders = null) =>
         new()
         {
             MasterEnabled = masterEnabled,
-            WeekdaysOnly = weekdaysOnly,
             SnoozeMinutes = snoozeMinutes,
             Reminders = reminders ?? new List<RegisterReminder>()
         };
@@ -93,10 +95,10 @@ public class RegisterReminderLogicTests
     }
 
     [Test]
-    public void GetDueReminders_DisabledSlot_ReturnsEmpty()
+    public void GetDueReminders_NoDaysSelected_ReturnsEmpty()
     {
         var now = new DateTime(2025, 5, 7, 9, 0, 0);
-        var reminder = MakeReminder(9, 0, enabled: false);
+        var reminder = MakeReminder(9, 0, days: ReminderDays.None);
         var settings = MakeSettings(reminders: new List<RegisterReminder> { reminder });
 
         var result = RegisterReminderLogic.GetDueReminders(now, settings, new HashSet<string>());
@@ -117,6 +119,43 @@ public class RegisterReminderLogicTests
 
         Assert.That(result, Has.Count.EqualTo(1));
         Assert.That(result[0].Id, Is.EqualTo(r2.Id));
+    }
+
+    [Test]
+    public void GetDueReminders_WhenTodayNotSelected_ReturnsEmpty()
+    {
+        var now = new DateTime(2025, 5, 7, 9, 0, 0); // Wednesday
+        var reminder = MakeReminder(9, 0, days: ReminderDays.Thursday);
+        var settings = MakeSettings(reminders: new List<RegisterReminder> { reminder });
+
+        var result = RegisterReminderLogic.GetDueReminders(now, settings, new HashSet<string>());
+
+        Assert.That(result, Is.Empty);
+    }
+
+    [Test]
+    public void GetDueReminders_WhenNoDaysSelected_ReturnsEmpty()
+    {
+        var now = new DateTime(2025, 5, 7, 9, 0, 0); // Wednesday
+        var reminder = MakeReminder(9, 0, days: ReminderDays.None);
+        var settings = MakeSettings(reminders: new List<RegisterReminder> { reminder });
+
+        var result = RegisterReminderLogic.GetDueReminders(now, settings, new HashSet<string>());
+
+        Assert.That(result, Is.Empty);
+    }
+
+    [Test]
+    public void GetDueReminders_WhenTodaySelected_ReturnsDueReminder()
+    {
+        var now = new DateTime(2025, 5, 7, 9, 0, 0); // Wednesday
+        var reminder = MakeReminder(9, 0, days: ReminderDays.Wednesday | ReminderDays.Friday);
+        var settings = MakeSettings(reminders: new List<RegisterReminder> { reminder });
+
+        var result = RegisterReminderLogic.GetDueReminders(now, settings, new HashSet<string>());
+
+        Assert.That(result, Has.Count.EqualTo(1));
+        Assert.That(result[0].Id, Is.EqualTo(reminder.Id));
     }
 
     // ── ComputeDelayToNextDue ────────────────────────────────────────────────
@@ -163,7 +202,7 @@ public class RegisterReminderLogicTests
     }
 
     [Test]
-    public void ComputeDelayToNextDue_AllSlotsPast_ReturnsMaxValue()
+    public void ComputeDelayToNextDue_AllSlotsPastToday_ReturnsNextFutureSlot()
     {
         var now = new DateTime(2025, 5, 7, 15, 0, 0);
         var settings = MakeSettings(reminders: new List<RegisterReminder>
@@ -175,7 +214,19 @@ public class RegisterReminderLogicTests
 
         var delay = RegisterReminderLogic.ComputeDelayToNextDue(now, settings, new HashSet<string>());
 
-        Assert.That(delay, Is.EqualTo(TimeSpan.MaxValue));
+        Assert.That(delay, Is.EqualTo(TimeSpan.FromHours(18)));
+    }
+
+    [Test]
+    public void ComputeDelayToNextDue_WhenNextSelectedDayIsTomorrow_ReturnsDelayToTomorrow()
+    {
+        var now = new DateTime(2025, 5, 7, 15, 0, 0); // Wednesday
+        var reminder = MakeReminder(9, 0, days: ReminderDays.Thursday);
+        var settings = MakeSettings(reminders: new List<RegisterReminder> { reminder });
+
+        var delay = RegisterReminderLogic.ComputeDelayToNextDue(now, settings, new HashSet<string>());
+
+        Assert.That(delay, Is.EqualTo(TimeSpan.FromHours(18)));
     }
 
     // ── MakeFiredKey ─────────────────────────────────────────────────────────

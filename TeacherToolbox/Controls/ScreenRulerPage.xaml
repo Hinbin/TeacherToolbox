@@ -6,45 +6,114 @@
     xmlns:local="using:TeacherToolbox.Controls"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     AutomationProperties.AutomationId="ScreenRulerPage"
-    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
+    Background="{ThemeResource LayerFillColorDefaultBrush}"
     mc:Ignorable="d">
 
-    <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
-        <Viewbox>
-            <Grid Width="200">
-                <!--  Set the Grid width inside the Viewbox  -->
-                <!--  Define rows for each button  -->
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
+    <Grid>
+        <TeachingTip
+            x:Name="RulerOnboardingTip"
+            Title="Screen Ruler"
+            AutomationProperties.AutomationId="RulerOnboardingTip"
+            CloseButtonContent="Got it!"
+            IsLightDismissEnabled="True"
+            PlacementMargin="20"
+            PreferredPlacement="Bottom"
+            Subtitle="The ruler floats over all your windows. Drag it anywhere on screen to measure or highlight a section." />
 
-                <!--  Set a standard width for each button and remove individual paddings and margins if desired  -->
+        <ScrollViewer>
+        <StackPanel Margin="12,44,12,12" Spacing="8">
+
+            <StackPanel
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                CornerRadius="8">
+
                 <Button
                     x:Name="CloseRulerWindowButton"
-                    Grid.Row="0"
-                    Width="150"
-                    HorizontalAlignment="Center"
+                    HorizontalAlignment="Stretch"
+                    AutomationProperties.AutomationId="CloseRulerWindowButton"
+                    AutomationProperties.Name="Close Screen Ruler"
+                    Background="Transparent"
+                    BorderThickness="0"
                     Click="Close_Ruler_Window_Click"
-                    Content="Close Screen Ruler" />
+                    CornerRadius="8,8,0,0"
+                    Padding="14,10">
+                    <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                        <FontIcon
+                            VerticalAlignment="Center"
+                            FontFamily="Segoe MDL2 Assets"
+                            FontSize="16"
+                            Glyph="&#xE711;" />
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Close Screen Ruler" />
+                            <TextBlock
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Text="Hide the ruler overlay" />
+                        </StackPanel>
+                    </StackPanel>
+                </Button>
+
                 <Button
                     x:Name="OpenRulerWindowButton"
-                    Grid.Row="1"
-                    Width="150"
-                    HorizontalAlignment="Center"
+                    HorizontalAlignment="Stretch"
+                    AutomationProperties.AutomationId="OpenRulerWindowButton"
+                    AutomationProperties.Name="Open Screen Ruler"
+                    Background="Transparent"
+                    BorderThickness="0"
                     Click="Open_Ruler_Window_Click"
-                    Content="Open Screen Ruler"
-                    Visibility="Collapsed" />
+                    CornerRadius="8,8,0,0"
+                    Padding="14,10"
+                    Visibility="Collapsed">
+                    <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                        <FontIcon
+                            VerticalAlignment="Center"
+                            FontFamily="Segoe MDL2 Assets"
+                            FontSize="16"
+                            Glyph="&#xE75B;" />
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Open Screen Ruler" />
+                            <TextBlock
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Text="Show the ruler overlay" />
+                        </StackPanel>
+                    </StackPanel>
+                </Button>
+
+                <Border Height="1" Background="{ThemeResource CardStrokeColorDefaultBrush}" />
+
                 <Button
                     x:Name="ChangeDisplayButton"
-                    Grid.Row="2"
-                    Width="150"
-                    HorizontalAlignment="Center"
+                    HorizontalAlignment="Stretch"
+                    AutomationProperties.AutomationId="ChangeDisplayButton"
+                    AutomationProperties.Name="Change Display"
+                    Background="Transparent"
+                    BorderThickness="0"
                     Click="ChangeDisplayButton_Click"
-                    Content="Change Display"
-                    Visibility="Collapsed" />
-            </Grid>
-        </Viewbox>
+                    CornerRadius="0,0,8,8"
+                    Padding="14,10"
+                    Visibility="Collapsed">
+                    <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                        <FontIcon
+                            VerticalAlignment="Center"
+                            FontFamily="Segoe MDL2 Assets"
+                            FontSize="16"
+                            Glyph="&#xE78B;" />
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Change Display" />
+                            <TextBlock
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Text="Move the ruler to the next monitor" />
+                        </StackPanel>
+                    </StackPanel>
+                </Button>
+
+            </StackPanel>
+
+        </StackPanel>
+        </ScrollViewer>
     </Grid>
 </local:AutomatedPage>

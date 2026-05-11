@@ -16,35 +16,36 @@ namespace TeacherToolbox.ViewModels
     public sealed class ReminderSlotViewModel : ObservableObject
     {
         private readonly Action _onChanged;
-        private bool _isEnabled;
         private int _hour;
         private int _minute;
         private string _label;
+        private bool _monday;
+        private bool _tuesday;
+        private bool _wednesday;
+        private bool _thursday;
+        private bool _friday;
+        private bool _saturday;
+        private bool _sunday;
 
         public ReminderSlotViewModel(RegisterReminder model, Action onChanged)
         {
             Model = model;
             _onChanged = onChanged;
-            _isEnabled = model.IsEnabled;
             _hour = model.Hour;
             _minute = model.Minute;
             _label = model.Label ?? "";
+            var days = model.Days;
+            _monday = days.HasFlag(ReminderDays.Monday);
+            _tuesday = days.HasFlag(ReminderDays.Tuesday);
+            _wednesday = days.HasFlag(ReminderDays.Wednesday);
+            _thursday = days.HasFlag(ReminderDays.Thursday);
+            _friday = days.HasFlag(ReminderDays.Friday);
+            _saturday = days.HasFlag(ReminderDays.Saturday);
+            _sunday = days.HasFlag(ReminderDays.Sunday);
+            Model.Days = days;
         }
 
         public RegisterReminder Model { get; }
-
-        public bool IsEnabled
-        {
-            get => _isEnabled;
-            set
-            {
-                if (SetProperty(ref _isEnabled, value))
-                {
-                    Model.IsEnabled = value;
-                    _onChanged();
-                }
-            }
-        }
 
         public int Hour
         {
@@ -85,11 +86,63 @@ namespace TeacherToolbox.ViewModels
             }
         }
 
+        public bool Monday
+        {
+            get => _monday;
+            set => SetDay(ref _monday, value, ReminderDays.Monday);
+        }
+
+        public bool Tuesday
+        {
+            get => _tuesday;
+            set => SetDay(ref _tuesday, value, ReminderDays.Tuesday);
+        }
+
+        public bool Wednesday
+        {
+            get => _wednesday;
+            set => SetDay(ref _wednesday, value, ReminderDays.Wednesday);
+        }
+
+        public bool Thursday
+        {
+            get => _thursday;
+            set => SetDay(ref _thursday, value, ReminderDays.Thursday);
+        }
+
+        public bool Friday
+        {
+            get => _friday;
+            set => SetDay(ref _friday, value, ReminderDays.Friday);
+        }
+
+        public bool Saturday
+        {
+            get => _saturday;
+            set => SetDay(ref _saturday, value, ReminderDays.Saturday);
+        }
+
+        public bool Sunday
+        {
+            get => _sunday;
+            set => SetDay(ref _sunday, value, ReminderDays.Sunday);
+        }
+
         /// <summary>Hours 0–23 for the ComboBox.</summary>
         public List<int> HourOptions { get; } = Enumerable.Range(0, 24).ToList();
 
         /// <summary>Minutes 0–59 for the ComboBox.</summary>
         public List<int> MinuteOptions { get; } = Enumerable.Range(0, 60).ToList();
+
+        private void SetDay(ref bool field, bool value, ReminderDays day)
+        {
+            if (!SetProperty(ref field, value)) return;
+
+            Model.Days = value
+                ? Model.Days | day
+                : Model.Days & ~day;
+            _onChanged();
+        }
     }
 
     public sealed class RegisterReminderViewModel : ObservableObject
@@ -102,7 +155,6 @@ namespace TeacherToolbox.ViewModels
         private MediaPlayer _testPlayer;
 
         private bool _masterEnabled;
-        private bool _weekdaysOnly;
         private int _snoozeMinutes;
         private int _selectedSoundIndex;
 
@@ -133,19 +185,14 @@ namespace TeacherToolbox.ViewModels
             set
             {
                 if (SetProperty(ref _masterEnabled, value))
+                {
+                    OnPropertyChanged(nameof(ShowSetupInfo));
                     Save();
+                }
             }
         }
 
-        public bool WeekdaysOnly
-        {
-            get => _weekdaysOnly;
-            set
-            {
-                if (SetProperty(ref _weekdaysOnly, value))
-                    Save();
-            }
-        }
+        public bool ShowSetupInfo => !_masterEnabled;
 
         public int SnoozeMinutes
         {
@@ -172,7 +219,6 @@ namespace TeacherToolbox.ViewModels
         {
             var settings = _settingsService.GetRegisterReminderSettings();
             _masterEnabled = settings.MasterEnabled;
-            _weekdaysOnly = settings.WeekdaysOnly;
             _snoozeMinutes = settings.SnoozeMinutes;
             _selectedSoundIndex = settings.SoundIndex;
 
@@ -182,7 +228,7 @@ namespace TeacherToolbox.ViewModels
             while (reminders.Count < SlotCount)
             {
                 var (h, m) = defaultTimes[reminders.Count];
-                reminders.Add(new RegisterReminder { Hour = h, Minute = m, IsEnabled = false });
+                reminders.Add(new RegisterReminder { Hour = h, Minute = m, Days = ReminderDays.None });
             }
 
             Slots.Clear();
@@ -195,7 +241,6 @@ namespace TeacherToolbox.ViewModels
             var settings = new RegisterReminderSettings
             {
                 MasterEnabled = _masterEnabled,
-                WeekdaysOnly = _weekdaysOnly,
                 SnoozeMinutes = _snoozeMinutes,
                 SoundIndex = _selectedSoundIndex,
                 Reminders = Slots.Select(s => s.Model).ToList()

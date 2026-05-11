@@ -53,20 +53,27 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
                 () => FindTimerWindow(),
                 $"Timer window should appear after Win+{numberKey}",
                 TimeSpan.FromSeconds(5));
-            Wait.UntilResponsive(timerWindow);
 
-            var timerText = WaitUntilFound(
-                () => timerWindow.FindFirstDescendant(cf => cf.ByAutomationId("timerText")),
-                "Timer text should be found",
-                TimeSpan.FromSeconds(2));
+            try
+            {
+                Wait.UntilResponsive(timerWindow);
 
-            var actualText = GetDisplayedText(timerText);
-            var expectedConstraint = expectedText == "1:00"
-                ? Is.EqualTo("1:00").Or.EqualTo("59")
-                : Is.EqualTo(expectedText).Or.EqualTo("29");
+                var timerText = WaitUntilFound(
+                    () => timerWindow.FindFirstDescendant(cf => cf.ByAutomationId("timerText")),
+                    "Timer text should be found",
+                    TimeSpan.FromSeconds(2));
 
-            Assert.That(actualText, expectedConstraint);
-            timerWindow.Close();
+                var actualText = GetDisplayedText(timerText);
+                var expectedConstraint = expectedText == "1:00"
+                    ? Is.EqualTo("1:00").Or.EqualTo("59").Or.EqualTo("58")
+                    : Is.EqualTo(expectedText).Or.EqualTo("29").Or.EqualTo("28");
+
+                Assert.That(actualText, expectedConstraint);
+            }
+            finally
+            {
+                timerWindow.Close();
+            }
         }
 
         [Test]

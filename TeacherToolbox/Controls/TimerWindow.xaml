@@ -132,6 +132,8 @@
                     Margin="0,24,0,0"
                     HorizontalAlignment="Stretch"
                     VerticalAlignment="Center"
+                    AutomationProperties.AutomationId="intervalsListView"
+                    AutomationProperties.Name="Intervals"
                     IsItemClickEnabled="False"
                     SelectionMode="None">
                     <ListView.ItemContainerStyle>
@@ -247,7 +249,9 @@
                                     Margin="8,0,0,0"
                                     VerticalAlignment="Center"
                                     AutomationProperties.AutomationId="RemoveIntervalButton"
+                                    AutomationProperties.Name="Remove interval"
                                     Click="RemoveInterval_Click"
+                                    ToolTipService.ToolTip="Remove interval"
                                     Visibility="{Binding ShowRemoveButton, Converter={StaticResource BoolToVisibilityConverter}}">
                                     <FontIcon FontSize="16" Glyph="&#xE711;" />
                                 </Button>
@@ -264,6 +268,8 @@
                     Height="32"
                     Margin="0,2,0,4"
                     HorizontalAlignment="Stretch"
+                    AutomationProperties.AutomationId="addIntervalButton"
+                    AutomationProperties.Name="Add interval"
                     Click="AddIntervalButton_Click"
                     Style="{StaticResource AccentButtonStyle}">
                     <StackPanel Orientation="Horizontal">

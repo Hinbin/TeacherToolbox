@@ -17,6 +17,11 @@ namespace TeacherToolbox.Services
         internal static bool HasFiredToday(Guid id, DateTime now, HashSet<string> firedToday) =>
             firedToday.Contains(MakeFiredKey(id, now));
 
+        internal static bool IsReminderActiveOn(RegisterReminder reminder, DateTime date)
+        {
+            return reminder.Days.HasFlag(ToReminderDay(date.DayOfWeek));
+        }
+
         internal static List<RegisterReminder> GetDueReminders(
             DateTime now,
             RegisterReminderSettings settings,
@@ -27,7 +32,7 @@ namespace TeacherToolbox.Services
 
             foreach (var r in settings.Reminders)
             {
-                if (!r.IsEnabled) continue;
+                if (!IsReminderActiveOn(r, now)) continue;
                 if (HasFiredToday(r.Id, now, firedToday)) continue;
 
                 var slotTime = now.Date.AddHours(r.Hour).AddMinutes(r.Minute);
@@ -47,15 +52,34 @@ namespace TeacherToolbox.Services
             TimeSpan shortest = TimeSpan.MaxValue;
             foreach (var r in settings.Reminders)
             {
-                if (!r.IsEnabled || HasFiredToday(r.Id, now, firedToday)) continue;
+                for (int dayOffset = 0; dayOffset <= 7; dayOffset++)
+                {
+                    var date = now.Date.AddDays(dayOffset);
+                    if (!IsReminderActiveOn(r, date)) continue;
 
-                var slotTime = now.Date.AddHours(r.Hour).AddMinutes(r.Minute);
-                if (slotTime <= now) continue;
+                    var slotTime = date.AddHours(r.Hour).AddMinutes(r.Minute);
+                    if (slotTime <= now) continue;
+                    if (firedToday.Contains(MakeFiredKey(r.Id, slotTime))) continue;
 
-                TimeSpan delay = slotTime - now;
-                if (delay < shortest) shortest = delay;
+                    TimeSpan delay = slotTime - now;
+                    if (delay < shortest) shortest = delay;
+                    break;
+                }
             }
             return shortest;
         }
+
+        private static ReminderDays ToReminderDay(DayOfWeek dayOfWeek) =>
+            dayOfWeek switch
+            {
+                DayOfWeek.Monday => ReminderDays.Monday,
+                DayOfWeek.Tuesday => ReminderDays.Tuesday,
+                DayOfWeek.Wednesday => ReminderDays.Wednesday,
+                DayOfWeek.Thursday => ReminderDays.Thursday,
+                DayOfWeek.Friday => ReminderDays.Friday,
+                DayOfWeek.Saturday => ReminderDays.Saturday,
+                DayOfWeek.Sunday => ReminderDays.Sunday,
+                _ => ReminderDays.None
+            };
     }
 }

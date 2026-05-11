@@ -7,11 +7,21 @@
     xmlns:local="using:TeacherToolbox.Controls"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     AutomationProperties.AutomationId="TimerSelectionPage"
-    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
+    Background="{ThemeResource LayerFillColorDefaultBrush}"
     mc:Ignorable="d">
 
     <Grid AutomationProperties.AutomationId="TimerSelectionGrid">
-        <Viewbox>
+        <TeachingTip
+            x:Name="TimerOnboardingTip"
+            Title="Keyboard Shortcuts"
+            AutomationProperties.AutomationId="TimerOnboardingTip"
+            CloseButtonContent="Got it!"
+            IsLightDismissEnabled="True"
+            PlacementMargin="20"
+            PreferredPlacement="Bottom"
+            Subtitle="Start timers from anywhere: Win+1–9 launches 1–9 minute timers, Win+0 starts a 30-second timer." />
+
+        <Viewbox Margin="0,12,0,4">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition />
@@ -28,82 +38,186 @@
                     x:Name="timer30Button"
                     Grid.Row="0"
                     Grid.Column="0"
-                    Width="100"
+                    Width="90"
+                    Height="80"
                     Margin="5"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
+                    AutomationProperties.AutomationId="Timer30Button"
+                    AutomationProperties.Name="30 seconds"
                     Click="OpenTimer_Click"
-                    Content="30 secs" />
+                    Tag="30">
+                    <StackPanel HorizontalAlignment="Center" Spacing="5">
+                        <FontIcon
+                            HorizontalAlignment="Center"
+                            FontFamily="Segoe MDL2 Assets"
+                            FontSize="22"
+                            Glyph="&#xF182;" />
+                        <TextBlock Style="{StaticResource CaptionTextBlockStyle}" Text="30 secs" TextAlignment="Center" />
+                    </StackPanel>
+                </Button>
+
                 <Button
                     x:Name="timer60Button"
                     Grid.Row="0"
                     Grid.Column="1"
-                    Width="100"
+                    Width="90"
+                    Height="80"
                     Margin="5"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
+                    AutomationProperties.AutomationId="Timer60Button"
+                    AutomationProperties.Name="1 minute"
                     Click="OpenTimer_Click"
-                    Content="1 mins" />
+                    Tag="60">
+                    <StackPanel HorizontalAlignment="Center" Spacing="5">
+                        <FontIcon
+                            HorizontalAlignment="Center"
+                            FontFamily="Segoe MDL2 Assets"
+                            FontSize="22"
+                            Glyph="&#xE823;" />
+                        <TextBlock Style="{StaticResource CaptionTextBlockStyle}" Text="1 min" TextAlignment="Center" />
+                    </StackPanel>
+                </Button>
+
                 <Button
                     x:Name="timer120Button"
                     Grid.Row="0"
                     Grid.Column="2"
-                    Width="100"
+                    Width="90"
+                    Height="80"
                     Margin="5"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
+                    AutomationProperties.AutomationId="Timer120Button"
+                    AutomationProperties.Name="2 minutes"
                     Click="OpenTimer_Click"
-                    Content="2 mins" />
+                    Tag="120">
+                    <StackPanel HorizontalAlignment="Center" Spacing="5">
+                        <FontIcon
+                            HorizontalAlignment="Center"
+                            FontFamily="Segoe MDL2 Assets"
+                            FontSize="22"
+                            Glyph="&#xE823;" />
+                        <TextBlock Style="{StaticResource CaptionTextBlockStyle}" Text="2 mins" TextAlignment="Center" />
+                    </StackPanel>
+                </Button>
+
                 <Button
                     x:Name="timer180Button"
                     Grid.Row="0"
                     Grid.Column="3"
-                    Width="100"
+                    Width="90"
+                    Height="80"
                     Margin="5"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
+                    AutomationProperties.AutomationId="Timer180Button"
+                    AutomationProperties.Name="3 minutes"
                     Click="OpenTimer_Click"
-                    Content="3 mins" />
+                    Tag="180">
+                    <StackPanel HorizontalAlignment="Center" Spacing="5">
+                        <FontIcon
+                            HorizontalAlignment="Center"
+                            FontFamily="Segoe MDL2 Assets"
+                            FontSize="22"
+                            Glyph="&#xE823;" />
+                        <TextBlock Style="{StaticResource CaptionTextBlockStyle}" Text="3 mins" TextAlignment="Center" />
+                    </StackPanel>
+                </Button>
+
                 <Button
                     x:Name="timer300Button"
                     Grid.Row="1"
                     Grid.Column="0"
-                    Width="100"
+                    Width="90"
+                    Height="80"
                     Margin="5"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
+                    AutomationProperties.AutomationId="Timer300Button"
+                    AutomationProperties.Name="5 minutes"
                     Click="OpenTimer_Click"
-                    Content="5 mins" />
+                    Tag="300">
+                    <StackPanel HorizontalAlignment="Center" Spacing="5">
+                        <FontIcon
+                            HorizontalAlignment="Center"
+                            FontFamily="Segoe MDL2 Assets"
+                            FontSize="22"
+                            Glyph="&#xE823;" />
+                        <TextBlock Style="{StaticResource CaptionTextBlockStyle}" Text="5 mins" TextAlignment="Center" />
+                    </StackPanel>
+                </Button>
+
                 <Button
                     x:Name="timer600Button"
                     Grid.Row="1"
                     Grid.Column="1"
-                    Width="100"
+                    Width="90"
+                    Height="80"
                     Margin="5"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
+                    AutomationProperties.AutomationId="Timer600Button"
+                    AutomationProperties.Name="10 minutes"
                     Click="OpenTimer_Click"
-                    Content="10 mins" />
+                    Tag="600">
+                    <StackPanel HorizontalAlignment="Center" Spacing="5">
+                        <FontIcon
+                            HorizontalAlignment="Center"
+                            FontFamily="Segoe MDL2 Assets"
+                            FontSize="22"
+                            Glyph="&#xE823;" />
+                        <TextBlock Style="{StaticResource CaptionTextBlockStyle}" Text="10 mins" TextAlignment="Center" />
+                    </StackPanel>
+                </Button>
+
                 <Button
                     x:Name="timerIntervalButton"
                     Grid.Row="1"
                     Grid.Column="2"
-                    Width="100"
+                    Width="90"
+                    Height="80"
                     Margin="5"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
+                    AutomationProperties.AutomationId="TimerIntervalButton"
+                    AutomationProperties.Name="Interval timer"
                     Click="OpenTimer_Click"
-                    Content="Interval" />
+                    Tag="Interval">
+                    <StackPanel HorizontalAlignment="Center" Spacing="5">
+                        <FontIcon
+                            HorizontalAlignment="Center"
+                            FontFamily="Segoe MDL2 Assets"
+                            FontSize="22"
+                            Glyph="&#xE8AE;" />
+                        <TextBlock Style="{StaticResource CaptionTextBlockStyle}" Text="Interval" TextAlignment="Center" />
+                    </StackPanel>
+                </Button>
+
                 <Button
                     x:Name="timerCustomButton"
                     Grid.Row="1"
                     Grid.Column="3"
-                    Width="100"
+                    Width="90"
+                    Height="80"
                     Margin="5"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
+                    AutomationProperties.AutomationId="TimerCustomButton"
+                    AutomationProperties.Name="Custom timer"
                     Click="OpenTimer_Click"
-                    Content="Custom" />
+                    Tag="Custom">
+                    <StackPanel HorizontalAlignment="Center" Spacing="5">
+                        <FontIcon
+                            HorizontalAlignment="Center"
+                            FontFamily="Segoe MDL2 Assets"
+                            FontSize="22"
+                            Glyph="&#xE70F;" />
+                        <TextBlock Style="{StaticResource CaptionTextBlockStyle}" Text="Custom" TextAlignment="Center" />
+                    </StackPanel>
+                </Button>
+
             </Grid>
         </Viewbox>
     </Grid>

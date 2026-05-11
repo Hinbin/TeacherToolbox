@@ -177,6 +177,12 @@ namespace TeacherToolbox.Services
         /// <param name="shown">True if instructions have been shown, false otherwise</param>
         void SetHasShownClockInstructions(bool shown);
 
+        bool GetHasShownRulerOnboarding();
+        void SetHasShownRulerOnboarding(bool shown);
+
+        bool GetHasShownTimerOnboarding();
+        void SetHasShownTimerOnboarding(bool shown);
+
         /// <summary>
         /// Gets the center text setting
         /// </summary>

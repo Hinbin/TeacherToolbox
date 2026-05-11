@@ -26,15 +26,24 @@ namespace TeacherToolbox.Controls
         {
             this.InitializeComponent();
 
-            // Create a new instance of the ruler
-
             screenRulerWindow = new ScreenRulerWindow(this, SettingsService, ThemeService);
-            screenRulerWindow.Closed += ScreenRulerWindow_Closed;   
-            
+            screenRulerWindow.Closed += ScreenRulerWindow_Closed;
+
             displayManager = new DisplayManager();
             if (displayManager.DisplayAreas.Count > 1)
             {
                 ChangeDisplayButton.Visibility = Visibility.Visible;
+            }
+
+            this.Loaded += ScreenRulerPage_Loaded;
+        }
+
+        private void ScreenRulerPage_Loaded(object sender, RoutedEventArgs e)
+        {
+            if (!SettingsService.GetHasShownRulerOnboarding())
+            {
+                RulerOnboardingTip.IsOpen = true;
+                SettingsService.SetHasShownRulerOnboarding(true);
             }
         }
 

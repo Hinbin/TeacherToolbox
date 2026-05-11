@@ -13,10 +13,14 @@ using System.Diagnostics;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Runtime.InteropServices.WindowsRuntime;
+using System.Threading.Tasks;
 using TeacherToolbox.Model;
 using TeacherToolbox.Services;
 using TeacherToolbox.ViewModels;
 using Windows.Foundation;
+using Windows.Graphics.Imaging;
+using Windows.Storage;
 
 namespace TeacherToolbox.Controls
 {
@@ -76,15 +80,11 @@ namespace TeacherToolbox.Controls
             }
         }
 
-        private void Clock_Loaded(object sender, RoutedEventArgs e)
+        private async void Clock_Loaded(object sender, RoutedEventArgs e)
         {
-            // Initialize Composition visuals
             InitializeCompositionVisuals();
+            await LoadClockBackgroundImageAsync();
 
-            // Load clock background image based on theme
-            LoadClockBackgroundImage();
-
-            // Show instructions if needed
             if (ViewModel != null && !ViewModel.HasShownClockInstructions())
             {
                 ClockInstructionTip.IsOpen = true;
@@ -145,25 +145,56 @@ namespace TeacherToolbox.Controls
             UpdateClockHandPositions();
         }
 
-        private void LoadClockBackgroundImage()
+        private async Task LoadClockBackgroundImageAsync()
         {
-            // Get theme service from DI
             var isDarkTheme = ThemeService?.IsDarkTheme ?? false;
-
             string imagePath = System.IO.Path.Combine(
-                AppContext.BaseDirectory,
-                "Assets",
-                isDarkTheme ? "clockfacedark.png" : "clockface.png"
-            );
+                AppContext.BaseDirectory, "Assets",
+                isDarkTheme ? "clockfacedark.png" : "clockface.png");
 
             try
             {
-                var bitmapImage = new BitmapImage(new Uri(imagePath));
-                ClockBackgroundImage.Source = bitmapImage;
+                var storageFile = await StorageFile.GetFileFromPathAsync(imagePath);
+                using var fileStream = await storageFile.OpenReadAsync();
+
+                var decoder = await BitmapDecoder.CreateAsync(fileStream);
+                uint width = decoder.PixelWidth;
+                uint height = decoder.PixelHeight;
+
+                // Read as premultiplied BGRA8 — for A=255 pixels this equals straight alpha
+                var pixelProvider = await decoder.GetPixelDataAsync(
+                    BitmapPixelFormat.Bgra8,
+                    BitmapAlphaMode.Premultiplied,
+                    new BitmapTransform(),
+                    ExifOrientationMode.IgnoreExifOrientation,
+                    ColorManagementMode.DoNotColorManage);
+                byte[] pixels = pixelProvider.DetachPixelData();
+
+                // Dark disc background: RGB(32,32,32). Light disc background: RGB(255,255,255).
+                // Replace those opaque pixels with transparent so Mica shows through.
+                for (int i = 0; i + 3 < pixels.Length; i += 4)
+                {
+                    if (pixels[i + 3] == 0) continue; // already transparent — skip
+                    byte b = pixels[i];
+                    byte g = pixels[i + 1];
+                    byte r = pixels[i + 2];
+                    bool isBackground = isDarkTheme
+                        ? (r <= 45 && g <= 45 && b <= 45)
+                        : (r >= 240 && g >= 240 && b >= 240);
+                    if (isBackground)
+                        pixels[i] = pixels[i + 1] = pixels[i + 2] = pixels[i + 3] = 0;
+                }
+
+                var bitmap = new WriteableBitmap((int)width, (int)height);
+                using (var stream = bitmap.PixelBuffer.AsStream())
+                    stream.Write(pixels, 0, pixels.Length);
+                bitmap.Invalidate();
+
+                ClockBackgroundImage.Source = bitmap;
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Failed to load clock face image: {ex.Message}");
+                Debug.WriteLine($"Failed to load clock face image: {ex.Message}");
             }
         }
 
@@ -233,10 +264,10 @@ namespace TeacherToolbox.Controls
                 _minutehand.Brush = handColorBrush;
         }
 
-        private void OnThemeChanged(FrameworkElement sender, object args)
+        private async void OnThemeChanged(FrameworkElement sender, object args)
         {
             ViewModel?.OnThemeChanged();
-            LoadClockBackgroundImage();
+            await LoadClockBackgroundImageAsync();
             UpdateHandColors();
         }
 
