@@ -118,7 +118,8 @@ public abstract class TestBase
             {
                 try
                 {
-                    App.Close();
+                    MainWindow?.Close();
+                    Wait.UntilInputIsProcessed();
                 }
                 catch
                 {

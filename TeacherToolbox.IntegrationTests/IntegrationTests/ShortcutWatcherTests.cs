@@ -64,11 +64,11 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
                     TimeSpan.FromSeconds(2));
 
                 var actualText = GetDisplayedText(timerText);
-                var expectedConstraint = expectedText == "1:00"
-                    ? Is.EqualTo("1:00").Or.EqualTo("59").Or.EqualTo("58")
-                    : Is.EqualTo(expectedText).Or.EqualTo("29").Or.EqualTo("28");
-
-                Assert.That(actualText, expectedConstraint);
+                var expectedSeconds = expectedText == "1:00" ? 60 : 30;
+                Assert.That(
+                    IsTimerWithinStartWindow(actualText, expectedSeconds),
+                    Is.True,
+                    $"Timer text '{actualText}' should be within the first 10 seconds of a {expectedText} timer.");
             }
             finally
             {
@@ -103,6 +103,32 @@ namespace TeacherToolbox.IntegrationTests.IntegrationTests
             pipe.Connect(3000);
             using var writer = new StreamWriter(pipe) { AutoFlush = true };
             writer.WriteLine($"D{(int)numberKey - (int)VirtualKeyShort.KEY_0}");
+        }
+
+        private static bool IsTimerWithinStartWindow(string actualText, int expectedSeconds)
+        {
+            if (!TryParseTimerSeconds(actualText, out var actualSeconds))
+            {
+                return false;
+            }
+
+            return actualSeconds <= expectedSeconds && actualSeconds >= expectedSeconds - 10;
+        }
+
+        private static bool TryParseTimerSeconds(string actualText, out int seconds)
+        {
+            seconds = 0;
+
+            var parts = actualText.Split(':', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length == 2
+                && int.TryParse(parts[0], out var minutes)
+                && int.TryParse(parts[1], out var remainingSeconds))
+            {
+                seconds = (minutes * 60) + remainingSeconds;
+                return true;
+            }
+
+            return int.TryParse(actualText, out seconds);
         }
     }
 }

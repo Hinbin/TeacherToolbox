@@ -80,7 +80,12 @@ namespace TeacherToolbox.Controls
             }
         }
 
-        private async void Clock_Loaded(object sender, RoutedEventArgs e)
+        private void Clock_Loaded(object sender, RoutedEventArgs e)
+        {
+            _ = ClockLoadedAsync();
+        }
+
+        private async Task ClockLoadedAsync()
         {
             InitializeCompositionVisuals();
             await LoadClockBackgroundImageAsync();
@@ -187,7 +192,7 @@ namespace TeacherToolbox.Controls
 
                 var bitmap = new WriteableBitmap((int)width, (int)height);
                 using (var stream = bitmap.PixelBuffer.AsStream())
-                    stream.Write(pixels, 0, pixels.Length);
+                    await stream.WriteAsync(pixels, 0, pixels.Length);
                 bitmap.Invalidate();
 
                 ClockBackgroundImage.Source = bitmap;
@@ -264,7 +269,12 @@ namespace TeacherToolbox.Controls
                 _minutehand.Brush = handColorBrush;
         }
 
-        private async void OnThemeChanged(FrameworkElement sender, object args)
+        private void OnThemeChanged(FrameworkElement sender, object args)
+        {
+            _ = OnThemeChangedAsync();
+        }
+
+        private async Task OnThemeChangedAsync()
         {
             ViewModel?.OnThemeChanged();
             await LoadClockBackgroundImageAsync();
