@@ -40,7 +40,7 @@ namespace TeacherToolbox.Helpers
         }
 
         /// <summary>
-        /// Dictionary of available sound options
+        /// Dictionary of available timer sound options.
         /// </summary>
         public static readonly Dictionary<int, SoundOption> SoundOptions = new Dictionary<int, SoundOption>
         {
@@ -52,16 +52,41 @@ namespace TeacherToolbox.Helpers
             { 5, new SoundOption { Name = "Announcement", FileName = "announcement.wav" } }
         };
 
-/// <summary>
-/// Gets the sound filename for the specified index
-/// </summary>
-public static string GetSoundFileName(int index)
+        /// <summary>
+        /// Dictionary of available register reminder sound options.
+        /// </summary>
+        public static readonly Dictionary<int, SoundOption> RegisterReminderSoundOptions = new Dictionary<int, SoundOption>
+        {
+            { 0, new SoundOption { Name = "Bell Notification", FileName = "bell-notification.wav" } },
+            { 1, new SoundOption { Name = "Birds Tweeting", FileName = "BirdsTweeting.mp3" } },
+            { 2, new SoundOption { Name = "Magic Marimba", FileName = "magic-marimba-2820.wav" } },
+            { 3, new SoundOption { Name = "Magic Notification", FileName = "magic-notification-ring-2344.wav" } },
+            { 4, new SoundOption { Name = "Singing Bowl", FileName = "singingbowl.mp3" } },
+            { 5, new SoundOption { Name = "Uplifting Flute", FileName = "uplifting-flute-notification.mp3" } }
+        };
+
+        /// <summary>
+        /// Gets the timer sound filename for the specified index.
+        /// </summary>
+        public static string GetSoundFileName(int index)
         {
             if (SoundOptions.TryGetValue(index, out var option))
             {
                 return option.FileName;
             }
             return "strings.wav"; // Default fallback
+        }
+
+        /// <summary>
+        /// Gets the register reminder sound filename for the specified index.
+        /// </summary>
+        public static string GetRegisterReminderSoundFileName(int index)
+        {
+            if (RegisterReminderSoundOptions.TryGetValue(index, out var option))
+            {
+                return option.FileName;
+            }
+            return "bell-notification.wav"; // Default fallback
         }
     }
 }

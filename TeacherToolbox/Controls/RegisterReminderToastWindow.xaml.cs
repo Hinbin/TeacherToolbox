@@ -113,7 +113,7 @@ namespace TeacherToolbox.Controls
         {
             try
             {
-                string soundFile = SoundSettings.GetSoundFileName(_settings.SoundIndex);
+                string soundFile = SoundSettings.GetRegisterReminderSoundFileName(_settings.SoundIndex);
                 string soundPath = Path.Combine(AppContext.BaseDirectory, "Assets", soundFile);
                 if (File.Exists(soundPath))
                 {

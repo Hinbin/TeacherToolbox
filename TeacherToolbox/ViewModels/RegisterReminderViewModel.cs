@@ -167,7 +167,10 @@ namespace TeacherToolbox.ViewModels
             _reminderService = reminderService;
             _telemetry = telemetry;
 
-            SoundOptions = SoundSettings.SoundOptions.Values.ToList();
+            SoundOptions = SoundSettings.RegisterReminderSoundOptions
+                .OrderBy(x => x.Key)
+                .Select(x => x.Value)
+                .ToList();
             TestSoundCommand = new RelayCommand(TestSound);
 
             LoadFromSettings();
@@ -255,7 +258,7 @@ namespace TeacherToolbox.ViewModels
             try
             {
                 _testPlayer?.Dispose();
-                string soundFile = SoundSettings.GetSoundFileName(_selectedSoundIndex);
+                string soundFile = SoundSettings.GetRegisterReminderSoundFileName(_selectedSoundIndex);
                 string soundPath = Path.Combine(AppContext.BaseDirectory, "Assets", soundFile);
                 if (File.Exists(soundPath))
                 {
