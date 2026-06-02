@@ -568,22 +568,10 @@ namespace TeacherToolbox.Controls
 
             if (secondsLeft == 0)
             {
-                // Play sound at the end of each interval
-                if (isSoundAvailable && player != null)
-                {
-                    try
-                    {
-                        player.Play();
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.WriteLine($"Error playing sound: {ex.Message}");
-                    }
-                }
-
                 // Only check for more intervals if we're running in interval mode
                 if (intervals != null && intervals.Count > 0)
                 {
+                    PlayTimerEndSound();
                     StartNextInterval();
                 }
                 else
@@ -593,6 +581,22 @@ namespace TeacherToolbox.Controls
 
                     // Handle timer finish behavior
                     HandleTimerFinish(behavior);
+                }
+            }
+        }
+
+        private void PlayTimerEndSound()
+        {
+            if (isSoundAvailable && player != null)
+            {
+                try
+                {
+                    player.PlaybackSession.Position = TimeSpan.Zero;
+                    player.Play();
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Error playing sound: {ex.Message}");
                 }
             }
         }
@@ -654,6 +658,7 @@ namespace TeacherToolbox.Controls
                             player.MediaEnded += mediaEndedHandler;
 
                             // Play the sound
+                            player.PlaybackSession.Position = TimeSpan.Zero;
                             player.Play();
 
                             // Set a fallback timer in case MediaEnded doesn't fire
@@ -688,6 +693,8 @@ namespace TeacherToolbox.Controls
                     break;
 
                 case TimerFinishBehavior.CountUp:
+                    PlayTimerEndSound();
+
                     // Timer continues counting (negative values)
                     if (timerText != null)
                     {
@@ -696,6 +703,8 @@ namespace TeacherToolbox.Controls
                     break;
 
                 case TimerFinishBehavior.StayAtZero:
+                    PlayTimerEndSound();
+
                     // Stop the timer
                     timer.Stop();
 
@@ -714,17 +723,15 @@ namespace TeacherToolbox.Controls
 
         private TimerFinishBehavior GetTimerFinishBehavior()
         {
-            // Default to CountUp if setting isn't found
-            // Using the same key as defined in SettingsPage
-            int behaviorValue = _settingsService.GetValueOrDefault("TimerFinishBehavior", (int)TimerFinishBehavior.CountUp);
+            TimerFinishBehavior behavior = _settingsService.GetTimerFinishBehavior();
 
             // Ensure the value is within valid range
-            if (!Enum.IsDefined(typeof(TimerFinishBehavior), behaviorValue))
+            if (!Enum.IsDefined(typeof(TimerFinishBehavior), behavior))
             {
-                behaviorValue = (int)TimerFinishBehavior.CountUp;
+                behavior = TimerFinishBehavior.CloseTimer;
             }
 
-            return (TimerFinishBehavior)behaviorValue;
+            return behavior;
         }
 
 

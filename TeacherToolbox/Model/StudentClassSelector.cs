@@ -13,6 +13,9 @@ namespace TeacherToolbox.Model
 {
     public class StudentClassSelector : ObservableObject
     {
+        private const string AppDataFolderName = "TeacherToolbox";
+        private const string ClassesFileName = "classes.json";
+        private const string MigratedBackupExtension = ".migrated";
 
         public List<StudentClass>[] studentClasses;
         public StudentClass currentClass;
@@ -38,9 +41,10 @@ namespace TeacherToolbox.Model
         {
             // Check for and migrate old classes.json if it exists
             await MigrateOldClassesFile();
+            await RepairUnconvertedLegacyMigrationIfNeeded();
 
             // Load classes.json
-            string filePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TeacherToolbox", "classes.json");
+            string filePath = GetCurrentClassesFilePath();
 
             // Handle any exceptions - don't load the file if there is an exception
 
@@ -111,7 +115,8 @@ namespace TeacherToolbox.Model
 
             // Specify the file path where you want to save the JSON file
 
-            string filePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TeacherToolbox", "classes.json");
+            string filePath = GetCurrentClassesFilePath();
+            Directory.CreateDirectory(Path.GetDirectoryName(filePath));
 
             // Write the serialized JSON string to the specified file path
             File.WriteAllText(filePath, json);
@@ -130,8 +135,8 @@ namespace TeacherToolbox.Model
         /// </summary>
         private async Task MigrateOldClassesFile()
         {
-            string oldFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "classes.json");
-            string newFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TeacherToolbox", "classes.json");
+            string oldFilePath = GetLegacyClassesFilePath();
+            string newFilePath = GetCurrentClassesFilePath();
 
             // Only migrate if old file exists and new file doesn't exist
             if (File.Exists(oldFilePath) && !File.Exists(newFilePath))
@@ -151,15 +156,17 @@ namespace TeacherToolbox.Model
                     string json = await File.ReadAllTextAsync(oldFilePath);
 
                     // Validate it can be deserialized (ensures it's valid data)
-                    var testDeserialize = JsonSerializer.Deserialize<List<StudentClass>[]>(json);
+                    var legacyClasses = JsonSerializer.Deserialize<List<StudentClass>[]>(json);
 
-                    if (testDeserialize != null)
+                    if (legacyClasses != null)
                     {
+                        var convertedClasses = ConvertLegacyDayOrder(legacyClasses);
+
                         // Write to new location
-                        await File.WriteAllTextAsync(newFilePath, json);
+                        await File.WriteAllTextAsync(newFilePath, JsonSerializer.Serialize(convertedClasses));
 
                         // Rename old file as backup instead of deleting
-                        string backupPath = oldFilePath + ".migrated";
+                        string backupPath = oldFilePath + MigratedBackupExtension;
                         File.Move(oldFilePath, backupPath);
 
                         Debug.WriteLine($"Migration successful. Old file backed up to {backupPath}");
@@ -175,6 +182,123 @@ namespace TeacherToolbox.Model
                 }
             }
         }
+
+        private async Task RepairUnconvertedLegacyMigrationIfNeeded()
+        {
+            string backupPath = GetLegacyClassesFilePath() + MigratedBackupExtension;
+            string newFilePath = GetCurrentClassesFilePath();
+
+            if (!File.Exists(backupPath) || !File.Exists(newFilePath))
+            {
+                return;
+            }
+
+            try
+            {
+                var backupJson = await File.ReadAllTextAsync(backupPath);
+                var currentJson = await File.ReadAllTextAsync(newFilePath);
+
+                var legacyClasses = JsonSerializer.Deserialize<List<StudentClass>[]>(backupJson);
+                var currentClasses = JsonSerializer.Deserialize<List<StudentClass>[]>(currentJson);
+
+                if (legacyClasses == null || currentClasses == null)
+                {
+                    return;
+                }
+
+                var convertedClasses = ConvertLegacyDayOrder(legacyClasses);
+
+                if (HasSameClassLayout(currentClasses, legacyClasses) &&
+                    !HasSameClassLayout(currentClasses, convertedClasses))
+                {
+                    await File.WriteAllTextAsync(newFilePath, JsonSerializer.Serialize(convertedClasses));
+                    Debug.WriteLine("Repaired classes.json day order from legacy migration backup.");
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.WriteLine($"Error repairing legacy classes.json day order: {e.Message}");
+            }
+        }
+
+        internal static List<StudentClass>[] ConvertLegacyDayOrder(List<StudentClass>[] legacyClasses)
+        {
+            var convertedClasses = new List<StudentClass>[7];
+            for (int i = 0; i < convertedClasses.Length; i++)
+            {
+                convertedClasses[i] = new List<StudentClass>();
+            }
+
+            if (legacyClasses == null)
+            {
+                return convertedClasses;
+            }
+
+            CopyDay(legacyClasses, convertedClasses, (int)DayOfWeek.Monday, 0);
+            CopyDay(legacyClasses, convertedClasses, (int)DayOfWeek.Tuesday, 1);
+            CopyDay(legacyClasses, convertedClasses, (int)DayOfWeek.Wednesday, 2);
+            CopyDay(legacyClasses, convertedClasses, (int)DayOfWeek.Thursday, 3);
+            CopyDay(legacyClasses, convertedClasses, (int)DayOfWeek.Friday, 4);
+            CopyDay(legacyClasses, convertedClasses, (int)DayOfWeek.Saturday, 5);
+            CopyDay(legacyClasses, convertedClasses, (int)DayOfWeek.Sunday, 6);
+
+            return convertedClasses;
+        }
+
+        internal static bool HasSameClassLayout(List<StudentClass>[] first, List<StudentClass>[] second)
+        {
+            if (first == null || second == null || first.Length != second.Length)
+            {
+                return false;
+            }
+
+            for (int day = 0; day < first.Length; day++)
+            {
+                var firstDay = first[day] ?? new List<StudentClass>();
+                var secondDay = second[day] ?? new List<StudentClass>();
+
+                if (firstDay.Count != secondDay.Count)
+                {
+                    return false;
+                }
+
+                for (int classIndex = 0; classIndex < firstDay.Count; classIndex++)
+                {
+                    if (!ClassesMatch(firstDay[classIndex], secondDay[classIndex]))
+                    {
+                        return false;
+                    }
+                }
+            }
+
+            return true;
+        }
+
+        private static void CopyDay(List<StudentClass>[] source, List<StudentClass>[] destination, int sourceDay, int destinationDay)
+        {
+            if (sourceDay >= source.Length || source[sourceDay] == null)
+            {
+                return;
+            }
+
+            destination[destinationDay] = new List<StudentClass>(source[sourceDay]);
+        }
+
+        private static bool ClassesMatch(StudentClass first, StudentClass second)
+        {
+            if (first == null || second == null)
+            {
+                return first == second;
+            }
+
+            return first.ClassName == second.ClassName && first.ClassPath == second.ClassPath;
+        }
+
+        private static string GetLegacyClassesFilePath() =>
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), ClassesFileName);
+
+        private static string GetCurrentClassesFilePath() =>
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), AppDataFolderName, ClassesFileName);
 
     }
 }

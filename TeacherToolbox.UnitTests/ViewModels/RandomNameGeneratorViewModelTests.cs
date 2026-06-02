@@ -193,6 +193,33 @@ namespace TeacherToolbox.UnitTests.ViewModels
         }
 
         [Test]
+        public void ConvertLegacyDayOrder_MapsDotNetDayOfWeekOrderToMondayFirstOrder()
+        {
+            var legacyClasses = CreateLegacyClassSelector();
+
+            var convertedClasses = StudentClassSelector.ConvertLegacyDayOrder(legacyClasses);
+
+            Assert.That(convertedClasses[0].Select(c => c.ClassName), Is.EqualTo(new[] { "Monday" }));
+            Assert.That(convertedClasses[1].Select(c => c.ClassName), Is.EqualTo(new[] { "Tuesday" }));
+            Assert.That(convertedClasses[2].Select(c => c.ClassName), Is.EqualTo(new[] { "Wednesday" }));
+            Assert.That(convertedClasses[3].Select(c => c.ClassName), Is.EqualTo(new[] { "Thursday" }));
+            Assert.That(convertedClasses[4].Select(c => c.ClassName), Is.EqualTo(new[] { "Friday" }));
+            Assert.That(convertedClasses[5].Select(c => c.ClassName), Is.EqualTo(new[] { "Saturday" }));
+            Assert.That(convertedClasses[6].Select(c => c.ClassName), Is.EqualTo(new[] { "Sunday" }));
+        }
+
+        [Test]
+        public void HasSameClassLayout_UsesClassNameAndPathByDayAndOrder()
+        {
+            var first = CreateLegacyClassSelector();
+            var same = CreateLegacyClassSelector();
+            var converted = StudentClassSelector.ConvertLegacyDayOrder(CreateLegacyClassSelector());
+
+            Assert.That(StudentClassSelector.HasSameClassLayout(first, same), Is.True);
+            Assert.That(StudentClassSelector.HasSameClassLayout(first, converted), Is.False);
+        }
+
+        [Test]
         public void WindowHandle_WhenSet_StoresValue()
         {
             var handle = new IntPtr(1234);
@@ -254,6 +281,25 @@ namespace TeacherToolbox.UnitTests.ViewModels
             selector.studentClasses[1].Add(CreateClass("Tuesday", "Bob"));
             selector.studentClasses[6].Add(CreateClass("Sunday", "Sam"));
             return selector;
+        }
+
+        private static List<StudentClass>[] CreateLegacyClassSelector()
+        {
+            var classes = new List<StudentClass>[7];
+            for (int i = 0; i < classes.Length; i++)
+            {
+                classes[i] = new List<StudentClass>();
+            }
+
+            classes[(int)DayOfWeek.Sunday].Add(CreateClass("Sunday", "Sam"));
+            classes[(int)DayOfWeek.Monday].Add(CreateClass("Monday", "Alice"));
+            classes[(int)DayOfWeek.Tuesday].Add(CreateClass("Tuesday", "Bob"));
+            classes[(int)DayOfWeek.Wednesday].Add(CreateClass("Wednesday", "Cara"));
+            classes[(int)DayOfWeek.Thursday].Add(CreateClass("Thursday", "Dan"));
+            classes[(int)DayOfWeek.Friday].Add(CreateClass("Friday", "Eve"));
+            classes[(int)DayOfWeek.Saturday].Add(CreateClass("Saturday", "Frank"));
+
+            return classes;
         }
     }
 }
