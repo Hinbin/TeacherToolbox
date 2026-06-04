@@ -13,39 +13,35 @@ using Windows.Media.Playback;
 
 namespace TeacherToolbox.ViewModels
 {
-    public sealed class ReminderSlotViewModel : ObservableObject
+    public sealed class DaySlotViewModel : ObservableObject
     {
+        private readonly DaySchedule _model;
         private readonly Action _onChanged;
+        private bool _enabled;
         private int _hour;
         private int _minute;
-        private string _label;
-        private bool _monday;
-        private bool _tuesday;
-        private bool _wednesday;
-        private bool _thursday;
-        private bool _friday;
-        private bool _saturday;
-        private bool _sunday;
 
-        public ReminderSlotViewModel(RegisterReminder model, Action onChanged)
+        public DaySlotViewModel(DaySchedule model, Action onChanged)
         {
-            Model = model;
+            _model = model;
             _onChanged = onChanged;
+            _enabled = model.Enabled;
             _hour = model.Hour;
             _minute = model.Minute;
-            _label = model.Label ?? "";
-            var days = model.Days;
-            _monday = days.HasFlag(ReminderDays.Monday);
-            _tuesday = days.HasFlag(ReminderDays.Tuesday);
-            _wednesday = days.HasFlag(ReminderDays.Wednesday);
-            _thursday = days.HasFlag(ReminderDays.Thursday);
-            _friday = days.HasFlag(ReminderDays.Friday);
-            _saturday = days.HasFlag(ReminderDays.Saturday);
-            _sunday = days.HasFlag(ReminderDays.Sunday);
-            Model.Days = days;
         }
 
-        public RegisterReminder Model { get; }
+        public bool Enabled
+        {
+            get => _enabled;
+            set
+            {
+                if (SetProperty(ref _enabled, value))
+                {
+                    _model.Enabled = value;
+                    _onChanged();
+                }
+            }
+        }
 
         public int Hour
         {
@@ -54,7 +50,7 @@ namespace TeacherToolbox.ViewModels
             {
                 if (SetProperty(ref _hour, Math.Clamp(value, 0, 23)))
                 {
-                    Model.Hour = _hour;
+                    _model.Hour = _hour;
                     _onChanged();
                 }
             }
@@ -67,11 +63,37 @@ namespace TeacherToolbox.ViewModels
             {
                 if (SetProperty(ref _minute, Math.Clamp(value, 0, 59)))
                 {
-                    Model.Minute = _minute;
+                    _model.Minute = _minute;
                     _onChanged();
                 }
             }
         }
+
+        public List<int> HourOptions { get; } = Enumerable.Range(0, 24).ToList();
+        public List<int> MinuteOptions { get; } = Enumerable.Range(0, 60).ToList();
+    }
+
+    public sealed class ReminderSlotViewModel : ObservableObject
+    {
+        private readonly Action _onChanged;
+        private string _label;
+
+        public ReminderSlotViewModel(RegisterReminder model, Action onChanged, Action<ReminderSlotViewModel> onRemove)
+        {
+            Model = model;
+            _onChanged = onChanged;
+            _label = model.Label ?? "";
+            Monday = new DaySlotViewModel(model.Monday, onChanged);
+            Tuesday = new DaySlotViewModel(model.Tuesday, onChanged);
+            Wednesday = new DaySlotViewModel(model.Wednesday, onChanged);
+            Thursday = new DaySlotViewModel(model.Thursday, onChanged);
+            Friday = new DaySlotViewModel(model.Friday, onChanged);
+            RemoveCommand = new RelayCommand(() => onRemove(this));
+        }
+
+        public RegisterReminder Model { get; }
+
+        public IRelayCommand RemoveCommand { get; }
 
         public string Label
         {
@@ -81,73 +103,28 @@ namespace TeacherToolbox.ViewModels
                 if (SetProperty(ref _label, value ?? ""))
                 {
                     Model.Label = _label;
+                    OnPropertyChanged(nameof(DisplayLabel));
                     _onChanged();
                 }
             }
         }
 
-        public bool Monday
-        {
-            get => _monday;
-            set => SetDay(ref _monday, value, ReminderDays.Monday);
-        }
+        public string DisplayLabel => string.IsNullOrWhiteSpace(_label) ? "Untitled" : _label;
 
-        public bool Tuesday
-        {
-            get => _tuesday;
-            set => SetDay(ref _tuesday, value, ReminderDays.Tuesday);
-        }
-
-        public bool Wednesday
-        {
-            get => _wednesday;
-            set => SetDay(ref _wednesday, value, ReminderDays.Wednesday);
-        }
-
-        public bool Thursday
-        {
-            get => _thursday;
-            set => SetDay(ref _thursday, value, ReminderDays.Thursday);
-        }
-
-        public bool Friday
-        {
-            get => _friday;
-            set => SetDay(ref _friday, value, ReminderDays.Friday);
-        }
-
-        public bool Saturday
-        {
-            get => _saturday;
-            set => SetDay(ref _saturday, value, ReminderDays.Saturday);
-        }
-
-        public bool Sunday
-        {
-            get => _sunday;
-            set => SetDay(ref _sunday, value, ReminderDays.Sunday);
-        }
-
-        /// <summary>Hours 0–23 for the ComboBox.</summary>
-        public List<int> HourOptions { get; } = Enumerable.Range(0, 24).ToList();
-
-        /// <summary>Minutes 0–59 for the ComboBox.</summary>
-        public List<int> MinuteOptions { get; } = Enumerable.Range(0, 60).ToList();
-
-        private void SetDay(ref bool field, bool value, ReminderDays day)
-        {
-            if (!SetProperty(ref field, value)) return;
-
-            Model.Days = value
-                ? Model.Days | day
-                : Model.Days & ~day;
-            _onChanged();
-        }
+        public DaySlotViewModel Monday { get; }
+        public DaySlotViewModel Tuesday { get; }
+        public DaySlotViewModel Wednesday { get; }
+        public DaySlotViewModel Thursday { get; }
+        public DaySlotViewModel Friday { get; }
     }
 
     public sealed class RegisterReminderViewModel : ObservableObject
     {
-        private const int SlotCount = 6;
+        private static readonly string[] DefaultLabels =
+            ["Registration", "Period 1", "Period 2", "Period 3", "Period 4", "Period 5"];
+
+        private static readonly (int Hour, int Minute)[] DefaultTimes =
+            [(8, 30), (9, 0), (10, 0), (11, 25), (12, 25), (13, 55)];
 
         private readonly ISettingsService _settingsService;
         private readonly IRegisterReminderService _reminderService;
@@ -172,6 +149,7 @@ namespace TeacherToolbox.ViewModels
                 .Select(x => x.Value)
                 .ToList();
             TestSoundCommand = new RelayCommand(TestSound);
+            AddSlotCommand = new RelayCommand(AddSlot);
 
             LoadFromSettings();
         }
@@ -181,6 +159,7 @@ namespace TeacherToolbox.ViewModels
         public List<SoundSettings.SoundOption> SoundOptions { get; }
 
         public IRelayCommand TestSoundCommand { get; }
+        public IRelayCommand AddSlotCommand { get; }
 
         public bool MasterEnabled
         {
@@ -225,19 +204,45 @@ namespace TeacherToolbox.ViewModels
             _snoozeMinutes = settings.SnoozeMinutes;
             _selectedSoundIndex = settings.SoundIndex;
 
-            // Ensure we always have exactly SlotCount reminders
             var reminders = settings.Reminders ?? new List<RegisterReminder>();
-            var defaultTimes = new (int Hour, int Minute)[] { (8, 30), (9, 25), (10, 25), (11, 25), (12, 25), (13, 25) };
-            while (reminders.Count < SlotCount)
+            if (reminders.Count == 0)
             {
-                var (h, m) = defaultTimes[reminders.Count];
-                reminders.Add(new RegisterReminder { Hour = h, Minute = m, Days = ReminderDays.None });
+                for (int i = 0; i < DefaultLabels.Length; i++)
+                {
+                    var (h, m) = DefaultTimes[i];
+                    reminders.Add(new RegisterReminder
+                    {
+                        Label = DefaultLabels[i],
+                        Monday = new DaySchedule { Hour = h, Minute = m },
+                        Tuesday = new DaySchedule { Hour = h, Minute = m },
+                        Wednesday = new DaySchedule { Hour = h, Minute = m },
+                        Thursday = new DaySchedule { Hour = h, Minute = m },
+                        Friday = new DaySchedule { Hour = h, Minute = m }
+                    });
+                }
             }
 
             Slots.Clear();
-            for (int i = 0; i < SlotCount; i++)
-                Slots.Add(new ReminderSlotViewModel(reminders[i], Save));
+            foreach (var r in reminders)
+                Slots.Add(CreateSlotViewModel(r));
         }
+
+        private void AddSlot()
+        {
+            var reminder = new RegisterReminder
+            {
+                Monday = new DaySchedule { Hour = 9 },
+                Tuesday = new DaySchedule { Hour = 9 },
+                Wednesday = new DaySchedule { Hour = 9 },
+                Thursday = new DaySchedule { Hour = 9 },
+                Friday = new DaySchedule { Hour = 9 }
+            };
+            Slots.Add(CreateSlotViewModel(reminder));
+            Save();
+        }
+
+        private ReminderSlotViewModel CreateSlotViewModel(RegisterReminder reminder) =>
+            new(reminder, Save, slot => { Slots.Remove(slot); Save(); });
 
         private void Save()
         {

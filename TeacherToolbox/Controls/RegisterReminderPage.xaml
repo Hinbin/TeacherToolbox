@@ -96,98 +96,231 @@
                 Style="{StaticResource SubtitleTextBlockStyle}"
                 Text="Reminder Times" />
 
-            <StackPanel
-                Margin="0,8"
-                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                BorderThickness="1"
-                CornerRadius="8">
-
-                <ItemsControl x:Name="SlotsControl" ItemsSource="{x:Bind ViewModel.Slots}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="vm:ReminderSlotViewModel">
-                            <Grid Margin="0,1" Padding="16,10,16,10">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="72" />
-                                    <ColumnDefinition Width="12" />
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="12" />
-                                    <ColumnDefinition Width="72" />
-                                    <ColumnDefinition Width="16" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-
-                                <!--  Hour picker  -->
-                                <ComboBox
-                                    Grid.Column="0"
-                                    HorizontalAlignment="Stretch"
-                                    VerticalAlignment="Center"
-                                    ItemsSource="{x:Bind HourOptions}"
-                                    SelectedItem="{x:Bind Hour, Mode=TwoWay}" />
-
+            <ItemsControl
+                Margin="0,8,0,0"
+                x:Name="SlotsControl"
+                ItemsSource="{x:Bind ViewModel.Slots}">
+                <ItemsControl.ItemContainerStyle>
+                    <Style TargetType="ContentPresenter">
+                        <Setter Property="Margin" Value="0,0,0,8" />
+                        <Setter Property="HorizontalAlignment" Value="Stretch" />
+                    </Style>
+                </ItemsControl.ItemContainerStyle>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ReminderSlotViewModel">
+                        <Expander
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Stretch"
+                            IsExpanded="True">
+                            <Expander.Header>
                                 <TextBlock
-                                    Grid.Column="2"
-                                    VerticalAlignment="Center"
-                                    FontSize="16"
-                                    FontWeight="SemiBold"
-                                    Text=":" />
+                                    Style="{StaticResource BodyStrongTextBlockStyle}"
+                                    Text="{x:Bind DisplayLabel, Mode=OneWay}" />
+                            </Expander.Header>
 
-                                <!--  Minute picker  -->
-                                <ComboBox
-                                    Grid.Column="4"
-                                    HorizontalAlignment="Stretch"
-                                    VerticalAlignment="Center"
-                                    ItemsSource="{x:Bind MinuteOptions}"
-                                    SelectedItem="{x:Bind Minute, Mode=TwoWay}" />
+                            <StackPanel Padding="16,4,16,12" Spacing="6">
 
-                                <StackPanel
-                                    Grid.Column="6"
-                                    VerticalAlignment="Center"
-                                    Spacing="6">
-                                    <!--  Label TextBox  -->
-                                    <TextBox
-                                        PlaceholderText="Label (optional)"
-                                        Text="{x:Bind Label, Mode=TwoWay}" />
+                                <TextBox PlaceholderText="Label (optional)" Text="{x:Bind Label, Mode=TwoWay}" />
 
-                                    <StackPanel Orientation="Horizontal" Spacing="4">
-                                        <CheckBox
-                                            MinWidth="34"
-                                            Content="M"
-                                            IsChecked="{x:Bind Monday, Mode=TwoWay}" />
-                                        <CheckBox
-                                            MinWidth="34"
-                                            Content="T"
-                                            IsChecked="{x:Bind Tuesday, Mode=TwoWay}" />
-                                        <CheckBox
-                                            MinWidth="34"
-                                            Content="W"
-                                            IsChecked="{x:Bind Wednesday, Mode=TwoWay}" />
-                                        <CheckBox
-                                            MinWidth="34"
-                                            Content="T"
-                                            IsChecked="{x:Bind Thursday, Mode=TwoWay}" />
-                                        <CheckBox
-                                            MinWidth="34"
-                                            Content="F"
-                                            IsChecked="{x:Bind Friday, Mode=TwoWay}" />
-                                        <CheckBox
-                                            MinWidth="34"
-                                            Content="S"
-                                            IsChecked="{x:Bind Saturday, Mode=TwoWay}" />
-                                        <CheckBox
-                                            MinWidth="34"
-                                            Content="S"
-                                            IsChecked="{x:Bind Sunday, Mode=TwoWay}" />
-                                    </StackPanel>
-                                </StackPanel>
-                            </Grid>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                                <!--  Monday  -->
+                                <Grid ColumnSpacing="8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="36" />
+                                        <ColumnDefinition Width="60" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="60" />
+                                    </Grid.ColumnDefinitions>
+                                    <CheckBox
+                                        Grid.Column="0"
+                                        MinWidth="0"
+                                        IsChecked="{x:Bind Monday.Enabled, Mode=TwoWay}" />
+                                    <TextBlock
+                                        Grid.Column="1"
+                                        VerticalAlignment="Center"
+                                        Text="Mon" />
+                                    <ComboBox
+                                        Grid.Column="2"
+                                        HorizontalAlignment="Stretch"
+                                        IsEnabled="{x:Bind Monday.Enabled, Mode=OneWay}"
+                                        ItemsSource="{x:Bind Monday.HourOptions}"
+                                        SelectedItem="{x:Bind Monday.Hour, Mode=TwoWay}" />
+                                    <TextBlock
+                                        Grid.Column="3"
+                                        VerticalAlignment="Center"
+                                        FontSize="16"
+                                        FontWeight="SemiBold"
+                                        Text=":" />
+                                    <ComboBox
+                                        Grid.Column="4"
+                                        HorizontalAlignment="Stretch"
+                                        IsEnabled="{x:Bind Monday.Enabled, Mode=OneWay}"
+                                        ItemsSource="{x:Bind Monday.MinuteOptions}"
+                                        SelectedItem="{x:Bind Monday.Minute, Mode=TwoWay}" />
+                                </Grid>
 
-                <Border Height="1" Background="{ThemeResource CardStrokeColorDefaultBrush}" />
+                                <!--  Tuesday  -->
+                                <Grid ColumnSpacing="8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="36" />
+                                        <ColumnDefinition Width="60" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="60" />
+                                    </Grid.ColumnDefinitions>
+                                    <CheckBox
+                                        Grid.Column="0"
+                                        MinWidth="0"
+                                        IsChecked="{x:Bind Tuesday.Enabled, Mode=TwoWay}" />
+                                    <TextBlock
+                                        Grid.Column="1"
+                                        VerticalAlignment="Center"
+                                        Text="Tue" />
+                                    <ComboBox
+                                        Grid.Column="2"
+                                        HorizontalAlignment="Stretch"
+                                        IsEnabled="{x:Bind Tuesday.Enabled, Mode=OneWay}"
+                                        ItemsSource="{x:Bind Tuesday.HourOptions}"
+                                        SelectedItem="{x:Bind Tuesday.Hour, Mode=TwoWay}" />
+                                    <TextBlock
+                                        Grid.Column="3"
+                                        VerticalAlignment="Center"
+                                        FontSize="16"
+                                        FontWeight="SemiBold"
+                                        Text=":" />
+                                    <ComboBox
+                                        Grid.Column="4"
+                                        HorizontalAlignment="Stretch"
+                                        IsEnabled="{x:Bind Tuesday.Enabled, Mode=OneWay}"
+                                        ItemsSource="{x:Bind Tuesday.MinuteOptions}"
+                                        SelectedItem="{x:Bind Tuesday.Minute, Mode=TwoWay}" />
+                                </Grid>
 
-            </StackPanel>
+                                <!--  Wednesday  -->
+                                <Grid ColumnSpacing="8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="36" />
+                                        <ColumnDefinition Width="60" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="60" />
+                                    </Grid.ColumnDefinitions>
+                                    <CheckBox
+                                        Grid.Column="0"
+                                        MinWidth="0"
+                                        IsChecked="{x:Bind Wednesday.Enabled, Mode=TwoWay}" />
+                                    <TextBlock
+                                        Grid.Column="1"
+                                        VerticalAlignment="Center"
+                                        Text="Wed" />
+                                    <ComboBox
+                                        Grid.Column="2"
+                                        HorizontalAlignment="Stretch"
+                                        IsEnabled="{x:Bind Wednesday.Enabled, Mode=OneWay}"
+                                        ItemsSource="{x:Bind Wednesday.HourOptions}"
+                                        SelectedItem="{x:Bind Wednesday.Hour, Mode=TwoWay}" />
+                                    <TextBlock
+                                        Grid.Column="3"
+                                        VerticalAlignment="Center"
+                                        FontSize="16"
+                                        FontWeight="SemiBold"
+                                        Text=":" />
+                                    <ComboBox
+                                        Grid.Column="4"
+                                        HorizontalAlignment="Stretch"
+                                        IsEnabled="{x:Bind Wednesday.Enabled, Mode=OneWay}"
+                                        ItemsSource="{x:Bind Wednesday.MinuteOptions}"
+                                        SelectedItem="{x:Bind Wednesday.Minute, Mode=TwoWay}" />
+                                </Grid>
+
+                                <!--  Thursday  -->
+                                <Grid ColumnSpacing="8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="36" />
+                                        <ColumnDefinition Width="60" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="60" />
+                                    </Grid.ColumnDefinitions>
+                                    <CheckBox
+                                        Grid.Column="0"
+                                        MinWidth="0"
+                                        IsChecked="{x:Bind Thursday.Enabled, Mode=TwoWay}" />
+                                    <TextBlock
+                                        Grid.Column="1"
+                                        VerticalAlignment="Center"
+                                        Text="Thu" />
+                                    <ComboBox
+                                        Grid.Column="2"
+                                        HorizontalAlignment="Stretch"
+                                        IsEnabled="{x:Bind Thursday.Enabled, Mode=OneWay}"
+                                        ItemsSource="{x:Bind Thursday.HourOptions}"
+                                        SelectedItem="{x:Bind Thursday.Hour, Mode=TwoWay}" />
+                                    <TextBlock
+                                        Grid.Column="3"
+                                        VerticalAlignment="Center"
+                                        FontSize="16"
+                                        FontWeight="SemiBold"
+                                        Text=":" />
+                                    <ComboBox
+                                        Grid.Column="4"
+                                        HorizontalAlignment="Stretch"
+                                        IsEnabled="{x:Bind Thursday.Enabled, Mode=OneWay}"
+                                        ItemsSource="{x:Bind Thursday.MinuteOptions}"
+                                        SelectedItem="{x:Bind Thursday.Minute, Mode=TwoWay}" />
+                                </Grid>
+
+                                <!--  Friday  -->
+                                <Grid ColumnSpacing="8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="36" />
+                                        <ColumnDefinition Width="60" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="60" />
+                                    </Grid.ColumnDefinitions>
+                                    <CheckBox
+                                        Grid.Column="0"
+                                        MinWidth="0"
+                                        IsChecked="{x:Bind Friday.Enabled, Mode=TwoWay}" />
+                                    <TextBlock
+                                        Grid.Column="1"
+                                        VerticalAlignment="Center"
+                                        Text="Fri" />
+                                    <ComboBox
+                                        Grid.Column="2"
+                                        HorizontalAlignment="Stretch"
+                                        IsEnabled="{x:Bind Friday.Enabled, Mode=OneWay}"
+                                        ItemsSource="{x:Bind Friday.HourOptions}"
+                                        SelectedItem="{x:Bind Friday.Hour, Mode=TwoWay}" />
+                                    <TextBlock
+                                        Grid.Column="3"
+                                        VerticalAlignment="Center"
+                                        FontSize="16"
+                                        FontWeight="SemiBold"
+                                        Text=":" />
+                                    <ComboBox
+                                        Grid.Column="4"
+                                        HorizontalAlignment="Stretch"
+                                        IsEnabled="{x:Bind Friday.Enabled, Mode=OneWay}"
+                                        ItemsSource="{x:Bind Friday.MinuteOptions}"
+                                        SelectedItem="{x:Bind Friday.Minute, Mode=TwoWay}" />
+                                </Grid>
+
+                                <Button
+                                    Margin="0,6,0,0"
+                                    Command="{x:Bind RemoveCommand}"
+                                    Content="Remove period" />
+
+                            </StackPanel>
+                        </Expander>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <Button
+                Command="{x:Bind ViewModel.AddSlotCommand}"
+                Content="+ Add period" />
 
         </StackPanel>
     </ScrollViewer>

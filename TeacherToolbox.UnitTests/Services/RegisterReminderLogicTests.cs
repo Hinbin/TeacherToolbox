@@ -10,11 +10,18 @@ namespace TeacherToolbox.UnitTests.Services;
 public class RegisterReminderLogicTests
 {
     private static RegisterReminder MakeReminder(
-        int hour,
-        int minute,
-        string label = "",
-        ReminderDays days = ReminderDays.Weekdays) =>
-        new() { Id = Guid.NewGuid(), Hour = hour, Minute = minute, Label = label, Days = days };
+        int hour, int minute, string label = "",
+        bool mon = true, bool tue = true, bool wed = true, bool thu = true, bool fri = true) =>
+        new()
+        {
+            Id = Guid.NewGuid(),
+            Label = label,
+            Monday = new DaySchedule { Enabled = mon, Hour = hour, Minute = minute },
+            Tuesday = new DaySchedule { Enabled = tue, Hour = hour, Minute = minute },
+            Wednesday = new DaySchedule { Enabled = wed, Hour = hour, Minute = minute },
+            Thursday = new DaySchedule { Enabled = thu, Hour = hour, Minute = minute },
+            Friday = new DaySchedule { Enabled = fri, Hour = hour, Minute = minute }
+        };
 
     private static RegisterReminderSettings MakeSettings(
         bool masterEnabled = true,
@@ -98,7 +105,7 @@ public class RegisterReminderLogicTests
     public void GetDueReminders_NoDaysSelected_ReturnsEmpty()
     {
         var now = new DateTime(2025, 5, 7, 9, 0, 0);
-        var reminder = MakeReminder(9, 0, days: ReminderDays.None);
+        var reminder = MakeReminder(9, 0, mon: false, tue: false, wed: false, thu: false, fri: false);
         var settings = MakeSettings(reminders: new List<RegisterReminder> { reminder });
 
         var result = RegisterReminderLogic.GetDueReminders(now, settings, new HashSet<string>());
@@ -125,7 +132,7 @@ public class RegisterReminderLogicTests
     public void GetDueReminders_WhenTodayNotSelected_ReturnsEmpty()
     {
         var now = new DateTime(2025, 5, 7, 9, 0, 0); // Wednesday
-        var reminder = MakeReminder(9, 0, days: ReminderDays.Thursday);
+        var reminder = MakeReminder(9, 0, mon: false, tue: false, wed: false, fri: false); // only Thursday
         var settings = MakeSettings(reminders: new List<RegisterReminder> { reminder });
 
         var result = RegisterReminderLogic.GetDueReminders(now, settings, new HashSet<string>());
@@ -137,7 +144,7 @@ public class RegisterReminderLogicTests
     public void GetDueReminders_WhenNoDaysSelected_ReturnsEmpty()
     {
         var now = new DateTime(2025, 5, 7, 9, 0, 0); // Wednesday
-        var reminder = MakeReminder(9, 0, days: ReminderDays.None);
+        var reminder = MakeReminder(9, 0, mon: false, tue: false, wed: false, thu: false, fri: false);
         var settings = MakeSettings(reminders: new List<RegisterReminder> { reminder });
 
         var result = RegisterReminderLogic.GetDueReminders(now, settings, new HashSet<string>());
@@ -149,7 +156,7 @@ public class RegisterReminderLogicTests
     public void GetDueReminders_WhenTodaySelected_ReturnsDueReminder()
     {
         var now = new DateTime(2025, 5, 7, 9, 0, 0); // Wednesday
-        var reminder = MakeReminder(9, 0, days: ReminderDays.Wednesday | ReminderDays.Friday);
+        var reminder = MakeReminder(9, 0, mon: false, tue: false, thu: false); // Wednesday and Friday
         var settings = MakeSettings(reminders: new List<RegisterReminder> { reminder });
 
         var result = RegisterReminderLogic.GetDueReminders(now, settings, new HashSet<string>());
@@ -221,7 +228,7 @@ public class RegisterReminderLogicTests
     public void ComputeDelayToNextDue_WhenNextSelectedDayIsTomorrow_ReturnsDelayToTomorrow()
     {
         var now = new DateTime(2025, 5, 7, 15, 0, 0); // Wednesday
-        var reminder = MakeReminder(9, 0, days: ReminderDays.Thursday);
+        var reminder = MakeReminder(9, 0, mon: false, tue: false, wed: false, fri: false); // only Thursday
         var settings = MakeSettings(reminders: new List<RegisterReminder> { reminder });
 
         var delay = RegisterReminderLogic.ComputeDelayToNextDue(now, settings, new HashSet<string>());

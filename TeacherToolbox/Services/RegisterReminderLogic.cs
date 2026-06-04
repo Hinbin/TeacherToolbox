@@ -17,9 +17,21 @@ namespace TeacherToolbox.Services
         internal static bool HasFiredToday(Guid id, DateTime now, HashSet<string> firedToday) =>
             firedToday.Contains(MakeFiredKey(id, now));
 
+        internal static DaySchedule GetScheduleForDate(RegisterReminder reminder, DateTime date) =>
+            date.DayOfWeek switch
+            {
+                DayOfWeek.Monday => reminder.Monday,
+                DayOfWeek.Tuesday => reminder.Tuesday,
+                DayOfWeek.Wednesday => reminder.Wednesday,
+                DayOfWeek.Thursday => reminder.Thursday,
+                DayOfWeek.Friday => reminder.Friday,
+                _ => null
+            };
+
         internal static bool IsReminderActiveOn(RegisterReminder reminder, DateTime date)
         {
-            return reminder.Days.HasFlag(ToReminderDay(date.DayOfWeek));
+            var schedule = GetScheduleForDate(reminder, date);
+            return schedule?.Enabled == true;
         }
 
         internal static List<RegisterReminder> GetDueReminders(
@@ -32,10 +44,11 @@ namespace TeacherToolbox.Services
 
             foreach (var r in settings.Reminders)
             {
-                if (!IsReminderActiveOn(r, now)) continue;
+                var schedule = GetScheduleForDate(r, now);
+                if (schedule == null || !schedule.Enabled) continue;
                 if (HasFiredToday(r.Id, now, firedToday)) continue;
 
-                var slotTime = now.Date.AddHours(r.Hour).AddMinutes(r.Minute);
+                var slotTime = now.Date.AddHours(schedule.Hour).AddMinutes(schedule.Minute);
                 if (Math.Abs((now - slotTime).TotalSeconds) <= DueWindowSeconds)
                     result.Add(r);
             }
@@ -55,9 +68,10 @@ namespace TeacherToolbox.Services
                 for (int dayOffset = 0; dayOffset <= 7; dayOffset++)
                 {
                     var date = now.Date.AddDays(dayOffset);
-                    if (!IsReminderActiveOn(r, date)) continue;
+                    var schedule = GetScheduleForDate(r, date);
+                    if (schedule == null || !schedule.Enabled) continue;
 
-                    var slotTime = date.AddHours(r.Hour).AddMinutes(r.Minute);
+                    var slotTime = date.AddHours(schedule.Hour).AddMinutes(schedule.Minute);
                     if (slotTime <= now) continue;
                     if (firedToday.Contains(MakeFiredKey(r.Id, slotTime))) continue;
 
@@ -68,18 +82,5 @@ namespace TeacherToolbox.Services
             }
             return shortest;
         }
-
-        private static ReminderDays ToReminderDay(DayOfWeek dayOfWeek) =>
-            dayOfWeek switch
-            {
-                DayOfWeek.Monday => ReminderDays.Monday,
-                DayOfWeek.Tuesday => ReminderDays.Tuesday,
-                DayOfWeek.Wednesday => ReminderDays.Wednesday,
-                DayOfWeek.Thursday => ReminderDays.Thursday,
-                DayOfWeek.Friday => ReminderDays.Friday,
-                DayOfWeek.Saturday => ReminderDays.Saturday,
-                DayOfWeek.Sunday => ReminderDays.Sunday,
-                _ => ReminderDays.None
-            };
     }
 }
