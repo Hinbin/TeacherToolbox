@@ -64,13 +64,24 @@ namespace TeacherToolbox.ViewModels
                 if (SetProperty(ref _minute, Math.Clamp(value, 0, 59)))
                 {
                     _model.Minute = _minute;
+                    OnPropertyChanged(nameof(MinuteString));
                     _onChanged();
                 }
             }
         }
 
         public List<int> HourOptions { get; } = Enumerable.Range(0, 24).ToList();
-        public List<int> MinuteOptions { get; } = Enumerable.Range(0, 60).ToList();
+        public List<string> MinuteOptions { get; } = Enumerable.Range(0, 60).Select(m => m.ToString("D2")).ToList();
+
+        public string MinuteString
+        {
+            get => _minute.ToString("D2");
+            set
+            {
+                if (int.TryParse(value, out int parsed))
+                    Minute = parsed;
+            }
+        }
     }
 
     public sealed class ReminderSlotViewModel : ObservableObject

@@ -127,9 +127,9 @@
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="36" />
-                                        <ColumnDefinition Width="60" />
+                                        <ColumnDefinition Width="75" />
                                         <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="60" />
+                                        <ColumnDefinition Width="75" />
                                     </Grid.ColumnDefinitions>
                                     <CheckBox
                                         Grid.Column="0"
@@ -156,7 +156,7 @@
                                         HorizontalAlignment="Stretch"
                                         IsEnabled="{x:Bind Monday.Enabled, Mode=OneWay}"
                                         ItemsSource="{x:Bind Monday.MinuteOptions}"
-                                        SelectedItem="{x:Bind Monday.Minute, Mode=TwoWay}" />
+                                        SelectedItem="{x:Bind Monday.MinuteString, Mode=TwoWay}" />
                                 </Grid>
 
                                 <!--  Tuesday  -->
@@ -164,9 +164,9 @@
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="36" />
-                                        <ColumnDefinition Width="60" />
+                                        <ColumnDefinition Width="75" />
                                         <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="60" />
+                                        <ColumnDefinition Width="75" />
                                     </Grid.ColumnDefinitions>
                                     <CheckBox
                                         Grid.Column="0"
@@ -193,7 +193,7 @@
                                         HorizontalAlignment="Stretch"
                                         IsEnabled="{x:Bind Tuesday.Enabled, Mode=OneWay}"
                                         ItemsSource="{x:Bind Tuesday.MinuteOptions}"
-                                        SelectedItem="{x:Bind Tuesday.Minute, Mode=TwoWay}" />
+                                        SelectedItem="{x:Bind Tuesday.MinuteString, Mode=TwoWay}" />
                                 </Grid>
 
                                 <!--  Wednesday  -->
@@ -201,9 +201,9 @@
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="36" />
-                                        <ColumnDefinition Width="60" />
+                                        <ColumnDefinition Width="75" />
                                         <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="60" />
+                                        <ColumnDefinition Width="75" />
                                     </Grid.ColumnDefinitions>
                                     <CheckBox
                                         Grid.Column="0"
@@ -230,7 +230,7 @@
                                         HorizontalAlignment="Stretch"
                                         IsEnabled="{x:Bind Wednesday.Enabled, Mode=OneWay}"
                                         ItemsSource="{x:Bind Wednesday.MinuteOptions}"
-                                        SelectedItem="{x:Bind Wednesday.Minute, Mode=TwoWay}" />
+                                        SelectedItem="{x:Bind Wednesday.MinuteString, Mode=TwoWay}" />
                                 </Grid>
 
                                 <!--  Thursday  -->
@@ -238,9 +238,9 @@
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="36" />
-                                        <ColumnDefinition Width="60" />
+                                        <ColumnDefinition Width="75" />
                                         <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="60" />
+                                        <ColumnDefinition Width="75" />
                                     </Grid.ColumnDefinitions>
                                     <CheckBox
                                         Grid.Column="0"
@@ -267,7 +267,7 @@
                                         HorizontalAlignment="Stretch"
                                         IsEnabled="{x:Bind Thursday.Enabled, Mode=OneWay}"
                                         ItemsSource="{x:Bind Thursday.MinuteOptions}"
-                                        SelectedItem="{x:Bind Thursday.Minute, Mode=TwoWay}" />
+                                        SelectedItem="{x:Bind Thursday.MinuteString, Mode=TwoWay}" />
                                 </Grid>
 
                                 <!--  Friday  -->
@@ -275,9 +275,9 @@
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="36" />
-                                        <ColumnDefinition Width="60" />
+                                        <ColumnDefinition Width="75" />
                                         <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="60" />
+                                        <ColumnDefinition Width="75" />
                                     </Grid.ColumnDefinitions>
                                     <CheckBox
                                         Grid.Column="0"
@@ -304,7 +304,7 @@
                                         HorizontalAlignment="Stretch"
                                         IsEnabled="{x:Bind Friday.Enabled, Mode=OneWay}"
                                         ItemsSource="{x:Bind Friday.MinuteOptions}"
-                                        SelectedItem="{x:Bind Friday.Minute, Mode=TwoWay}" />
+                                        SelectedItem="{x:Bind Friday.MinuteString, Mode=TwoWay}" />
                                 </Grid>
 
                                 <Button
