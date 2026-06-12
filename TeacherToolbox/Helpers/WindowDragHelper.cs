@@ -29,8 +29,9 @@ namespace TeacherToolbox.Helpers
         private Microsoft.UI.Windowing.AppWindow _apw;
         private bool isClicked = false;
         private bool onlyVertical = false;
-        private readonly ISettingsService _settingsService; // Updated to use interface
-        private readonly WindowType _windowType; // Type of window for position storage
+        private readonly ISettingsService _settingsService;
+        private readonly WindowType _windowType;
+        private readonly Window _window;
 
         [DllImport("User32.dll", CharSet = CharSet.Auto, SetLastError = true)]
         public static extern bool GetCursorPos(out Windows.Graphics.PointInt32 lpPoint);
@@ -54,6 +55,7 @@ namespace TeacherToolbox.Helpers
             onlyVertical = onlyAllowVertical;
             _settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
             _windowType = windowType;
+            _window = window;
         }
 
         /// <summary>
@@ -82,12 +84,16 @@ namespace TeacherToolbox.Helpers
                     _apw.Id,
                     Microsoft.UI.Windowing.DisplayAreaFallback.Primary).DisplayId;
 
-                // Create window position
+                double scaleFactor = _window?.Content?.XamlRoot?.RasterizationScale ?? 1.0;
+                if (scaleFactor <= 0) scaleFactor = 1.0;
+
+                // Store size in DIPs (device-independent pixels) so RestoreWindowPosition
+                // can scale correctly for the target monitor's DPI on next launch.
                 var windowPosition = new WindowPosition(
                     position.X,
                     position.Y,
-                    size.Width,
-                    size.Height,
+                    size.Width / scaleFactor,
+                    size.Height / scaleFactor,
                     displayId.Value
                 );
 
